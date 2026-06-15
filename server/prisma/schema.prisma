@@ -1,0 +1,126 @@
+// Bean Avenue database schema.
+//
+// Local development uses SQLite. To move to a hosted PostgreSQL later:
+//   1. change `provider = "sqlite"` below to `provider = "postgresql"`
+//   2. set DATABASE_URL in .env to your Postgres connection string
+//   3. run `npm run db:push` (or `prisma migrate`) again.
+// Nothing else in the app needs to change.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model MenuItem {
+  id          Int     @id @default(autoincrement())
+  name        String
+  category    String
+  description String  @default("")
+  price       Float   @default(0)
+  options     String  @default("[]") // JSON-encoded OptionGroup[]
+  tags        String  @default("[]") // JSON-encoded string[]
+  photo       String?
+  inStock     Boolean @default(true)
+  isHidden    Boolean @default(false)
+  sortOrder   Int     @default(0)
+}
+
+model Room {
+  id            Int       @id @default(autoincrement())
+  name          String
+  type          String // "STUDY" | "CONFERENCE"
+  description   String    @default("")
+  pricePerHour  Float
+  capacityMin   Int
+  capacityMax   Int
+  openHour      Int
+  closeHour     Int
+  amenities     String    @default("[]") // JSON-encoded string[]
+  rules         String    @default("[]") // JSON-encoded string[]
+  images        String    @default("[]") // JSON-encoded string[]
+  isAvailable   Boolean   @default(true)
+  bufferMinutes Int       @default(0)
+  bookings      Booking[]
+}
+
+model Customer {
+  id            Int                  @id @default(autoincrement())
+  name          String
+  phone         String               @unique
+  email         String?
+  beanBalance   Int                  @default(0)
+  lifetimeBeans Int                  @default(0)
+  tier          String               @default("Bronze")
+  isVip         Boolean              @default(false)
+  noShowCount   Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  orders        Order[]
+  bookings      Booking[]
+  transactions  LoyaltyTransaction[]
+}
+
+model LoyaltyTransaction {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type       String // "EARN" | "REDEEM" | "ADJUST"
+  amount     Int
+  source     String
+  refId      String?
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  number       String      @unique
+  customerId   Int?
+  customer     Customer?   @relation(fields: [customerId], references: [id])
+  customerName String
+  phone        String
+  email        String?
+  subtotal     Float
+  discount     Float       @default(0)
+  total        Float
+  promoCode    String?
+  pickupTime   String?
+  status       String      @default("NEW") // NEW | PREPARING | READY | PICKED_UP | CANCELLED
+  beansEarned  Int         @default(0)
+  createdAt    DateTime    @default(now())
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id              Int     @id @default(autoincrement())
+  orderId         Int
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name            String
+  unitPrice       Float
+  quantity        Int
+  selectedOptions String  @default("[]") // JSON-encoded SelectedOption[]
+  lineTotal       Float
+}
+
+model Booking {
+  id            Int       @id @default(autoincrement())
+  number        String    @unique
+  roomId        Int
+  room          Room      @relation(fields: [roomId], references: [id])
+  customerId    Int?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  customerName  String
+  phone         String
+  startTime     DateTime
+  endTime       DateTime
+  durationHours Int
+  peopleCount   Int
+  notes         String?
+  total         Float
+  status        String    @default("CONFIRMED") // PENDING | CONFIRMED | IN_USE | COMPLETED | CANCELLED | NO_SHOW
+  beansEarned   Int       @default(0)
+  createdAt     DateTime  @default(now())
+}

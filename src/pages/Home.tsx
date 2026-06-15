@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { HOURS, isOpenNow, WHATSAPP_URL } from "../components/Layout";
+import { Img } from "../components/Img";
 import { MenuItemCard } from "../components/MenuItemCard";
 import { api } from "../lib/api";
 import type { MenuItem, Room } from "../types";
@@ -11,7 +12,10 @@ export function Home() {
   const open = isOpenNow();
 
   useEffect(() => {
-    api.get<MenuItem[]>("/api/menu").then((items) => setPopular(items.filter((i) => i.inStock).slice(0, 6))).catch(() => {});
+    api
+      .get<MenuItem[]>("/api/menu")
+      .then((items) => setPopular(items.filter((i) => i.inStock).slice(0, 6)))
+      .catch(() => {});
     api.get<Room[]>("/api/rooms").then(setRooms).catch(() => {});
   }, []);
 
@@ -108,37 +112,49 @@ export function Home() {
       {/* Room teasers */}
       <section className="bg-oat/60 py-16">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 md:grid-cols-2">
-          <div className="card-lift rounded-2xl bg-white p-8 shadow-sm">
-            <p className="text-3xl">📚</p>
-            <h3 className="mt-3 font-display text-2xl font-bold text-espresso">Book a Study Room</h3>
-            <p className="mt-2 text-charcoal/70">
-              Quiet private space for studying, meetings, or work.
-            </p>
-            <p className="mt-4 font-display text-xl font-semibold text-terracotta">
-              From ${studyRoom?.pricePerHour ?? 5}/hour
-            </p>
-            <Link
-              to="/book?room=STUDY"
-              className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
-            >
-              Book Now
-            </Link>
+          <div className="card-lift overflow-hidden rounded-2xl bg-white shadow-sm">
+            <Img
+              src="/photos/study-room-whiteboard.jpg"
+              alt="The Study Room"
+              className="h-52 w-full"
+            />
+            <div className="p-8">
+              <h3 className="font-display text-2xl font-bold text-espresso">Book a Study Room</h3>
+              <p className="mt-2 text-charcoal/70">
+                Quiet private space for studying, meetings, or work.
+              </p>
+              <p className="mt-4 font-display text-xl font-semibold text-terracotta">
+                From ${studyRoom?.pricePerHour ?? 5}/hour
+              </p>
+              <Link
+                to="/book?room=STUDY"
+                className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
+              >
+                Book Now
+              </Link>
+            </div>
           </div>
-          <div className="card-lift rounded-2xl bg-white p-8 shadow-sm">
-            <p className="text-3xl">🖥️</p>
-            <h3 className="mt-3 font-display text-2xl font-bold text-espresso">Book a Conference Room</h3>
-            <p className="mt-2 text-charcoal/70">
-              Perfect for meetings, presentations, and group work.
-            </p>
-            <p className="mt-4 font-display text-xl font-semibold text-terracotta">
-              From ${confRoom?.pricePerHour ?? 20}/hour
-            </p>
-            <Link
-              to="/book?room=CONFERENCE"
-              className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
-            >
-              Book Now
-            </Link>
+          <div className="card-lift overflow-hidden rounded-2xl bg-white shadow-sm">
+            <Img
+              src="/photos/conference-room.jpg"
+              alt="The Conference Room"
+              className="h-52 w-full"
+            />
+            <div className="p-8">
+              <h3 className="font-display text-2xl font-bold text-espresso">Book a Conference Room</h3>
+              <p className="mt-2 text-charcoal/70">
+                Perfect for meetings, presentations, and group work.
+              </p>
+              <p className="mt-4 font-display text-xl font-semibold text-terracotta">
+                From ${confRoom?.pricePerHour ?? 20}/hour
+              </p>
+              <Link
+                to="/book?room=CONFERENCE"
+                className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
+              >
+                Book Now
+              </Link>
+            </div>
           </div>
         </div>
       </section>

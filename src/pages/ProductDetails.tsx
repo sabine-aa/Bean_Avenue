@@ -22,6 +22,7 @@ export function ProductDetails() {
     setItem(null);
     setQuantity(1);
     setChoices({});
+    setNotFound(false);
     api
       .get<MenuItem>(`/api/menu/${id}`)
       .then((data) => {

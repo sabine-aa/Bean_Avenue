@@ -1,0 +1,52 @@
+import "dotenv/config";
+import cors from "cors";
+import express from "express";
+import { signToken } from "./auth";
+import { bookingsRouter } from "./routes/bookings";
+import { customersRouter } from "./routes/customers";
+import { loyaltyRouter } from "./routes/loyalty";
+import { menuRouter } from "./routes/menu";
+import { ordersRouter } from "./routes/orders";
+import { reportsRouter } from "./routes/reports";
+import { roomsRouter } from "./routes/rooms";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Admin login — checks credentials from .env and returns a token.
+app.post("/api/auth/login", (req, res) => {
+  const { email, password } = req.body;
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@beanavenue.com";
+  const adminPassword = process.env.ADMIN_PASSWORD || "beanavenue";
+  if (email !== adminEmail || password !== adminPassword) {
+    return res.status(401).json({ error: "Wrong email or password." });
+  }
+  const name = process.env.ADMIN_NAME || "Admin";
+  res.json({ token: signToken({ email, role: "admin" }), name });
+});
+
+app.use("/api/menu", menuRouter);
+app.use("/api/rooms", roomsRouter);
+app.use("/api/bookings", bookingsRouter);
+app.use("/api/orders", ordersRouter);
+app.use("/api/loyalty", loyaltyRouter);
+app.use("/api/customers", customersRouter);
+app.use("/api/reports", reportsRouter);
+
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// Fallback error handler so thrown errors return JSON, not HTML.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: "Something went wrong on the server." });
+});
+
+const port = Number(process.env.PORT) || 4000;
+app.listen(port, () => {
+  console.log(`Bean Avenue API running on http://localhost:${port}`);
+});
+
+// Keep the server alive even if an unexpected error slips through a handler.
+process.on("unhandledRejection", (err) => console.error("Unhandled rejection:", err));
+process.on("uncaughtException", (err) => console.error("Uncaught exception:", err));
