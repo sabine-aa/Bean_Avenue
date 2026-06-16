@@ -44,24 +44,28 @@ customersRouter.get("/:id", async (req, res) => {
 });
 
 // POST /api/customers/:id/adjust-beans  { amount, note }
+// A reason (note) is required so every manual change is explained in the ledger.
 customersRouter.post("/:id/adjust-beans", async (req, res) => {
   const id = Number(req.params.id);
-  const amount = Number(req.body.amount) || 0;
-  const note = req.body.note as string | undefined;
+  const amount = Math.round(Number(req.body.amount) || 0);
+  const note = String(req.body.note ?? "").trim();
+  if (!amount) return res.status(400).json({ error: "Enter a non-zero amount." });
+  if (!note) return res.status(400).json({ error: "A reason is required for manual adjustments." });
+
   const customer = await prisma.customer.findUnique({ where: { id } });
   if (!customer) return res.status(404).json({ error: "Customer not found." });
+  if (customer.beanBalance + amount < 0) {
+    return res.status(400).json({ error: "That would put the balance below zero." });
+  }
 
   const lifetimeBeans = amount > 0 ? customer.lifetimeBeans + amount : customer.lifetimeBeans;
+  const balanceAfter = customer.beanBalance + amount;
   const updated = await prisma.customer.update({
     where: { id },
-    data: {
-      beanBalance: customer.beanBalance + amount,
-      lifetimeBeans,
-      tier: tierFor(lifetimeBeans),
-    },
+    data: { beanBalance: balanceAfter, lifetimeBeans, tier: tierFor(lifetimeBeans) },
   });
   await prisma.loyaltyTransaction.create({
-    data: { customerId: id, type: "ADJUST", amount, source: "Manual adjustment", note: note ?? null },
+    data: { customerId: id, type: "ADJUST", amount, balanceAfter, source: "Manual adjustment", note },
   });
   res.json(updated);
 });

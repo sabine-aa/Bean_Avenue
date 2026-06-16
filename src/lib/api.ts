@@ -1,21 +1,27 @@
 const TOKEN_KEY = "bean-avenue-admin-token";
+const CUSTOMER_TOKEN_KEY = "bean-avenue-customer-token";
 
-export function getToken(): string | null {
+function readToken(key: string): string | null {
   try {
-    return localStorage.getItem(TOKEN_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-export function setToken(token: string | null) {
+function writeToken(key: string, token: string | null) {
   try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
+    if (token) localStorage.setItem(key, token);
+    else localStorage.removeItem(key);
   } catch {
     /* storage unavailable — session-only auth */
   }
 }
+
+export const getToken = () => readToken(TOKEN_KEY);
+export const setToken = (token: string | null) => writeToken(TOKEN_KEY, token);
+export const getCustomerToken = () => readToken(CUSTOMER_TOKEN_KEY);
+export const setCustomerToken = (token: string | null) => writeToken(CUSTOMER_TOKEN_KEY, token);
 
 export class ApiError extends Error {
   status: number;
@@ -25,37 +31,47 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-  if (!res.ok) {
-    let message = "Something went wrong.";
-    try {
-      const body = await res.json();
-      message = body.error ?? message;
-    } catch {
-      /* non-JSON error body */
+function makeRequest(tokenGetter: () => string | null) {
+  return async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const token = tokenGetter();
+    const res = await fetch(path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+    if (!res.ok) {
+      let message = "Something went wrong.";
+      try {
+        const body = await res.json();
+        message = body.error ?? message;
+      } catch {
+        /* non-JSON error body */
+      }
+      throw new ApiError(res.status, message);
     }
-    throw new ApiError(res.status, message);
-  }
-  return res.json();
+    return res.json();
+  };
 }
 
-export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
-};
+function makeApi(tokenGetter: () => string | null) {
+  const request = makeRequest(tokenGetter);
+  return {
+    get: <T>(path: string) => request<T>(path),
+    post: <T>(path: string, body: unknown) =>
+      request<T>(path, { method: "POST", body: JSON.stringify(body) }),
+    patch: <T>(path: string, body: unknown) =>
+      request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+    delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  };
+}
+
+// `api` carries the admin token (used by the public site too — it just sends no
+// token when none is stored). `customerApi` carries the logged-in customer token.
+export const api = makeApi(getToken);
+export const customerApi = makeApi(getCustomerToken);
 
 export const money = (n: number) => `$${n.toFixed(2)}`;
 

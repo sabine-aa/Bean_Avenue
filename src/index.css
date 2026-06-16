@@ -139,7 +139,7 @@ body {
 }
 
 @utility float-bean {
-  animation: float-bean 6s ease-in-out infinite;
+  animation: float-bean 4s ease-in-out infinite;
   filter: drop-shadow(0 18px 22px rgb(53 78 65 / 0.35));
 }
 

@@ -58,6 +58,7 @@ export interface Order {
   createdAt: string;
   items: {
     id: number;
+    menuItemId: number | null;
     name: string;
     unitPrice: number;
     quantity: number;
@@ -109,26 +110,137 @@ export interface Booking {
   createdAt: string;
 }
 
+export type LoyaltyTxType = "EARN" | "REDEEM" | "ADJUST";
+
+export interface LoyaltyTransaction {
+  id: number;
+  type: LoyaltyTxType;
+  amount: number;
+  balanceAfter: number;
+  source: string;
+  refId: string | null;
+  note: string | null;
+  createdAt: string;
+  customer?: { id: number; name: string; phone: string };
+}
+
+export type RewardType = "FREE_ITEM" | "DISCOUNT";
+
+export interface Reward {
+  id: number;
+  name: string;
+  description: string;
+  category: string | null;
+  cost: number;
+  type: RewardType;
+  icon: string;
+  image: string | null;
+  redeemMethod: string;
+  isActive: boolean;
+  isAvailable: boolean;
+  sortOrder: number;
+  createdAt?: string;
+  _count?: { redemptions: number };
+}
+
+// The menu categories rewards can be organised under.
+export const REWARD_CATEGORIES = [
+  "Special Item",
+  "Espresso Based",
+  "Sandwiches",
+  "Salads",
+  "Freshly Baked",
+  "Desserts",
+  "Beverages",
+  "Refreshers",
+  "Iced Teas",
+  "Milk Shakes",
+  "Frappes",
+  "Hot Teas",
+  "Rakwah",
+  "Frozen Yogurt",
+  "Iced Drinks",
+  "Filtered Coffee",
+  "Hot Drinks",
+] as const;
+
+export type RedemptionStatus = "ACTIVE" | "CLAIMED" | "EXPIRED";
+
+export interface Redemption {
+  id: number;
+  code: string;
+  customerId: number;
+  rewardId: number | null;
+  rewardName: string;
+  cost: number;
+  status: RedemptionStatus;
+  createdAt: string;
+  claimedAt: string | null;
+  customer?: { id: number; name: string; phone: string };
+}
+
+export interface EventItem {
+  id: number;
+  title: string;
+  description: string;
+  startTime: string;
+  price: number;
+  spots: number | null;
+  image: string | null;
+  isHidden: boolean;
+  sortOrder: number;
+  createdAt?: string;
+}
+
+export interface Subscriber {
+  id: number;
+  name: string | null;
+  phone: string;
+  createdAt: string;
+}
+
+export interface Banner {
+  id: number;
+  title: string;
+  text: string;
+  image: string | null;
+  buttonText: string | null;
+  buttonLink: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isVisible: boolean;
+  createdAt?: string;
+}
+
+export type SuggestionStatus = "NEW" | "REVIEWED" | "RESOLVED";
+
+export interface Suggestion {
+  id: number;
+  customerId: number | null;
+  name: string | null;
+  phone: string | null;
+  message: string;
+  status: SuggestionStatus;
+  adminNote: string | null;
+  createdAt: string;
+  customer?: { id: number; name: string; phone: string } | null;
+}
+
 export interface LoyaltyAccount {
   id: number;
   name: string;
   phone: string;
+  email?: string | null;
   beanBalance: number;
   lifetimeBeans: number;
   tier: string;
   nextTier: { name: string; beansToGo: number } | null;
-  transactions?: {
-    id: number;
-    type: "EARN" | "REDEEM" | "ADJUST";
-    amount: number;
-    source: string;
-    refId: string | null;
-    note: string | null;
-    createdAt: string;
-  }[];
-  alreadyMember?: boolean;
-  redeemed?: string;
+  transactions?: LoyaltyTransaction[];
+  redemptions?: Redemption[];
+  orders?: Order[];
+  bookings?: Booking[];
   message?: string;
+  voucherCode?: string;
 }
 
 export interface Customer {

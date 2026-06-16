@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../src/db";
+import { seedCategoryRewards } from "./rewards-data";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -63,10 +64,16 @@ const rooms = [
 
 async function main() {
   // Wipe existing data so the seed is repeatable.
+  await prisma.banner.deleteMany();
+  await prisma.subscriber.deleteMany();
+  await prisma.event.deleteMany();
+  await prisma.suggestion.deleteMany();
+  await prisma.redemption.deleteMany();
   await prisma.loyaltyTransaction.deleteMany();
   await prisma.orderItem.deleteMany();
   await prisma.order.deleteMany();
   await prisma.booking.deleteMany();
+  await prisma.reward.deleteMany();
   await prisma.customer.deleteMany();
   await prisma.menuItem.deleteMany();
   await prisma.room.deleteMany();
@@ -100,7 +107,38 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${menu.length} menu items and ${rooms.length} rooms.`);
+  const rewardCount = await seedCategoryRewards(prisma);
+
+  // Sample upcoming events (dates relative to today so they always show as upcoming).
+  const day = 24 * 60 * 60 * 1000;
+  const at = (daysAhead: number, hour: number) => {
+    const d = new Date(Date.now() + daysAhead * day);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  };
+  const events = [
+    { title: "Late-Night Study Session", description: "Free-flowing coffee, quiet corners, and good focus energy. Stay productive till close.", startTime: at(3, 19), price: 0, spots: 20, image: "/photos/study-room-library.jpg", sortOrder: 1 },
+    { title: "Business & Productivity Workshop", description: "A hands-on session on planning, focus, and getting things done — with a coffee in hand.", startTime: at(7, 18), price: 15, spots: 12, image: "/photos/conference-room.jpg", sortOrder: 2 },
+    { title: "Board Game Night", description: "Bring friends, grab a drink, and play. We supply the games and the snacks.", startTime: at(10, 20), price: 5, spots: 24, image: null, sortOrder: 3 },
+    { title: "Coffee Tasting", description: "Taste your way through our beans and learn what makes each cup special.", startTime: at(14, 17), price: 10, spots: 15, image: null, sortOrder: 4 },
+  ];
+  for (const event of events) {
+    await prisma.event.create({ data: event });
+  }
+
+  await prisma.banner.create({
+    data: {
+      title: "Double points every Monday",
+      text: "Earn 2 beans per $1 on all orders, every Monday at Bean Avenue.",
+      buttonText: "Join loyalty",
+      buttonLink: "/loyalty",
+      isVisible: true,
+    },
+  });
+
+  console.log(
+    `Seeded ${menu.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, ${events.length} events, and 1 banner.`
+  );
 }
 
 main()

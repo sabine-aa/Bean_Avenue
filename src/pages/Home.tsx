@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { HOURS, isOpenNow, WHATSAPP_URL } from "../components/Layout";
+import { HomeBanner } from "../components/HomeBanner";
+import { HOURS, isOpenNow, MAPS_EMBED, WHATSAPP_URL } from "../components/Layout";
 import { Img } from "../components/Img";
 import { MenuItemCard } from "../components/MenuItemCard";
+import { OffersSignup } from "../components/OffersSignup";
+import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { api } from "../lib/api";
 import type { MenuItem, Room } from "../types";
 
 export function Home() {
+  const { account } = useCustomerAuth();
   const [popular, setPopular] = useState<MenuItem[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const open = isOpenNow();
@@ -24,6 +28,8 @@ export function Home() {
 
   return (
     <div>
+      <HomeBanner />
+
       {/* Hero */}
       <section className="relative overflow-hidden bg-oat">
         <div
@@ -61,6 +67,48 @@ export function Home() {
           aria-hidden
           className="float-bean absolute bottom-20 right-[18%] hidden w-14 opacity-75 lg:block"
           style={{ animationDelay: "0.7s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute left-[28%] top-10 hidden w-9 opacity-60 lg:block"
+          style={{ animationDelay: "2.1s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute right-[30%] top-20 hidden w-8 opacity-50 lg:block"
+          style={{ animationDelay: "3.4s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute left-[3%] bottom-24 hidden w-12 opacity-70 md:block"
+          style={{ animationDelay: "1.9s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute right-[4%] bottom-10 hidden w-10 opacity-60 md:block"
+          style={{ animationDelay: "3.1s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute left-[44%] bottom-6 hidden w-7 opacity-50 lg:block"
+          style={{ animationDelay: "0.4s" }}
+        />
+        <img
+          src="/bean.png"
+          alt=""
+          aria-hidden
+          className="float-bean absolute right-[14%] top-1/2 hidden w-9 opacity-55 lg:block"
+          style={{ animationDelay: "2.5s" }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-16 text-center sm:py-24">
           <img
@@ -180,20 +228,45 @@ export function Home() {
       {/* Loyalty teaser */}
       <section className="bg-sage/15 py-14">
         <div className="mx-auto max-w-3xl px-4 text-center">
-          <h2 className="font-display text-3xl font-bold text-espresso">
-            Every cup earns you beans.
-          </h2>
-          <p className="mt-3 text-charcoal/70">
-            Earn 1 bean per $1 — on coffee <em>and</em> room bookings. Trade them for free drinks,
-            pastries, and study hours.
-          </p>
-          <Link
-            to="/loyalty"
-            className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-cream"
-          >
-            Join Free
-          </Link>
+          {account ? (
+            <>
+              <h2 className="font-display text-3xl font-bold text-espresso">
+                Hey {account.name} — you have {account.beanBalance} beans ☕
+              </h2>
+              <p className="mt-3 text-charcoal/70">
+                Keep sipping to earn more, then trade your beans for free drinks, pastries, and study
+                hours.
+              </p>
+              <Link
+                to="/loyalty"
+                className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-cream"
+              >
+                View my rewards
+              </Link>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-3xl font-bold text-espresso">
+                Every cup earns you beans.
+              </h2>
+              <p className="mt-3 text-charcoal/70">
+                Earn 1 bean per $1 — on coffee <em>and</em> room bookings. Trade them for free drinks,
+                pastries, and study hours.
+              </p>
+              <Link
+                to="/loyalty"
+                className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-cream"
+              >
+                Join Free
+              </Link>
+            </>
+          )}
         </div>
+      </section>
+
+      {/* Offers signup */}
+      <section className="mx-auto max-w-4xl px-4 pt-16">
+        <OffersSignup />
       </section>
 
       {/* Location & hours */}
@@ -201,7 +274,7 @@ export function Home() {
         <div className="grid gap-10 md:grid-cols-2">
           <div>
             <h2 className="font-display text-3xl font-bold text-espresso">Find us</h2>
-            <p className="mt-3 text-charcoal/80">123 Avenue Street, Your City</p>
+            <p className="mt-3 text-charcoal/80">Aley, Lebanon</p>
             <span
               className={`mt-3 inline-block rounded-full px-3 py-1 text-sm font-semibold ${
                 open ? "bg-sage/25 text-sage-dark" : "bg-terracotta/15 text-terracotta-dark"
@@ -224,10 +297,11 @@ export function Home() {
           </div>
           <div className="overflow-hidden rounded-2xl shadow-sm">
             <iframe
-              title="Bean Avenue location map"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=-0.13%2C51.50%2C-0.11%2C51.52&layer=mapnik"
+              title="Bean Avenue location — Aley, Lebanon"
+              src={MAPS_EMBED}
               className="h-72 w-full border-0 md:h-full"
               loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
             />
           </div>
         </div>

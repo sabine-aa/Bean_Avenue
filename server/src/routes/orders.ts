@@ -44,6 +44,7 @@ ordersRouter.post("/", async (req, res) => {
     const unitPrice = round2(menuItem.price + selected.reduce((s, o) => s + o.priceDelta, 0));
     const quantity = Number(line.quantity) || 1;
     built.push({
+      menuItemId: menuItem.id,
       name: menuItem.name,
       unitPrice,
       quantity,

@@ -14,9 +14,52 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ error: "Please sign in." });
   }
   try {
-    jwt.verify(header.slice(7), SECRET);
+    const payload = jwt.verify(header.slice(7), SECRET) as { role?: string };
+    if (payload.role !== "admin") return res.status(403).json({ error: "Admin access only." });
     next();
   } catch {
     return res.status(401).json({ error: "Your session expired — please sign in again." });
+  }
+}
+
+// Make the verified customer id available to handlers.
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      customerId?: number;
+    }
+  }
+}
+
+/** Express middleware: attaches req.customerId if a valid customer token is present, but never blocks. */
+export function optionalCustomer(req: Request, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      const payload = jwt.verify(header.slice(7), SECRET) as { customerId?: number; role?: string };
+      if (payload.role === "customer" && payload.customerId) req.customerId = payload.customerId;
+    } catch {
+      /* ignore invalid/expired token — treat as anonymous */
+    }
+  }
+  next();
+}
+
+/** Express middleware: requires a valid customer token and attaches req.customerId. */
+export function requireCustomer(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Please log in to your rewards account." });
+  }
+  try {
+    const payload = jwt.verify(header.slice(7), SECRET) as { customerId?: number; role?: string };
+    if (payload.role !== "customer" || !payload.customerId) {
+      return res.status(403).json({ error: "Customer access only." });
+    }
+    req.customerId = payload.customerId;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Your session expired — please log in again." });
   }
 }

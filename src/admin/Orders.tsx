@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "../context/ToastContext";
 import { api, formatDateTime, money } from "../lib/api";
+import { ORDER_FLOW, ORDER_STATUS_META, statusLabel } from "../lib/orderStatus";
 import type { Order, OrderStatus } from "../types";
 
-const FLOW: OrderStatus[] = ["NEW", "PREPARING", "READY", "PICKED_UP"];
-const STATUS_STYLE: Record<OrderStatus, string> = {
-  NEW: "bg-terracotta/15 text-terracotta-dark",
-  PREPARING: "bg-oat text-mocha",
-  READY: "bg-sage/25 text-sage-dark",
-  PICKED_UP: "bg-oat/60 text-charcoal/60",
-  CANCELLED: "bg-charcoal/10 text-charcoal/50",
-};
+const FLOW = ORDER_FLOW;
 
 export function AdminOrders() {
   const toast = useToast();
@@ -62,7 +56,7 @@ export function AdminOrders() {
               status === s ? "bg-espresso text-cream" : "bg-white text-espresso shadow-sm"
             }`}
           >
-            {s.replace("_", " ")}
+            {s === "ALL" ? "All" : statusLabel(s as OrderStatus)}
           </button>
         ))}
         <input
@@ -104,13 +98,13 @@ export function AdminOrders() {
                       .join(" · ")}
                   </p>
                   <p className="mt-1 text-xs text-charcoal/50">
-                    {formatDateTime(o.createdAt)} · Pickup: {o.pickupTime ?? "ASAP"}
+                    {formatDateTime(o.createdAt)} · Pickup: {o.pickupTime ?? "ASAP"} · 💵 Pay at counter
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="font-display text-xl font-bold text-espresso">{money(o.total)}</p>
-                  <span className={`mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-bold ${STATUS_STYLE[o.status]}`}>
-                    {o.status.replace("_", " ")}
+                  <span className={`mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-bold ${ORDER_STATUS_META[o.status].badge}`}>
+                    {ORDER_STATUS_META[o.status].icon} {ORDER_STATUS_META[o.status].label}
                   </span>
                 </div>
               </div>
@@ -121,7 +115,7 @@ export function AdminOrders() {
                       onClick={() => setOrderStatus(o, nextStatus)}
                       className="rounded-full bg-espresso px-4 py-1.5 text-sm font-semibold text-cream hover:bg-mocha"
                     >
-                      Mark {nextStatus.replace("_", " ")}
+                      Mark {statusLabel(nextStatus)}
                     </button>
                   )}
                   <button

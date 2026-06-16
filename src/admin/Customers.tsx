@@ -27,10 +27,14 @@ export function AdminCustomers() {
 
   async function adjustBeans() {
     if (!selected || !adjustAmount) return;
+    if (!adjustNote.trim()) {
+      toast("Please add a reason for the adjustment.", "error");
+      return;
+    }
     try {
       await api.post(`/api/customers/${selected.id}/adjust-beans`, {
         amount: adjustAmount,
-        note: adjustNote || undefined,
+        note: adjustNote.trim(),
       });
       toast(`Beans adjusted by ${adjustAmount > 0 ? "+" : ""}${adjustAmount}.`);
       openDetail(selected.id);
@@ -150,11 +154,11 @@ export function AdminCustomers() {
                 />
               </label>
               <label className="flex-1 text-xs font-semibold text-espresso">
-                Note
+                Reason <span className="text-terracotta-dark">(required)</span>
                 <input
                   value={adjustNote}
                   onChange={(e) => setAdjustNote(e.target.value)}
-                  placeholder="e.g. spilled-drink apology"
+                  placeholder="e.g. complaint goodwill / cancelled order"
                   className="mt-1 block w-full rounded-lg border border-oat px-3 py-1.5 font-normal"
                 />
               </label>
@@ -166,8 +170,29 @@ export function AdminCustomers() {
               </button>
             </div>
 
-            <h3 className="mt-5 text-sm font-bold text-espresso">Recent activity</h3>
-            <ul className="mt-2 max-h-64 space-y-1.5 overflow-y-auto text-sm">
+            <h3 className="mt-5 text-sm font-bold text-espresso">Points history</h3>
+            <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto text-sm">
+              {selected.transactions?.map((t) => (
+                <li key={`t${t.id}`} className="flex justify-between gap-2 rounded-lg bg-oat/30 px-3 py-2">
+                  <span>
+                    {t.note ?? (t.type === "EARN" ? `Earned on ${t.refId ?? t.source}` : t.source)}
+                    <span className="block text-xs text-charcoal/50">
+                      {formatDateTime(t.createdAt)} · balance {t.balanceAfter}
+                    </span>
+                  </span>
+                  <span className={`font-bold ${t.amount > 0 ? "text-sage-dark" : "text-terracotta-dark"}`}>
+                    {t.amount > 0 ? "+" : ""}
+                    {t.amount}
+                  </span>
+                </li>
+              ))}
+              {!selected.transactions?.length && (
+                <li className="text-charcoal/60">No points activity yet.</li>
+              )}
+            </ul>
+
+            <h3 className="mt-5 text-sm font-bold text-espresso">Orders &amp; bookings</h3>
+            <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto text-sm">
               {selected.orders?.map((o) => (
                 <li key={`o${o.id}`} className="flex justify-between rounded-lg bg-oat/30 px-3 py-2">
                   <span>🛍 {o.number} · {formatDateTime(o.createdAt)}</span>

@@ -8,12 +8,6 @@ export const TIERS = [
   { name: "Gold", min: 300 },
 ];
 
-export const REWARDS = [
-  { id: "drip-coffee", name: "Free Drip Coffee", cost: 50 },
-  { id: "pastry", name: "Free Pastry", cost: 80 },
-  { id: "study-hour", name: "Free Study Hour", cost: 120 },
-];
-
 export function tierFor(lifetimeBeans: number): string {
   let tier = TIERS[0].name;
   for (const t of TIERS) if (lifetimeBeans >= t.min) tier = t.name;
@@ -72,16 +66,17 @@ export async function earnBeans(
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return;
   const lifetimeBeans = customer.lifetimeBeans + amount;
+  const balanceAfter = customer.beanBalance + amount;
   await prisma.customer.update({
     where: { id: customerId },
     data: {
-      beanBalance: customer.beanBalance + amount,
+      beanBalance: balanceAfter,
       lifetimeBeans,
       tier: tierFor(lifetimeBeans),
     },
   });
   await prisma.loyaltyTransaction.create({
-    data: { customerId, type: "EARN", amount, source, refId },
+    data: { customerId, type: "EARN", amount, balanceAfter, source, refId },
   });
 }
 

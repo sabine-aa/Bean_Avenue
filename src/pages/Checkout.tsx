@@ -1,22 +1,25 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
 import type { Order } from "../types";
 
 export function Checkout() {
   const { lines, subtotal, clear } = useCart();
+  const { account, refresh } = useCustomerAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState(account?.name ?? "");
+  const [phone, setPhone] = useState(account?.phone ?? "");
   const [email, setEmail] = useState("");
   const [pickupTime, setPickupTime] = useState("ASAP");
   const [submitting, setSubmitting] = useState(false);
   const promoCode: string = location.state?.promoCode ?? "";
+  const beansToEarn = Math.floor(subtotal);
 
   if (lines.length === 0) {
     return (
@@ -47,6 +50,8 @@ export function Checkout() {
         })),
       });
       clear();
+      // Pull the freshly-earned beans into the logged-in account.
+      if (account) refresh().catch(() => {});
       navigate(`/order-success/${order.number}`, { state: { order } });
     } catch (err) {
       toast(err instanceof Error ? err.message : "Something went wrong.", "error");
@@ -57,6 +62,19 @@ export function Checkout() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       <h1 className="font-display text-3xl font-bold text-espresso">Checkout</h1>
+
+      {account ? (
+        <div className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-espresso">
+          ☕ Logged in as <span className="font-semibold">{account.name}</span> · you'll earn{" "}
+          <span className="font-semibold">{beansToEarn} beans</span> on this order.
+        </div>
+      ) : (
+        <div className="mt-4 rounded-xl bg-oat/60 px-4 py-3 text-sm text-charcoal/80">
+          🫘 <Link to="/loyalty" className="font-semibold text-terracotta hover:underline">Log in or create an account</Link>{" "}
+          to earn {beansToEarn} beans on this order — or order as a guest below.
+        </div>
+      )}
+
       <div className="mt-6 grid gap-8 md:grid-cols-5">
         <form onSubmit={handleSubmit} className="space-y-4 md:col-span-3">
           <div>
@@ -85,9 +103,11 @@ export function Checkout() {
               className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
               autoComplete="tel"
             />
-            <p className="mt-1 text-xs text-charcoal/50">
-              Loyalty member? Use your member phone number to earn beans on this order.
-            </p>
+            {!account && (
+              <p className="mt-1 text-xs text-charcoal/50">
+                Loyalty member? Log in first, or use your member phone number to earn beans on this order.
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-semibold text-espresso" htmlFor="email">

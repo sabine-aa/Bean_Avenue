@@ -7,7 +7,13 @@ const links = [
   { to: "/admin/menu", label: "Menu Manager" },
   { to: "/admin/bookings", label: "Room Bookings" },
   { to: "/admin/rooms", label: "Rooms" },
-  { to: "/admin/customers", label: "Customers & Loyalty" },
+  { to: "/admin/customers", label: "Customers" },
+  { to: "/admin/rewards", label: "Rewards" },
+  { to: "/admin/loyalty", label: "Loyalty Points" },
+  { to: "/admin/events", label: "Events" },
+  { to: "/admin/banners", label: "Homepage Banner" },
+  { to: "/admin/subscribers", label: "Offer Sign-ups" },
+  { to: "/admin/suggestions", label: "Suggestions" },
   { to: "/admin/reports", label: "Sales Reports" },
 ];
 

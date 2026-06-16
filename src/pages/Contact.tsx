@@ -1,57 +1,150 @@
-import { HOURS, isOpenNow, WHATSAPP_URL } from "../components/Layout";
+import { Link } from "react-router-dom";
+import {
+  ADDRESS,
+  HOURS,
+  INSTAGRAM_URL,
+  isOpenNow,
+  MAPS_EMBED,
+  MAPS_LINK,
+  PHONE_DISPLAY,
+  PHONE_TEL,
+  WHATSAPP_URL,
+} from "../components/Layout";
+import { InstagramIcon, MapPinIcon, PhoneIcon, WhatsAppIcon } from "../components/icons";
+import { SuggestionBox } from "../components/SuggestionBox";
 
 export function Contact() {
   const open = isOpenNow();
-  return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
-      <h1 className="font-display text-4xl font-bold text-espresso">Say hello</h1>
-      <p className="mt-2 text-charcoal/70">Questions? Message us — we reply fast.</p>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <div className="space-y-4">
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-12 sm:py-16">
+      <header className="text-center">
+        <h1 className="font-display text-4xl font-bold text-espresso sm:text-5xl">Say hello</h1>
+        <p className="mx-auto mt-3 max-w-xl text-charcoal/70">
+          For orders, room bookings, and questions, contact us anytime.
+        </p>
+      </header>
+
+      <div className="mt-10 grid gap-6 lg:grid-cols-2 lg:items-start">
+        {/* Left column: WhatsApp, Call, Instagram — three equal-size cards stacked */}
+        <div className="grid gap-6 sm:auto-rows-fr">
+          {/* WhatsApp — the main contact method */}
+          <div className="flex flex-col rounded-2xl bg-espresso p-6 text-cream shadow-md">
+            <div className="flex items-start gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#25D366] text-white shadow">
+                <WhatsAppIcon className="h-8 w-8" />
+              </span>
+              <div>
+                <h2 className="font-display text-xl font-bold">WhatsApp us</h2>
+                <p className="mt-0.5 text-sm text-oat">
+                  The fastest way to reach the counter — we reply quickly.
+                </p>
+                <p className="mt-2 text-lg font-semibold tracking-wide">{PHONE_DISPLAY}</p>
+              </div>
+            </div>
+            <a
+              href={WHATSAPP_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-3d mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 font-semibold text-white transition hover:bg-[#1ebe5b]"
+            >
+              <WhatsAppIcon className="h-5 w-5" />
+              Message us on WhatsApp
+            </a>
+          </div>
+
+          {/* Call us */}
           <a
-            href={WHATSAPP_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-3d block rounded-2xl bg-sage p-6 text-cream"
+            href={`tel:${PHONE_TEL}`}
+            className="card-lift flex items-center gap-5 rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"
           >
-            <p className="text-2xl">💬</p>
-            <p className="mt-2 font-display text-xl font-bold">WhatsApp us</p>
-            <p className="mt-1 text-sm opacity-80">The fastest way to reach the counter.</p>
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sage/15 text-sage-dark">
+              <PhoneIcon className="h-7 w-7" />
+            </span>
+            <div>
+              <h2 className="font-display text-xl font-bold text-espresso">Call us</h2>
+              <p className="mt-0.5 text-lg font-semibold text-charcoal/80">{PHONE_DISPLAY}</p>
+              <p className="mt-0.5 text-sm text-charcoal/60">For bookings and big orders.</p>
+            </div>
           </a>
-          <a
-            href="tel:+15551234567"
-            className="block rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"
-          >
-            <p className="text-2xl">📞</p>
-            <p className="mt-2 font-display text-xl font-bold text-espresso">+1 (555) 123-4567</p>
-            <p className="mt-1 text-sm text-charcoal/60">For bookings and big orders.</p>
-          </a>
-          <a
-            href="mailto:hello@beanavenue.com"
-            className="block rounded-2xl bg-white p-6 shadow-sm transition hover:shadow-md"
-          >
-            <p className="text-2xl">✉️</p>
-            <p className="mt-2 font-display text-xl font-bold text-espresso">hello@beanavenue.com</p>
-            <p className="mt-1 text-sm text-charcoal/60">For everything else.</p>
-          </a>
+
+          {/* Instagram */}
+          <div className="flex flex-col rounded-2xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-5">
+              <span
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow"
+                style={{
+                  background:
+                    "linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+                }}
+              >
+                <InstagramIcon className="h-7 w-7" />
+              </span>
+              <div>
+                <h2 className="font-display text-xl font-bold text-espresso">Instagram</h2>
+                <p className="mt-0.5 text-sm font-semibold text-terracotta">@beanavenue.lb</p>
+                <p className="mt-0.5 text-sm text-charcoal/60">See what's brewing.</p>
+              </div>
+            </div>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-3d mt-5 inline-flex items-center justify-center gap-2 rounded-full bg-espresso px-6 py-3 font-semibold text-cream transition hover:bg-mocha"
+            >
+              <InstagramIcon className="h-5 w-5" />
+              Follow us on Instagram
+            </a>
+          </div>
         </div>
 
+        {/* Right column: visit us + map + hours */}
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <p className="font-display text-xl font-bold text-espresso">Visit us</p>
-          <p className="mt-2 text-charcoal/80">123 Avenue Street, Your City</p>
-          <span
-            className={`mt-3 inline-block rounded-full px-3 py-1 text-sm font-semibold ${
-              open ? "bg-sage/25 text-sage-dark" : "bg-terracotta/15 text-terracotta-dark"
-            }`}
+          <div className="flex items-start gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-terracotta/15 text-terracotta-dark">
+              <MapPinIcon className="h-7 w-7" />
+            </span>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-xl font-bold text-espresso">Visit us</h2>
+                <span
+                  className={`rounded-full px-3 py-0.5 text-xs font-semibold ${
+                    open ? "bg-sage/25 text-sage-dark" : "bg-terracotta/15 text-terracotta-dark"
+                  }`}
+                >
+                  {open ? "● Open now" : "● Closed"}
+                </span>
+              </div>
+              <p className="mt-1 text-charcoal/80">{ADDRESS}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-hidden rounded-xl border border-oat">
+            <iframe
+              title="Bean Avenue location — Aley, Lebanon"
+              src={MAPS_EMBED}
+              className="h-52 w-full border-0"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+
+          <a
+            href={MAPS_LINK}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-3d mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-terracotta px-6 py-3 font-semibold text-cream transition hover:bg-terracotta-dark"
           >
-            {open ? "● Open now" : "● Closed"}
-          </span>
-          <table className="mt-4 w-full text-sm">
+            <MapPinIcon className="h-5 w-5" />
+            Open in Google Maps
+          </a>
+
+          <h3 className="mt-6 font-display text-lg font-bold text-espresso">Opening hours</h3>
+          <table className="mt-2 w-full text-sm">
             <tbody>
               {HOURS.map((h) => (
                 <tr key={h.day} className="border-b border-oat last:border-0">
-                  <td className="py-1.5 font-medium">{h.day}</td>
+                  <td className="py-1.5 font-medium text-charcoal/80">{h.day}</td>
                   <td className="py-1.5 text-right text-charcoal/70">
                     {h.open} – {h.close}
                   </td>
@@ -61,6 +154,28 @@ export function Contact() {
           </table>
         </div>
       </div>
+
+      {/* Book a room — highlighted */}
+      <section className="mt-6 overflow-hidden rounded-3xl bg-gradient-to-br from-mocha to-espresso shadow-lg">
+        <div className="flex flex-col items-center gap-5 p-8 text-center text-cream sm:flex-row sm:justify-between sm:gap-8 sm:p-10 sm:text-left">
+          <div>
+            <h2 className="font-display text-2xl font-bold sm:text-3xl">Need a space to focus?</h2>
+            <p className="mt-2 max-w-xl text-oat">
+              Reserve our Study Room or Conference Room for studying, meetings, and group work — coffee
+              just steps away.
+            </p>
+          </div>
+          <Link
+            to="/book"
+            className="btn-3d inline-flex w-full items-center justify-center rounded-full bg-terracotta px-8 py-3.5 font-semibold text-cream transition hover:bg-terracotta-dark sm:w-auto"
+          >
+            Book a Room
+          </Link>
+        </div>
+      </section>
+
+      {/* Suggestion box */}
+      <SuggestionBox />
     </div>
   );
 }

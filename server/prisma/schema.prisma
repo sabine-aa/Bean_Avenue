@@ -52,6 +52,7 @@ model Customer {
   name          String
   phone         String               @unique
   email         String?
+  passwordHash  String? // null = phone-only "shell" account (e.g. created by a guest order)
   beanBalance   Int                  @default(0)
   lifetimeBeans Int                  @default(0)
   tier          String               @default("Bronze")
@@ -61,18 +62,68 @@ model Customer {
   orders        Order[]
   bookings      Booking[]
   transactions  LoyaltyTransaction[]
+  redemptions   Redemption[]
+  suggestions   Suggestion[]
+}
+
+// Customer feedback, ideas, or complaints. May be anonymous or tied to an account.
+model Suggestion {
+  id         Int       @id @default(autoincrement())
+  customerId Int?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  name       String? // optional — may be left blank or pulled from the account
+  phone      String? // optional — for contacting back
+  message    String
+  status     String    @default("NEW") // NEW | REVIEWED | RESOLVED
+  adminNote  String?
+  createdAt  DateTime  @default(now())
 }
 
 model LoyaltyTransaction {
-  id         Int      @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
+  customerId   Int
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type         String // "EARN" | "REDEEM" | "ADJUST"
+  amount       Int // positive = earned/added, negative = redeemed/removed
+  balanceAfter Int      @default(0) // bean balance immediately after this transaction
+  source       String
+  refId        String? // order number, booking number, or redemption code
+  note         String?
+  createdAt    DateTime @default(now())
+}
+
+// A reward customers can spend beans on. Managed from the admin dashboard.
+// Rewards are organised by menu category, with one or more per category.
+model Reward {
+  id           Int          @id @default(autoincrement())
+  name         String
+  description  String       @default("")
+  category     String? // matches a menu category, e.g. "Espresso Based"
+  cost         Int // beans required to redeem
+  type         String       @default("FREE_ITEM") // "FREE_ITEM" | "DISCOUNT"
+  icon         String       @default("🎁")
+  image        String? // product image URL/path; falls back to icon when empty
+  redeemMethod String       @default("Show voucher at counter")
+  isActive     Boolean      @default(true) // show/hide on the customer page
+  isAvailable  Boolean      @default(true) // can be redeemed right now
+  sortOrder    Int          @default(0)
+  createdAt    DateTime     @default(now())
+  redemptions  Redemption[]
+}
+
+// A voucher created when a customer redeems a reward. Shown at the counter to claim.
+model Redemption {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
   customerId Int
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  type       String // "EARN" | "REDEEM" | "ADJUST"
-  amount     Int
-  source     String
-  refId      String?
-  note       String?
-  createdAt  DateTime @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  rewardId   Int?
+  reward     Reward?   @relation(fields: [rewardId], references: [id])
+  rewardName String // snapshot, so it survives the reward being edited/deleted
+  cost       Int // beans spent (snapshot)
+  status     String    @default("ACTIVE") // "ACTIVE" | "CLAIMED" | "EXPIRED"
+  createdAt  DateTime  @default(now())
+  claimedAt  DateTime?
 }
 
 model Order {
@@ -98,11 +149,48 @@ model OrderItem {
   id              Int     @id @default(autoincrement())
   orderId         Int
   order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId      Int? // kept so customers can re-order the same item later
   name            String
   unitPrice       Float
   quantity        Int
   selectedOptions String  @default("[]") // JSON-encoded SelectedOption[]
   lineTotal       Float
+}
+
+// Events / workshops shown on the public Events page, managed from the admin.
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String   @default("")
+  startTime   DateTime
+  price       Float    @default(0) // 0 = free
+  spots       Int? // available spots, null = not tracked
+  image       String?
+  isHidden    Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+// Customers who opted in to WhatsApp offers & updates.
+model Subscriber {
+  id        Int      @id @default(autoincrement())
+  name      String?
+  phone     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// Admin-controlled homepage announcement banner.
+model Banner {
+  id         Int       @id @default(autoincrement())
+  title      String
+  text       String    @default("")
+  image      String?
+  buttonText String?
+  buttonLink String?
+  startDate  DateTime?
+  endDate    DateTime?
+  isVisible  Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 }
 
 model Booking {
