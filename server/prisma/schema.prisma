@@ -15,18 +15,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Menu categories with a manager-controlled display order.
+model Category {
+  id        Int    @id @default(autoincrement())
+  name      String @unique
+  sortOrder Int    @default(0)
+}
+
 model MenuItem {
-  id          Int     @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   name        String
   category    String
-  description String  @default("")
-  price       Float   @default(0)
-  options     String  @default("[]") // JSON-encoded OptionGroup[]
-  tags        String  @default("[]") // JSON-encoded string[]
+  description String           @default("")
+  price       Float            @default(0)
+  options     String           @default("[]") // JSON-encoded OptionGroup[]
+  tags        String           @default("[]") // JSON-encoded string[]
   photo       String?
-  inStock     Boolean @default(true)
-  isHidden    Boolean @default(false)
-  sortOrder   Int     @default(0)
+  inStock     Boolean          @default(true)
+  isHidden    Boolean          @default(false)
+  sortOrder   Int              @default(0)
+  featured    FeaturedProduct?
+}
+
+// Manager-curated homepage products ("The usual suspects"). References menu
+// items live, so any Menu Manager edit shows up automatically — no copies.
+model FeaturedProduct {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int      @unique
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  sortOrder  Int      @default(0)
+}
+
+// Simple key/value store for site settings (e.g. homepage section title/visibility).
+model Setting {
+  key   String @id
+  value String
 }
 
 model Room {
@@ -64,6 +87,20 @@ model Customer {
   transactions  LoyaltyTransaction[]
   redemptions   Redemption[]
   suggestions   Suggestion[]
+  notifications Notification[]
+}
+
+// In-website notifications for a logged-in customer.
+model Notification {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type       String // "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS"
+  title      String
+  message    String
+  link       String? // in-app path to the related order/booking/reward
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 // Customer feedback, ideas, or complaints. May be anonymous or tied to an account.
@@ -140,21 +177,58 @@ model Order {
   promoCode    String?
   pickupTime   String?
   status       String      @default("NEW") // NEW | PREPARING | READY | PICKED_UP | CANCELLED
+  cancelReason String?
   beansEarned  Int         @default(0)
   createdAt    DateTime    @default(now())
   items        OrderItem[]
 }
 
 model OrderItem {
-  id              Int     @id @default(autoincrement())
-  orderId         Int
-  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItemId      Int? // kept so customers can re-order the same item later
-  name            String
-  unitPrice       Float
-  quantity        Int
-  selectedOptions String  @default("[]") // JSON-encoded SelectedOption[]
-  lineTotal       Float
+  id                  Int     @id @default(autoincrement())
+  orderId             Int
+  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId          Int? // kept so customers can re-order the same item later
+  name                String
+  unitPrice           Float
+  quantity            Int
+  selectedOptions     String  @default("[]") // JSON-encoded SelectedOption[]
+  addons              String  @default("[]") // JSON-encoded { name, price, quantity }[]
+  specialInstructions String?
+  lineTotal           Float
+}
+
+// A group of add-ons (e.g. "Milk", "Syrup", "Extra shots"). Managed by the admin.
+model AddonGroup {
+  id          Int               @id @default(autoincrement())
+  name        String
+  selection   String            @default("MULTIPLE") // "SINGLE" | "MULTIPLE"
+  minSelect   Int               @default(0) // minimum options a customer must pick (0 = optional)
+  maxSelect   Int               @default(0) // maximum options a customer may pick (0 = no limit)
+  isAvailable Boolean           @default(true)
+  sortOrder   Int               @default(0)
+  addons      Addon[]
+  assignments AddonAssignment[]
+}
+
+// A single add-on within a group, with its own price and optional max quantity.
+model Addon {
+  id          Int        @id @default(autoincrement())
+  groupId     Int
+  group       AddonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name        String
+  price       Float      @default(0)
+  maxQuantity Int        @default(1) // e.g. 3 for "up to 3 extra shots"
+  isAvailable Boolean    @default(true)
+  sortOrder   Int        @default(0)
+}
+
+// Links an add-on group to a specific drink OR to an entire menu category.
+model AddonAssignment {
+  id         Int        @id @default(autoincrement())
+  groupId    Int
+  group      AddonGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  menuItemId Int? // assign to one drink
+  category   String? // assign to a whole category
 }
 
 // Events / workshops shown on the public Events page, managed from the admin.

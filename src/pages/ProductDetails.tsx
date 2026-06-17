@@ -5,7 +5,7 @@ import { MenuItemCard } from "../components/MenuItemCard";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
-import type { MenuItem, SelectedOption } from "../types";
+import type { AddonGroup, MenuItem, SelectedAddon, SelectedOption } from "../types";
 
 export function ProductDetails() {
   const { id } = useParams();
@@ -17,11 +17,17 @@ export function ProductDetails() {
   const [notFound, setNotFound] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [choices, setChoices] = useState<Record<string, string>>({});
+  const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
+  const [selected, setSelected] = useState<Record<number, number>>({}); // addonId -> quantity
+  const [instructions, setInstructions] = useState("");
 
   useEffect(() => {
     setItem(null);
     setQuantity(1);
     setChoices({});
+    setAddonGroups([]);
+    setSelected({});
+    setInstructions("");
     setNotFound(false);
     api
       .get<MenuItem>(`/api/menu/${id}`)
@@ -33,7 +39,61 @@ export function ProductDetails() {
         setChoices(initial);
       })
       .catch(() => setNotFound(true));
+    api.get<AddonGroup[]>(`/api/addons/for/${id}`).then(setAddonGroups).catch(() => {});
   }, [id]);
+
+  const countSelected = (group: AddonGroup) =>
+    group.addons.filter((a) => (selected[a.id] ?? 0) > 0).length;
+
+  // Add-on selection helpers.
+  function setSingle(group: AddonGroup, addonId: number) {
+    setSelected((prev) => {
+      const next = { ...prev };
+      const wasOn = (prev[addonId] ?? 0) > 0;
+      for (const a of group.addons) delete next[a.id]; // clear the group
+      if (!wasOn) next[addonId] = 1; // toggle on (clicking the active one clears it)
+      return next;
+    });
+  }
+  function toggleMulti(group: AddonGroup, addonId: number) {
+    const turningOn = (selected[addonId] ?? 0) === 0;
+    if (turningOn && group.maxSelect > 0 && countSelected(group) >= group.maxSelect) {
+      toast(`You can pick up to ${group.maxSelect} from ${group.name}.`, "error");
+      return;
+    }
+    setSelected((prev) => {
+      const next = { ...prev };
+      if ((next[addonId] ?? 0) > 0) delete next[addonId];
+      else next[addonId] = 1;
+      return next;
+    });
+  }
+  function setQty(group: AddonGroup, addonId: number, max: number, qty: number) {
+    const turningOn = (selected[addonId] ?? 0) === 0 && qty > 0;
+    if (turningOn && group.maxSelect > 0 && countSelected(group) >= group.maxSelect) {
+      toast(`You can pick up to ${group.maxSelect} from ${group.name}.`, "error");
+      return;
+    }
+    setSelected((prev) => {
+      const next = { ...prev };
+      const q = Math.max(0, Math.min(max, qty));
+      if (q === 0) delete next[addonId];
+      else next[addonId] = q;
+      return next;
+    });
+  }
+
+  // Groups whose minimum isn't met yet — block Add to Cart until satisfied.
+  const unmetGroups = addonGroups.filter(
+    (g) => g.minSelect > 0 && countSelected(g) < g.minSelect
+  );
+
+  const selectedAddons: SelectedAddon[] = addonGroups.flatMap((g) =>
+    g.addons
+      .filter((a) => (selected[a.id] ?? 0) > 0)
+      .map((a) => ({ addonId: a.id, name: a.name, price: a.price, quantity: selected[a.id] }))
+  );
+  const addonTotal = selectedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
 
   const selectedOptions: SelectedOption[] = useMemo(() => {
     if (!item) return [];
@@ -57,7 +117,8 @@ export function ProductDetails() {
     return <p className="py-20 text-center text-charcoal/60">Pouring…</p>;
   }
 
-  const unitPrice = item.price + selectedOptions.reduce((s, o) => s + o.priceDelta, 0);
+  const unitPrice =
+    item.price + selectedOptions.reduce((s, o) => s + o.priceDelta, 0) + addonTotal;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -111,6 +172,95 @@ export function ProductDetails() {
             </fieldset>
           ))}
 
+          {/* Add-ons */}
+          {addonGroups.map((group) => (
+            <fieldset key={group.id} className="mt-6">
+              <legend className="font-semibold text-espresso">
+                {group.name}
+                <span className="ml-2 text-xs font-normal text-charcoal/50">
+                  {group.minSelect > 0
+                    ? `Pick at least ${group.minSelect}`
+                    : group.selection === "SINGLE"
+                      ? "Pick one (optional)"
+                      : "Optional"}
+                  {group.maxSelect > 0 && group.selection !== "SINGLE" && ` · up to ${group.maxSelect}`}
+                </span>
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {group.addons.map((a) => {
+                  const qty = selected[a.id] ?? 0;
+                  const active = qty > 0;
+                  const isStepper = group.selection !== "SINGLE" && a.maxQuantity > 1;
+                  if (isStepper) {
+                    return (
+                      <div
+                        key={a.id}
+                        className={`flex items-center gap-3 rounded-full border px-3 py-1.5 text-sm transition ${
+                          active ? "border-espresso bg-espresso/5" : "border-oat bg-white"
+                        }`}
+                      >
+                        <span className="font-medium text-charcoal">
+                          {a.name} {a.price > 0 && <span className="text-charcoal/60">+{money(a.price)}</span>}
+                        </span>
+                        <div className="flex items-center rounded-full border border-oat">
+                          <button
+                            type="button"
+                            onClick={() => setQty(group, a.id, a.maxQuantity, qty - 1)}
+                            className="px-2 font-bold text-espresso"
+                            aria-label={`Less ${a.name}`}
+                          >
+                            −
+                          </button>
+                          <span className="w-5 text-center font-semibold">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => setQty(group, a.id, a.maxQuantity, qty + 1)}
+                            className="px-2 font-bold text-espresso"
+                            aria-label={`More ${a.name}`}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      type="button"
+                      key={a.id}
+                      onClick={() =>
+                        group.selection === "SINGLE" ? setSingle(group, a.id) : toggleMulti(group, a.id)
+                      }
+                      className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
+                        active
+                          ? "border-espresso bg-espresso text-cream"
+                          : "border-oat bg-white text-charcoal hover:border-espresso"
+                      }`}
+                    >
+                      {a.name}
+                      {a.price > 0 && ` +${money(a.price)}`}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ))}
+
+          {/* Special instructions */}
+          <div className="mt-6">
+            <label className="font-semibold text-espresso" htmlFor="notes">
+              Special instructions <span className="text-xs font-normal text-charcoal/50">(optional)</span>
+            </label>
+            <textarea
+              id="notes"
+              rows={2}
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder="e.g. less sweet, no foam, extra hot, do not mix"
+              className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5"
+            />
+          </div>
+
           <div className="mt-8 flex items-center gap-4">
             <div className="flex items-center rounded-full border border-oat bg-white">
               <button
@@ -130,15 +280,19 @@ export function ProductDetails() {
               </button>
             </div>
             <button
-              disabled={!item.inStock}
+              disabled={!item.inStock || unmetGroups.length > 0}
               onClick={() => {
-                add(item, quantity, selectedOptions);
+                add(item, quantity, selectedOptions, selectedAddons, instructions);
                 toast(`${item.name} added to cart ☕`);
                 navigate("/menu");
               }}
               className="btn-3d flex-1 rounded-full bg-espresso px-6 py-3 font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {item.inStock ? `Add to Cart · ${money(unitPrice * quantity)}` : "Sold out"}
+              {!item.inStock
+                ? "Sold out"
+                : unmetGroups.length > 0
+                  ? `Choose your ${unmetGroups[0].name}`
+                  : `Add to Cart · ${money(unitPrice * quantity)}`}
             </button>
           </div>
         </div>

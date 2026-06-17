@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
 import { dayBounds, earnBeans, genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
+import { notify } from "../lib/notify";
 import { outBooking } from "../lib/serialize";
 
 export const bookingsRouter = Router();
@@ -88,7 +89,15 @@ bookingsRouter.post("/", async (req, res) => {
     include: { room: true },
   });
 
-  if (customer) await earnBeans(customer.id, beansEarned, "Booking", booking.number);
+  if (customer) {
+    await earnBeans(customer.id, beansEarned, "Booking", booking.number);
+    await notify(customer.id, {
+      type: "BOOKING",
+      title: "Booking confirmed",
+      message: `Your ${room.name} booking ${booking.number} is confirmed.`,
+      link: `/booking-success/${booking.number}`,
+    });
+  }
 
   res.status(201).json(outBooking(booking));
 });
@@ -129,6 +138,17 @@ bookingsRouter.patch("/:id/status", requireAdmin, async (req, res) => {
       data: { noShowCount: { increment: 1 } },
     });
   }
+  if (booking.customerId && (status === "CANCELLED" || status === "CONFIRMED")) {
+    await notify(booking.customerId, {
+      type: "BOOKING",
+      title: status === "CANCELLED" ? "Booking cancelled" : "Booking updated",
+      message:
+        status === "CANCELLED"
+          ? `Your ${booking.room.name} booking ${booking.number} was cancelled.`
+          : `Your ${booking.room.name} booking ${booking.number} was updated.`,
+      link: `/booking-success/${booking.number}`,
+    });
+  }
   res.json(outBooking(booking));
 });
 
@@ -152,6 +172,12 @@ bookingsRouter.patch("/:id/reschedule", requireAdmin, async (req, res) => {
     where: { id },
     data: { startTime: start, endTime: end, durationHours: Number(durationHours), total },
     include: { room: true },
+  });
+  await notify(updated.customerId, {
+    type: "BOOKING",
+    title: "Booking rescheduled",
+    message: `Your ${updated.room.name} booking ${updated.number} was moved to a new time.`,
+    link: `/booking-success/${updated.number}`,
   });
   res.json(outBooking(updated));
 });

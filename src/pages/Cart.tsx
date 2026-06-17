@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Img } from "../components/Img";
+import { ItemExtras } from "../components/ItemExtras";
 import { useCart } from "../context/CartContext";
 import { money } from "../lib/api";
 
@@ -42,11 +43,11 @@ export function Cart() {
                   {money(line.unitPrice * line.quantity)}
                 </p>
               </div>
-              {line.selectedOptions.length > 0 && (
-                <p className="text-xs text-charcoal/60">
-                  {line.selectedOptions.map((o) => `${o.group}: ${o.choice}`).join(" · ")}
-                </p>
-              )}
+              <ItemExtras
+                options={line.selectedOptions}
+                addons={line.addons}
+                instructions={line.specialInstructions}
+              />
               <div className="mt-auto flex items-center justify-between pt-2">
                 <div className="flex items-center rounded-full border border-oat">
                   <button

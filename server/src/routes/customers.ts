@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
 import { tierFor } from "../lib/helpers";
+import { notify } from "../lib/notify";
 import { outBooking } from "../lib/serialize";
 
 export const customersRouter = Router();
@@ -66,6 +67,12 @@ customersRouter.post("/:id/adjust-beans", async (req, res) => {
   });
   await prisma.loyaltyTransaction.create({
     data: { customerId: id, type: "ADJUST", amount, balanceAfter, source: "Manual adjustment", note },
+  });
+  await notify(id, {
+    type: "POINTS",
+    title: amount > 0 ? "Beans added" : "Beans removed",
+    message: `${amount > 0 ? "+" : ""}${amount} beans — ${note}. Your balance is now ${balanceAfter}.`,
+    link: "/account?tab=rewards",
   });
   res.json(updated);
 });

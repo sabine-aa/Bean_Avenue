@@ -1,11 +1,17 @@
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
-import type { CartLine, MenuItem, SelectedOption } from "../types";
+import type { CartLine, MenuItem, SelectedAddon, SelectedOption } from "../types";
 
 interface CartContextValue {
   lines: CartLine[];
   count: number;
   subtotal: number;
-  add: (item: MenuItem, quantity: number, selectedOptions: SelectedOption[]) => void;
+  add: (
+    item: MenuItem,
+    quantity: number,
+    selectedOptions: SelectedOption[],
+    addons?: SelectedAddon[],
+    specialInstructions?: string
+  ) => void;
   updateQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
@@ -42,8 +48,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       lines,
       count,
       subtotal,
-      add: (item, quantity, selectedOptions) => {
-        const key = `${item.id}::${selectedOptions.map((o) => `${o.group}=${o.choice}`).join("|")}`;
+      add: (item, quantity, selectedOptions, addons = [], specialInstructions = "") => {
+        const optKey = selectedOptions.map((o) => `${o.group}=${o.choice}`).join("|");
+        const addonKey = addons.map((a) => `${a.addonId}x${a.quantity}`).join("|");
+        const noteKey = specialInstructions.trim();
+        // Same item + same customisation merges; any difference is a new line.
+        const key = `${item.id}::${optKey}::${addonKey}::${noteKey}`;
         setLines((prev) => {
           const existing = prev.find((l) => l.key === key);
           if (existing) {
@@ -52,7 +62,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             );
           }
           const unitPrice =
-            item.price + selectedOptions.reduce((s, o) => s + o.priceDelta, 0);
+            item.price +
+            selectedOptions.reduce((s, o) => s + o.priceDelta, 0) +
+            addons.reduce((s, a) => s + a.price * a.quantity, 0);
           return [
             ...prev,
             {
@@ -64,6 +76,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
               unitPrice,
               quantity,
               selectedOptions,
+              addons,
+              specialInstructions: noteKey,
             },
           ];
         });

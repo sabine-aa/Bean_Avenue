@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../src/db";
+import { seedAddons } from "./addons-data";
+import { seedCategories } from "./categories-data";
+import { seedFeatured } from "./featured-data";
 import { seedCategoryRewards } from "./rewards-data";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,6 +67,9 @@ const rooms = [
 
 async function main() {
   // Wipe existing data so the seed is repeatable.
+  await prisma.addonAssignment.deleteMany();
+  await prisma.addon.deleteMany();
+  await prisma.addonGroup.deleteMany();
   await prisma.banner.deleteMany();
   await prisma.subscriber.deleteMany();
   await prisma.event.deleteMany();
@@ -108,6 +114,9 @@ async function main() {
   }
 
   const rewardCount = await seedCategoryRewards(prisma);
+  await seedAddons(prisma);
+  await seedCategories(prisma);
+  await seedFeatured(prisma);
 
   // Sample upcoming events (dates relative to today so they always show as upcoming).
   const day = 24 * 60 * 60 * 1000;

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { ItemExtras } from "../components/ItemExtras";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useToast } from "../context/ToastContext";
@@ -47,6 +48,8 @@ export function Checkout() {
           menuItemId: l.menuItemId,
           quantity: l.quantity,
           selectedOptions: l.selectedOptions.map((o) => ({ group: o.group, choice: o.choice })),
+          addons: l.addons.map((a) => ({ addonId: a.addonId, quantity: a.quantity })),
+          specialInstructions: l.specialInstructions || undefined,
         })),
       });
       clear();
@@ -163,11 +166,11 @@ export function Checkout() {
                 <li key={l.key} className="flex justify-between gap-2">
                   <span>
                     {l.quantity}× {l.name}
-                    {l.selectedOptions.length > 0 && (
-                      <span className="block text-xs text-charcoal/50">
-                        {l.selectedOptions.map((o) => o.choice).join(", ")}
-                      </span>
-                    )}
+                    <ItemExtras
+                      options={l.selectedOptions}
+                      addons={l.addons}
+                      instructions={l.specialInstructions}
+                    />
                   </span>
                   <span className="font-medium">{money(l.unitPrice * l.quantity)}</span>
                 </li>

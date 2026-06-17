@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useMemo, useState } from "react";
-import { api, getToken, setToken } from "../lib/api";
+import { api, isAdminTokenValid, setToken } from "../lib/api";
 
 interface AdminAuthValue {
   isAuthed: boolean;
@@ -11,7 +11,7 @@ interface AdminAuthValue {
 const AdminAuthContext = createContext<AdminAuthValue | null>(null);
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthed, setIsAuthed] = useState(() => Boolean(getToken()));
+  const [isAuthed, setIsAuthed] = useState(() => isAdminTokenValid());
   const [adminName, setAdminName] = useState<string | null>(null);
 
   const value = useMemo<AdminAuthValue>(

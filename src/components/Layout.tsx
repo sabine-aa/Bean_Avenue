@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { ChevronDownIcon, UserIcon } from "./icons";
+import { NotificationBell } from "./NotificationBell";
 
 const ACCOUNT_LINKS = [
   { to: "/account", label: "My Account" },
@@ -184,6 +185,7 @@ export function Layout() {
                 </span>
               )}
             </Link>
+            {account && <NotificationBell />}
             <ProfileMenu />
             <button
               className="rounded-lg p-2 text-xl md:hidden"

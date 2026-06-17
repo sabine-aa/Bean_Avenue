@@ -42,7 +42,7 @@ export function OffersSignup() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (optional)"
             autoComplete="name"
-            className="w-full rounded-full border-0 px-4 py-2.5 text-charcoal sm:w-44"
+            className="w-full rounded-full border-0 bg-white px-4 py-2.5 text-charcoal placeholder:text-charcoal/50 sm:w-44"
           />
           <input
             required
@@ -51,7 +51,7 @@ export function OffersSignup() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Phone number"
             autoComplete="tel"
-            className="w-full flex-1 rounded-full border-0 px-4 py-2.5 text-charcoal"
+            className="w-full flex-1 rounded-full border-0 bg-white px-4 py-2.5 text-charcoal placeholder:text-charcoal/50"
           />
           <button
             type="submit"

@@ -23,6 +23,32 @@ export const setToken = (token: string | null) => writeToken(TOKEN_KEY, token);
 export const getCustomerToken = () => readToken(CUSTOMER_TOKEN_KEY);
 export const setCustomerToken = (token: string | null) => writeToken(CUSTOMER_TOKEN_KEY, token);
 
+/** True if the JWT is missing or past its expiry (decoded client-side, no verify). */
+function isExpired(token: string | null): boolean {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return typeof payload.exp === "number" && payload.exp * 1000 < Date.now();
+  } catch {
+    return false; // can't decode — let the server be the judge
+  }
+}
+
+export const isAdminTokenValid = () => !isExpired(getToken());
+
+// When an admin call comes back 401, the session is gone — clear it and bounce
+// to the login screen (only from inside the admin area).
+function handleAdminUnauthorized() {
+  setToken(null);
+  if (
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/admin") &&
+    !window.location.pathname.includes("/admin/login")
+  ) {
+    window.location.assign("/admin/login");
+  }
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -31,7 +57,7 @@ export class ApiError extends Error {
   }
 }
 
-function makeRequest(tokenGetter: () => string | null) {
+function makeRequest(tokenGetter: () => string | null, onUnauthorized?: () => void) {
   return async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const token = tokenGetter();
     const res = await fetch(path, {
@@ -43,6 +69,7 @@ function makeRequest(tokenGetter: () => string | null) {
       },
     });
     if (!res.ok) {
+      if (res.status === 401) onUnauthorized?.();
       let message = "Something went wrong.";
       try {
         const body = await res.json();
@@ -56,8 +83,8 @@ function makeRequest(tokenGetter: () => string | null) {
   };
 }
 
-function makeApi(tokenGetter: () => string | null) {
-  const request = makeRequest(tokenGetter);
+function makeApi(tokenGetter: () => string | null, onUnauthorized?: () => void) {
+  const request = makeRequest(tokenGetter, onUnauthorized);
   return {
     get: <T>(path: string) => request<T>(path),
     post: <T>(path: string, body: unknown) =>
@@ -70,8 +97,8 @@ function makeApi(tokenGetter: () => string | null) {
 
 // `api` carries the admin token (used by the public site too — it just sends no
 // token when none is stored). `customerApi` carries the logged-in customer token.
-export const api = makeApi(getToken);
-export const customerApi = makeApi(getCustomerToken);
+export const api = makeApi(getToken, handleAdminUnauthorized);
+export const customerApi = makeApi(getCustomerToken, () => setCustomerToken(null));
 
 export const money = (n: number) => `$${n.toFixed(2)}`;
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { ItemExtras } from "../components/ItemExtras";
 import { ADDRESS, WHATSAPP_URL } from "../components/Layout";
 import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
 import { useToast } from "../context/ToastContext";
@@ -96,11 +97,11 @@ export function OrderSuccess() {
                 <li key={it.id} className="flex justify-between">
                   <span>
                     {it.quantity}× {it.name}
-                    {it.selectedOptions.length > 0 && (
-                      <span className="block text-xs text-charcoal/50">
-                        {it.selectedOptions.map((o) => o.choice).join(", ")}
-                      </span>
-                    )}
+                    <ItemExtras
+                      options={it.selectedOptions}
+                      addons={it.addons}
+                      instructions={it.specialInstructions}
+                    />
                   </span>
                   <span>{money(it.lineTotal)}</span>
                 </li>

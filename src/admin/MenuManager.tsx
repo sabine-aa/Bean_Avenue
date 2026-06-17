@@ -6,7 +6,7 @@ import type { MenuItem } from "../types";
 
 const EMPTY = {
   name: "",
-  category: "Coffee",
+  category: "Espresso Based",
   description: "",
   price: 0,
   photo: "",
@@ -17,14 +17,32 @@ const EMPTY = {
 export function AdminMenuManager() {
   const toast = useToast();
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [cats, setCats] = useState<string[]>([]);
+  const [showCats, setShowCats] = useState(false);
   const [editing, setEditing] = useState<MenuItem | null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY);
 
   const load = () => api.get<MenuItem[]>("/api/menu?all=1").then(setItems);
+  const loadCats = () => api.get<string[]>("/api/categories").then(setCats);
   useEffect(() => {
     load();
+    loadCats();
   }, []);
+
+  async function moveCat(index: number, dir: -1 | 1) {
+    const next = [...cats];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[index], next[target]] = [next[target], next[index]];
+    setCats(next);
+    try {
+      await api.patch("/api/categories/order", { names: next });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't reorder.", "error");
+      loadCats();
+    }
+  }
 
   function openEditor(item: MenuItem | null) {
     setCreating(!item);
@@ -92,15 +110,42 @@ export function AdminMenuManager() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="font-display text-3xl font-bold text-espresso">Menu Manager</h1>
-        <button
-          onClick={() => openEditor(null)}
-          className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark"
-        >
-          + New item
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCats((v) => !v)}
+            className="rounded-full bg-oat px-4 py-2 text-sm font-semibold text-espresso hover:bg-espresso hover:text-cream"
+          >
+            {showCats ? "Done ordering" : "Category order"}
+          </button>
+          <button
+            onClick={() => openEditor(null)}
+            className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark"
+          >
+            + New item
+          </button>
+        </div>
       </div>
+
+      {showCats && (
+        <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
+          <h2 className="font-display text-lg font-bold text-espresso">Category order</h2>
+          <p className="mt-1 text-sm text-charcoal/60">
+            This is the order customers see on the Menu page. The first category is selected by default.
+          </p>
+          <ol className="mt-3 space-y-1.5">
+            {cats.map((c, idx) => (
+              <li key={c} className="flex items-center gap-3 rounded-xl bg-oat/30 px-3 py-2">
+                <span className="w-6 text-center text-xs font-bold text-charcoal/40">{idx + 1}</span>
+                <span className="flex-1 font-semibold text-espresso">{c}</span>
+                <button onClick={() => moveCat(idx, -1)} disabled={idx === 0} aria-label="Move up" className="px-2 text-charcoal/50 hover:text-espresso disabled:opacity-30">▲</button>
+                <button onClick={() => moveCat(idx, 1)} disabled={idx === cats.length - 1} aria-label="Move down" className="px-2 text-charcoal/50 hover:text-espresso disabled:opacity-30">▼</button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {showEditor && (
         <form onSubmit={save} className="mt-5 grid gap-4 rounded-2xl bg-white p-6 shadow-md sm:grid-cols-2">
@@ -126,7 +171,7 @@ export function AdminMenuManager() {
               list="categories"
             />
             <datalist id="categories">
-              {["Coffee", "Tea", "Cold Drinks", "Pastries", "Food"].map((c) => (
+              {cats.map((c) => (
                 <option key={c} value={c} />
               ))}
             </datalist>

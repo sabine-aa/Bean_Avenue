@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { ItemExtras } from "../components/ItemExtras";
 import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
@@ -76,7 +77,10 @@ export function Account() {
     for (const it of order.items) {
       const item = menu.find((m) => m.id === it.menuItemId);
       if (item && item.inStock) {
-        add(item, it.quantity, it.selectedOptions);
+        const addons = (it.addons ?? [])
+          .filter((a) => a.addonId != null)
+          .map((a) => ({ addonId: a.addonId!, name: a.name, price: a.price, quantity: a.quantity }));
+        add(item, it.quantity, it.selectedOptions, addons, it.specialInstructions ?? "");
         added += it.quantity;
       } else {
         missing += 1;
@@ -121,11 +125,11 @@ export function Account() {
             <li key={it.id} className="flex justify-between gap-2">
               <span>
                 {it.quantity}× {it.name}
-                {it.selectedOptions.length > 0 && (
-                  <span className="block text-xs text-charcoal/50">
-                    {it.selectedOptions.map((o) => o.choice).join(", ")}
-                  </span>
-                )}
+                <ItemExtras
+                  options={it.selectedOptions}
+                  addons={it.addons}
+                  instructions={it.specialInstructions}
+                />
               </span>
               <span className="font-medium">{money(it.lineTotal)}</span>
             </li>

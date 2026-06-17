@@ -1,10 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./admin/AdminLayout";
+import { AdminAddons } from "./admin/AddonsManager";
 import { AdminBanners } from "./admin/BannerManager";
 import { AdminBookings } from "./admin/Bookings";
 import { AdminCustomers } from "./admin/Customers";
 import { AdminDashboard } from "./admin/Dashboard";
 import { AdminEvents } from "./admin/EventsManager";
+import { AdminFeatured } from "./admin/FeaturedManager";
 import { AdminLogin } from "./admin/Login";
 import { AdminLoyalty } from "./admin/LoyaltyLedger";
 import { AdminMenuManager } from "./admin/MenuManager";
@@ -55,6 +57,8 @@ export default function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="menu" element={<AdminMenuManager />} />
+        <Route path="addons" element={<AdminAddons />} />
+        <Route path="featured" element={<AdminFeatured />} />
         <Route path="bookings" element={<AdminBookings />} />
         <Route path="rooms" element={<AdminRooms />} />
         <Route path="customers" element={<AdminCustomers />} />

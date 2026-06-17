@@ -1,9 +1,32 @@
 import { FormEvent, useEffect, useState } from "react";
+import { AwardIcon, CheckIcon } from "../components/icons";
 import { Img } from "../components/Img";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useToast } from "../context/ToastContext";
 import { api, customerApi, formatDateTime } from "../lib/api";
 import type { LoyaltyAccount, Reward } from "../types";
+
+// Presentational identity for each tier (benefits live here, not in the DB).
+const TIER_META: Record<string, { color: string; badge: string; soft: string; benefits: string[] }> = {
+  Bronze: {
+    color: "#b06f3c",
+    badge: "linear-gradient(135deg, #d98a4e, #8a5523)",
+    soft: "rgba(176,111,60,0.07)",
+    benefits: ["Earn beans on every order", "Earn beans on room bookings", "Access to standard rewards"],
+  },
+  Silver: {
+    color: "#8c919b",
+    badge: "linear-gradient(135deg, #d3d8df, #878d97)",
+    soft: "rgba(140,145,155,0.10)",
+    benefits: ["Everything in Bronze", "Bonus-bean promotions", "Special member offers", "Occasional surprise rewards"],
+  },
+  Gold: {
+    color: "#c9a227",
+    badge: "linear-gradient(135deg, #f0d572, #c29a1f)",
+    soft: "rgba(201,162,39,0.12)",
+    benefits: ["Everything in Silver", "Priority room booking", "Birthday reward", "Exclusive Gold offers"],
+  },
+};
 
 export function Loyalty() {
   const toast = useToast();
@@ -280,7 +303,7 @@ export function Loyalty() {
                   return (
                     <div
                       key={r.id}
-                      className="flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm"
+                      className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm"
                     >
                       <div className="relative">
                         <Img src={r.image} alt={r.name} className="h-36 w-full" />
@@ -353,23 +376,81 @@ export function Loyalty() {
         </div>
       )}
 
-      <section className="mt-12">
-        <h2 className="font-display text-2xl font-bold text-espresso">Tiers</h2>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {tiers.map((t, i) => (
-            <div key={t.name} className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-2xl">{["🌱", "🔥", "⭐"][i] ?? "🫘"}</p>
-              <p className="mt-2 font-display text-lg font-bold text-espresso">{t.name}</p>
-              <p className="text-sm text-charcoal/60">
-                {t.min === 0 ? "Everyone starts here" : `${t.min}+ lifetime beans`}
-              </p>
-              <p className="mt-2 text-sm text-charcoal/70">
-                {i === 0 && "Earn beans on every order and booking."}
-                {i === 1 && "Bonus-bean days and the occasional surprise."}
-                {i === 2 && "Priority room booking and a birthday treat."}
-              </p>
-            </div>
-          ))}
+      <section className="mt-14">
+        <h2 className="font-display text-3xl font-bold text-espresso">Membership tiers</h2>
+        <p className="mt-1 text-charcoal/60">
+          The more you sip, the more you unlock. Beans you earn count toward your tier for life.
+        </p>
+        <div className="mt-6 grid gap-6 sm:grid-cols-3">
+          {tiers.map((t) => {
+            const meta = TIER_META[t.name] ?? TIER_META.Bronze;
+            const isCurrent = account?.tier === t.name;
+            const requirement = t.min === 0 ? "Starting tier" : `${t.min}+ lifetime beans`;
+            const next = isCurrent ? account?.nextTier : null;
+            const pct = next
+              ? Math.min(100, Math.round((account!.lifetimeBeans / (account!.lifetimeBeans + next.beansToGo)) * 100))
+              : 100;
+            return (
+              <div
+                key={t.name}
+                className={`group flex flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl ${
+                  isCurrent ? "border-transparent ring-2" : "border-oat"
+                }`}
+                style={{
+                  ...(isCurrent ? { boxShadow: `0 0 0 2px ${meta.color}`, background: `linear-gradient(${meta.soft}, transparent 60%)` } : {}),
+                }}
+              >
+                <div className="h-1.5 w-full" style={{ background: meta.badge }} />
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="flex items-start justify-between gap-2">
+                    <span
+                      className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-md transition group-hover:scale-105"
+                      style={{ background: meta.badge }}
+                    >
+                      <AwardIcon className="h-6 w-6" />
+                    </span>
+                    {isCurrent && (
+                      <span
+                        className="rounded-full px-3 py-1 text-xs font-bold text-white"
+                        style={{ background: meta.color }}
+                      >
+                        Your current tier
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="mt-4 font-display text-2xl font-bold text-espresso">{t.name}</h3>
+                  <p className="text-sm font-bold" style={{ color: meta.color }}>
+                    {requirement}
+                  </p>
+
+                  {isCurrent && (
+                    <div className="mt-3">
+                      <div className="h-2 overflow-hidden rounded-full bg-oat">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: meta.color }} />
+                      </div>
+                      <p className="mt-1.5 text-xs font-medium text-charcoal/70">
+                        {next
+                          ? `${account!.lifetimeBeans} of ${account!.lifetimeBeans + next.beansToGo} lifetime beans — ${next.beansToGo} until ${next.name}`
+                          : "You've reached the highest tier."}
+                      </p>
+                    </div>
+                  )}
+
+                  <ul className="mt-4 space-y-2">
+                    {meta.benefits.map((b) => (
+                      <li key={b} className="flex items-start gap-2 text-sm text-charcoal/80">
+                        <span style={{ color: meta.color }} className="mt-0.5 shrink-0">
+                          <CheckIcon className="h-4 w-4" />
+                        </span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>

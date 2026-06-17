@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAdmin, requireCustomer, signToken } from "../auth";
 import { prisma } from "../db";
 import { genNumber, nextTierInfo, tierFor, TIERS } from "../lib/helpers";
+import { notify } from "../lib/notify";
 import { outBooking, outOrder } from "../lib/serialize";
 
 export const loyaltyRouter = Router();
@@ -163,6 +164,19 @@ loyaltyRouter.post("/redeem", requireCustomer, async (req, res) => {
     }),
   ]);
 
+  await notify(customer.id, {
+    type: "REWARD",
+    title: "Reward redeemed",
+    message: `You redeemed ${reward.name} for ${reward.cost} beans.`,
+    link: "/account?tab=rewards",
+  });
+  await notify(customer.id, {
+    type: "VOUCHER",
+    title: "Voucher ready",
+    message: `Voucher ${code} created — show it at the counter to claim your ${reward.name}.`,
+    link: "/account?tab=rewards",
+  });
+
   res.json(await accountResponse(customer.id, { message: `Redeemed: ${reward.name} 🎉`, voucherCode: code }));
 });
 
@@ -203,5 +217,13 @@ loyaltyRouter.patch("/redemptions/:id", requireAdmin, async (req, res) => {
     where: { id },
     data: { status, claimedAt: status === "CLAIMED" ? new Date() : null },
   });
+  if (status === "CLAIMED") {
+    await notify(redemption.customerId, {
+      type: "VOUCHER",
+      title: "Voucher used",
+      message: `Your ${redemption.rewardName} voucher (${redemption.code}) was claimed. Enjoy!`,
+      link: "/account?tab=rewards",
+    });
+  }
   res.json(redemption);
 });

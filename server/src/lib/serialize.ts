@@ -33,7 +33,11 @@ export function outRoom<T extends Record<string, unknown>>(r: T) {
 export function outOrder<T extends { items?: Record<string, unknown>[] }>(o: T) {
   return {
     ...o,
-    items: (o.items ?? []).map((i) => ({ ...i, selectedOptions: parseArr(i.selectedOptions) })),
+    items: (o.items ?? []).map((i) => ({
+      ...i,
+      selectedOptions: parseArr(i.selectedOptions),
+      addons: parseArr(i.addons),
+    })),
   };
 }
 

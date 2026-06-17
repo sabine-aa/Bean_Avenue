@@ -9,17 +9,24 @@ import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { api } from "../lib/api";
 import type { MenuItem, Room } from "../types";
 
+interface FeaturedSection {
+  title: string;
+  visible: boolean;
+  items: MenuItem[];
+}
+
 export function Home() {
   const { account } = useCustomerAuth();
-  const [popular, setPopular] = useState<MenuItem[]>([]);
+  const [featured, setFeatured] = useState<FeaturedSection>({
+    title: "The usual suspects.",
+    visible: true,
+    items: [],
+  });
   const [rooms, setRooms] = useState<Room[]>([]);
   const open = isOpenNow();
 
   useEffect(() => {
-    api
-      .get<MenuItem[]>("/api/menu")
-      .then((items) => setPopular(items.filter((i) => i.inStock).slice(0, 6)))
-      .catch(() => {});
+    api.get<FeaturedSection>("/api/featured").then(setFeatured).catch(() => {});
     api.get<Room[]>("/api/rooms").then(setRooms).catch(() => {});
   }, []);
 
@@ -142,20 +149,22 @@ export function Home() {
         </div>
       </section>
 
-      {/* Popular items */}
-      <section className="mx-auto max-w-6xl px-4 py-16">
-        <div className="flex items-end justify-between">
-          <h2 className="font-display text-3xl font-bold text-espresso">The usual suspects.</h2>
-          <Link to="/menu" className="text-sm font-semibold text-terracotta hover:underline">
-            Full menu →
-          </Link>
-        </div>
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {popular.map((item) => (
-            <MenuItemCard key={item.id} item={item} />
-          ))}
-        </div>
-      </section>
+      {/* Featured items — manager-curated, resolved live from the menu */}
+      {featured.visible && featured.items.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-16">
+          <div className="flex items-end justify-between">
+            <h2 className="font-display text-3xl font-bold text-espresso">{featured.title}</h2>
+            <Link to="/menu" className="text-sm font-semibold text-terracotta hover:underline">
+              Full menu →
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {featured.items.map((item) => (
+              <MenuItemCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Room teasers */}
       <section className="bg-oat/60 py-16">

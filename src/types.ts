@@ -29,6 +29,52 @@ export interface SelectedOption {
   priceDelta: number;
 }
 
+// ---- Add-ons ----
+export interface Addon {
+  id: number;
+  groupId: number;
+  name: string;
+  price: number;
+  maxQuantity: number;
+  isAvailable: boolean;
+  sortOrder: number;
+}
+
+export interface AddonAssignment {
+  id: number;
+  groupId: number;
+  menuItemId: number | null;
+  category: string | null;
+}
+
+export interface AddonGroup {
+  id: number;
+  name: string;
+  selection: "SINGLE" | "MULTIPLE";
+  minSelect: number;
+  maxSelect: number; // 0 = no limit
+  isAvailable: boolean;
+  sortOrder: number;
+  addons: Addon[];
+  assignments?: AddonAssignment[];
+}
+
+// An add-on a customer picked, with its resolved price + quantity.
+export interface SelectedAddon {
+  addonId: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+// As stored on an order item (price snapshot; addonId kept so it can be re-ordered).
+export interface OrderAddon {
+  addonId?: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
 export interface CartLine {
   key: string;
   menuItemId: number;
@@ -38,6 +84,8 @@ export interface CartLine {
   unitPrice: number;
   quantity: number;
   selectedOptions: SelectedOption[];
+  addons: SelectedAddon[];
+  specialInstructions: string;
 }
 
 export type OrderStatus = "NEW" | "PREPARING" | "READY" | "PICKED_UP" | "CANCELLED";
@@ -54,6 +102,7 @@ export interface Order {
   promoCode: string | null;
   pickupTime: string | null;
   status: OrderStatus;
+  cancelReason?: string | null;
   beansEarned: number;
   createdAt: string;
   items: {
@@ -63,6 +112,8 @@ export interface Order {
     unitPrice: number;
     quantity: number;
     selectedOptions: SelectedOption[];
+    addons: OrderAddon[];
+    specialInstructions: string | null;
     lineTotal: number;
   }[];
 }
@@ -210,6 +261,18 @@ export interface Banner {
   endDate: string | null;
   isVisible: boolean;
   createdAt?: string;
+}
+
+export type NotificationType = "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS";
+
+export interface AppNotification {
+  id: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
 }
 
 export type SuggestionStatus = "NEW" | "REVIEWED" | "RESOLVED";
