@@ -294,8 +294,12 @@ export interface Suggestion {
 export interface LoyaltyAccount {
   id: number;
   name: string;
-  phone: string;
+  phone: string | null;
+  phoneVerified?: boolean;
   email?: string | null;
+  emailVerified?: boolean;
+  birthday?: string | null;
+  needsProfile?: boolean;
   beanBalance: number;
   lifetimeBeans: number;
   tier: string;

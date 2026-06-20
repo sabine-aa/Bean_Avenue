@@ -1,45 +1,11 @@
-import bcrypt from "bcryptjs";
 import { Router } from "express";
-import { requireAdmin, requireCustomer, signToken } from "../auth";
+import { requireAdmin, requireCustomer } from "../auth";
 import { prisma } from "../db";
-import { genNumber, nextTierInfo, tierFor, TIERS } from "../lib/helpers";
+import { accountResponse } from "../lib/account";
+import { genNumber, TIERS } from "../lib/helpers";
 import { notify } from "../lib/notify";
-import { outBooking, outOrder } from "../lib/serialize";
 
 export const loyaltyRouter = Router();
-
-// Shape the logged-in customer's account exactly how the frontend expects it.
-async function accountResponse(customerId: number, extra: Record<string, unknown> = {}) {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
-    include: {
-      transactions: { orderBy: { createdAt: "desc" }, take: 100 },
-      redemptions: { orderBy: { createdAt: "desc" }, take: 50 },
-      orders: { include: { items: true }, orderBy: { createdAt: "desc" }, take: 30 },
-      bookings: { include: { room: true }, orderBy: { startTime: "desc" }, take: 30 },
-    },
-  });
-  if (!customer) return null;
-  return {
-    id: customer.id,
-    name: customer.name,
-    phone: customer.phone,
-    email: customer.email,
-    beanBalance: customer.beanBalance,
-    lifetimeBeans: customer.lifetimeBeans,
-    tier: customer.tier,
-    nextTier: nextTierInfo(customer.lifetimeBeans),
-    transactions: customer.transactions,
-    redemptions: customer.redemptions,
-    orders: customer.orders.map(outOrder),
-    bookings: customer.bookings.map(outBooking),
-    ...extra,
-  };
-}
-
-function tokenFor(customerId: number) {
-  return signToken({ customerId, role: "customer" });
-}
 
 // ---- Public ----
 
@@ -52,51 +18,6 @@ loyaltyRouter.get("/rewards", async (_req, res) => {
   res.json({ rewards, tiers: TIERS });
 });
 
-// POST /api/loyalty/signup  { name, phone, password }
-loyaltyRouter.post("/signup", async (req, res) => {
-  const name = String(req.body.name ?? "").trim();
-  const phone = String(req.body.phone ?? "").trim();
-  const password = String(req.body.password ?? "");
-  if (!phone || !password) {
-    return res.status(400).json({ error: "Phone and password are required." });
-  }
-  if (password.length < 6) {
-    return res.status(400).json({ error: "Password must be at least 6 characters." });
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const existing = await prisma.customer.findUnique({ where: { phone } });
-
-  let customer;
-  if (existing) {
-    // A "shell" account (e.g. created by an earlier guest order) can be claimed.
-    if (existing.passwordHash) {
-      return res.status(409).json({ error: "An account with that phone already exists. Please log in." });
-    }
-    customer = await prisma.customer.update({
-      where: { id: existing.id },
-      data: { passwordHash, name: name || existing.name },
-    });
-  } else {
-    customer = await prisma.customer.create({
-      data: { name: name || "Member", phone, passwordHash, tier: tierFor(0) },
-    });
-  }
-
-  res.status(201).json({ token: tokenFor(customer.id), account: await accountResponse(customer.id) });
-});
-
-// POST /api/loyalty/login  { phone, password }
-loyaltyRouter.post("/login", async (req, res) => {
-  const phone = String(req.body.phone ?? "").trim();
-  const password = String(req.body.password ?? "");
-  const customer = await prisma.customer.findUnique({ where: { phone } });
-  if (!customer || !customer.passwordHash || !(await bcrypt.compare(password, customer.passwordHash))) {
-    return res.status(401).json({ error: "Wrong phone number or password." });
-  }
-  res.json({ token: tokenFor(customer.id), account: await accountResponse(customer.id) });
-});
-
 // ---- Customer (token required) ----
 
 // GET /api/loyalty/me — the logged-in customer's full account
@@ -106,17 +27,18 @@ loyaltyRouter.get("/me", requireCustomer, async (req, res) => {
   res.json(account);
 });
 
-// PATCH /api/loyalty/me  { name?, email? } — edit basic account details
+// PATCH /api/loyalty/me  { name?, birthday? } — edit basic details.
+// Phone/email changes go through the verified link flow (see /api/auth/link/*).
 loyaltyRouter.patch("/me", requireCustomer, async (req, res) => {
-  const data: { name?: string; email?: string | null } = {};
+  const data: { name?: string; birthday?: Date | null } = {};
   if ("name" in req.body) {
     const name = String(req.body.name ?? "").trim();
     if (!name) return res.status(400).json({ error: "Name can't be empty." });
     data.name = name;
   }
-  if ("email" in req.body) {
-    const email = String(req.body.email ?? "").trim();
-    data.email = email || null;
+  if ("birthday" in req.body) {
+    const raw = String(req.body.birthday ?? "").trim();
+    data.birthday = raw ? new Date(raw) : null;
   }
   await prisma.customer.update({ where: { id: req.customerId! }, data });
   res.json(await accountResponse(req.customerId!));

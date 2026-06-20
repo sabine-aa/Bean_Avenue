@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { CustomerAuth } from "../components/CustomerAuth";
 import { AwardIcon, CheckIcon } from "../components/icons";
 import { Img } from "../components/Img";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
@@ -30,15 +31,9 @@ const TIER_META: Record<string, { color: string; badge: string; soft: string; be
 
 export function Loyalty() {
   const toast = useToast();
-  const { account, loading, login, signup, logout, refresh } = useCustomerAuth();
+  const { account, loading, logout, refresh } = useCustomerAuth();
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [tiers, setTiers] = useState<{ name: string; min: number }[]>([]);
-
-  const [mode, setMode] = useState<"login" | "join">("login");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
   const [catFilter, setCatFilter] = useState("all");
 
   useEffect(() => {
@@ -50,26 +45,6 @@ export function Loyalty() {
       })
       .catch(() => {});
   }, []);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (mode === "join") {
-        await signup(name, phone, password);
-        toast("Welcome to the avenue! 🫘");
-      } else {
-        await login(phone, password);
-        toast("Welcome back! ☕");
-      }
-      setPassword("");
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Something went wrong.", "error");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function redeem(reward: Reward) {
     if (!account) return;
@@ -118,81 +93,8 @@ export function Loyalty() {
       {loading ? (
         <p className="mt-10 text-charcoal/60">Loading your account…</p>
       ) : !account ? (
-        <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("login")}
-              className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                mode === "login" ? "bg-espresso text-cream" : "bg-oat text-espresso"
-              }`}
-            >
-              Log in
-            </button>
-            <button
-              onClick={() => setMode("join")}
-              className={`rounded-full px-5 py-2 text-sm font-semibold ${
-                mode === "join" ? "bg-espresso text-cream" : "bg-oat text-espresso"
-              }`}
-            >
-              Create account
-            </button>
-          </div>
-          <form onSubmit={handleSubmit} className="mt-5 grid gap-4 sm:grid-cols-2">
-            {mode === "join" && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-semibold text-espresso" htmlFor="lname">
-                  Name
-                </label>
-                <input
-                  id="lname"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5"
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-semibold text-espresso" htmlFor="lphone">
-                Phone
-              </label>
-              <input
-                id="lphone"
-                required
-                type="tel"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-espresso" htmlFor="lpass">
-                Password
-              </label>
-              <input
-                id="lpass"
-                required
-                type="password"
-                autoComplete={mode === "join" ? "new-password" : "current-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5"
-              />
-              {mode === "join" && (
-                <p className="mt-1 text-xs text-charcoal/50">At least 6 characters.</p>
-              )}
-            </div>
-            <div className="sm:col-span-2">
-              <button
-                type="submit"
-                disabled={busy}
-                className="btn-3d w-full rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream disabled:opacity-60"
-              >
-                {busy ? "One moment…" : mode === "join" ? "Create my account" : "Log in"}
-              </button>
-            </div>
-          </form>
+        <div className="mt-8 max-w-md">
+          <CustomerAuth />
         </div>
       ) : (
         <div className="mt-8 space-y-6">

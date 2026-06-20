@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAdmin } from "../auth";
+import { optionalCustomer, requireAdmin } from "../auth";
 import { prisma } from "../db";
 import { earnBeans, genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
 import { notify } from "../lib/notify";
@@ -26,8 +26,8 @@ interface IncomingItem {
 interface OptionChoice { label: string; priceDelta: number }
 interface OptionGroup { name: string; choices: OptionChoice[] }
 
-// POST /api/orders  (public) — place an order
-ordersRouter.post("/", async (req, res) => {
+// POST /api/orders  (public; uses the logged-in customer when a token is present)
+ordersRouter.post("/", optionalCustomer, async (req, res) => {
   const { customerName, phone, email, pickupTime, promoCode, items } = req.body as {
     customerName: string;
     phone: string;
@@ -86,7 +86,11 @@ ordersRouter.post("/", async (req, res) => {
   const discount = promoDiscount(promoCode, subtotal);
   const total = round2(subtotal - discount);
   const beansEarned = Math.floor(total);
-  const customer = phone ? await getOrCreateCustomer(phone, customerName) : null;
+  // Prefer the logged-in (verified) customer; fall back to phone for guests.
+  let customer = req.customerId
+    ? await prisma.customer.findUnique({ where: { id: req.customerId } })
+    : null;
+  if (!customer && phone) customer = await getOrCreateCustomer(phone, customerName);
 
   const order = await prisma.order.create({
     data: {

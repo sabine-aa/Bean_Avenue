@@ -4,7 +4,7 @@ import { ItemExtras } from "../components/ItemExtras";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useToast } from "../context/ToastContext";
-import { api, money } from "../lib/api";
+import { customerApi, money } from "../lib/api";
 import type { Order } from "../types";
 
 export function Checkout() {
@@ -38,7 +38,7 @@ export function Checkout() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const order = await api.post<Order>("/api/orders", {
+      const order = await customerApi.post<Order>("/api/orders", {
         customerName: name,
         phone,
         email,

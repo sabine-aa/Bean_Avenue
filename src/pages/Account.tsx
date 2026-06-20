@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ItemExtras } from "../components/ItemExtras";
+import { LinkMethod } from "../components/LinkMethod";
 import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
@@ -37,7 +38,7 @@ export function Account() {
 
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Pull a fresh copy (orders/bookings) when the page opens, and load the menu for reorder.
@@ -49,7 +50,7 @@ export function Account() {
   useEffect(() => {
     if (account) {
       setName(account.name);
-      setEmail(account.email ?? "");
+      setBirthday(account.birthday ? account.birthday.slice(0, 10) : "");
     }
   }, [account]);
 
@@ -62,7 +63,7 @@ export function Account() {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateProfile({ name, email });
+      await updateProfile({ name, birthday: birthday || undefined });
       toast("Profile updated.");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't save.", "error");
@@ -170,7 +171,8 @@ export function Account() {
         <div>
           <h1 className="font-display text-3xl font-bold text-espresso">My Account</h1>
           <p className="text-sm text-charcoal/60">
-            {account.name} · {account.phone}
+            {account.name || "Welcome"}
+            {(account.phone || account.email) && ` · ${account.phone || account.email}`}
           </p>
         </div>
         <button
@@ -219,44 +221,52 @@ export function Account() {
               </button>
             </div>
 
-            <form onSubmit={saveProfile} className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="font-display text-xl font-bold text-espresso">Account details</h2>
-              <label className="mt-4 block text-sm font-semibold text-espresso">
-                Name
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
-                />
-              </label>
-              <label className="mt-3 block text-sm font-semibold text-espresso">
-                Phone
-                <input
-                  value={account.phone}
-                  disabled
-                  className="mt-1 w-full cursor-not-allowed rounded-xl border border-oat bg-oat/30 px-4 py-2.5 font-normal text-charcoal/60"
-                />
-                <span className="mt-1 block text-xs font-normal text-charcoal/50">
-                  Your phone is your login — contact us to change it.
-                </span>
-              </label>
-              <label className="mt-3 block text-sm font-semibold text-espresso">
-                Email <span className="font-normal text-charcoal/50">(optional)</span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={saving}
-                className="btn-3d mt-5 w-full rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
-            </form>
+            <div className="space-y-4">
+              <form onSubmit={saveProfile} className="rounded-2xl bg-white p-6 shadow-sm">
+                <h2 className="font-display text-xl font-bold text-espresso">Account details</h2>
+                {account.needsProfile && (
+                  <p className="mt-2 rounded-lg bg-oat/60 px-3 py-2 text-xs text-charcoal/70">
+                    Welcome! Add your name to complete your profile.
+                  </p>
+                )}
+                <label className="mt-4 block text-sm font-semibold text-espresso">
+                  Full name
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+                  />
+                </label>
+                <label className="mt-3 block text-sm font-semibold text-espresso">
+                  Birthday <span className="font-normal text-charcoal/50">(optional)</span>
+                  <input
+                    type="date"
+                    value={birthday}
+                    onChange={(e) => setBirthday(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="btn-3d mt-5 w-full rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </form>
+
+              <div className="rounded-2xl bg-white p-6 shadow-sm">
+                <h2 className="font-display text-xl font-bold text-espresso">Login methods</h2>
+                <p className="mt-1 text-sm text-charcoal/60">
+                  Add and verify another way to sign in. Either method opens this same account.
+                </p>
+                <div className="mt-3 space-y-3">
+                  <LinkMethod channel="phone" />
+                  <LinkMethod channel="email" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

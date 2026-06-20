@@ -75,9 +75,14 @@ model Room {
 model Customer {
   id            Int                  @id @default(autoincrement())
   name          String
-  phone         String               @unique
-  email         String?
-  passwordHash  String? // null = phone-only "shell" account (e.g. created by a guest order)
+  phone         String?              @unique // verified phone (E.164), nullable for email-only accounts
+  phoneVerified Boolean              @default(false)
+  email         String?              @unique
+  emailVerified Boolean              @default(false)
+  birthday      DateTime?
+  googleId      String?              @unique // reserved for Google sign-in
+  appleId       String?              @unique // reserved for Apple sign-in
+  passwordHash  String? // legacy; no longer used (auth is OTP-based)
   beanBalance   Int                  @default(0)
   lifetimeBeans Int                  @default(0)
   tier          String               @default("Bronze")
@@ -90,6 +95,21 @@ model Customer {
   redemptions   Redemption[]
   suggestions   Suggestion[]
   notifications Notification[]
+}
+
+// One-time verification codes for phone/email OTP login & method-linking.
+model OtpCode {
+  id         Int      @id @default(autoincrement())
+  channel    String // "PHONE" | "EMAIL"
+  identifier String // normalized E.164 phone or lowercased email
+  codeHash   String // bcrypt hash of the 6-digit code (never stored in plaintext)
+  purpose    String   @default("LOGIN") // "LOGIN" | "LINK"
+  attempts   Int      @default(0)
+  consumed   Boolean  @default(false)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
 }
 
 // In-website notifications for a logged-in customer.

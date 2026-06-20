@@ -2,17 +2,29 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { customerApi, getCustomerToken, setCustomerToken } from "../lib/api";
 import type { LoyaltyAccount } from "../types";
 
-interface AuthResponse {
-  token: string;
-  account: LoyaltyAccount;
+export type AuthChannel = "phone" | "email";
+
+export interface OtpTarget {
+  channel: AuthChannel;
+  phone?: string;
+  countryCode?: string;
+  email?: string;
+}
+
+interface OtpRequestResult {
+  resendInSeconds?: number;
+  expiresInSeconds?: number;
+  devCode?: string; // dev only — lets you test without a real SMS/email provider
 }
 
 interface CustomerAuthValue {
   account: LoyaltyAccount | null;
   loading: boolean;
-  signup: (name: string, phone: string, password: string) => Promise<void>;
-  login: (phone: string, password: string) => Promise<void>;
-  updateProfile: (details: { name?: string; email?: string }) => Promise<void>;
+  requestOtp: (target: OtpTarget) => Promise<OtpRequestResult>;
+  verifyOtp: (target: OtpTarget, code: string) => Promise<void>;
+  linkRequest: (target: OtpTarget) => Promise<OtpRequestResult>;
+  linkVerify: (target: OtpTarget, code: string) => Promise<void>;
+  updateProfile: (details: { name?: string; birthday?: string }) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -28,13 +40,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     try {
       setAccount(await customerApi.get<LoyaltyAccount>("/api/loyalty/me"));
     } catch {
-      // Token invalid/expired — clear it.
       setCustomerToken(null);
       setAccount(null);
     }
   }, []);
 
-  // Restore the session on first load if a token is stored.
   useEffect(() => {
     (async () => {
       await refresh();
@@ -42,20 +52,22 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [refresh]);
 
-  const handleAuth = useCallback((res: AuthResponse) => {
-    setCustomerToken(res.token);
-    setAccount(res.account);
-  }, []);
-
   const value = useMemo<CustomerAuthValue>(
     () => ({
       account,
       loading,
-      signup: async (name, phone, password) => {
-        handleAuth(await customerApi.post<AuthResponse>("/api/loyalty/signup", { name, phone, password }));
+      requestOtp: (target) => customerApi.post<OtpRequestResult>("/api/auth/otp/request", target),
+      verifyOtp: async (target, code) => {
+        const res = await customerApi.post<{ token: string; account: LoyaltyAccount }>(
+          "/api/auth/otp/verify",
+          { ...target, code }
+        );
+        setCustomerToken(res.token);
+        setAccount(res.account);
       },
-      login: async (phone, password) => {
-        handleAuth(await customerApi.post<AuthResponse>("/api/loyalty/login", { phone, password }));
+      linkRequest: (target) => customerApi.post<OtpRequestResult>("/api/auth/link/request", target),
+      linkVerify: async (target, code) => {
+        setAccount(await customerApi.post<LoyaltyAccount>("/api/auth/link/verify", { ...target, code }));
       },
       updateProfile: async (details) => {
         setAccount(await customerApi.patch<LoyaltyAccount>("/api/loyalty/me", details));
@@ -66,7 +78,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       },
       refresh,
     }),
-    [account, loading, handleAuth, refresh]
+    [account, loading, refresh]
   );
 
   return <CustomerAuthContext.Provider value={value}>{children}</CustomerAuthContext.Provider>;

@@ -6,6 +6,7 @@ import { addonsRouter } from "./routes/addons";
 import { bannersRouter } from "./routes/banners";
 import { bookingsRouter } from "./routes/bookings";
 import { categoriesRouter } from "./routes/categories";
+import { customerAuthRouter } from "./routes/customerAuth";
 import { customersRouter } from "./routes/customers";
 import { doughnutsRouter } from "./routes/doughnuts";
 import { eventsRouter } from "./routes/events";
@@ -35,6 +36,9 @@ app.post("/api/auth/login", (req, res) => {
   const name = process.env.ADMIN_NAME || "Admin";
   res.json({ token: signToken({ email, role: "admin" }), name });
 });
+
+// Customer OTP auth (phone/email) + method linking — kept separate from admin auth.
+app.use("/api/auth", customerAuthRouter);
 
 app.use("/api/menu", menuRouter);
 app.use("/api/doughnuts", doughnutsRouter);

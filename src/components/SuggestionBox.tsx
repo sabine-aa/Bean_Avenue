@@ -16,7 +16,7 @@ export function SuggestionBox() {
   useEffect(() => {
     if (account) {
       setName((n) => n || account.name);
-      setPhone((p) => p || account.phone);
+      setPhone((p) => p || account.phone || "");
     }
   }, [account]);
 

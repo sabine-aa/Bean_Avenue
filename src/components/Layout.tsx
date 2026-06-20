@@ -76,7 +76,7 @@ function ProfileMenu() {
     );
   }
 
-  const firstName = account.name.split(" ")[0];
+  const firstName = account.name?.split(" ")[0] || "Account";
   return (
     <div className="relative" ref={ref}>
       <button
