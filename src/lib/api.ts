@@ -103,8 +103,9 @@ export const customerApi = makeApi(getCustomerToken, () => setCustomerToken(null
 export const money = (n: number) => `$${n.toFixed(2)}`;
 
 export const formatHour = (h: number) => {
-  const period = h >= 12 ? "PM" : "AM";
-  const display = h % 12 === 0 ? 12 : h % 12;
+  const hour = ((h % 24) + 24) % 24; // normalize so 24 → midnight, not "12 PM"
+  const period = hour >= 12 ? "PM" : "AM";
+  const display = hour % 12 === 0 ? 12 : hour % 12;
   return `${display}:00 ${period}`;
 };
 

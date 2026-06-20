@@ -17,8 +17,10 @@ export interface MenuItem {
   options: OptionGroup[];
   tags: string[];
   photo: string | null;
+  ingredients?: string | null;
   inStock: boolean;
   isHidden: boolean;
+  availableToday?: boolean;
   sortOrder: number;
   suggestions?: MenuItem[];
 }

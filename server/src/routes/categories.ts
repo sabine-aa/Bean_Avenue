@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { DOUGHNUT_CATEGORY } from "../lib/constants";
 
 export const categoriesRouter = Router();
 
@@ -12,10 +13,10 @@ categoriesRouter.get("/", async (_req, res) => {
     prisma.category.findMany({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
     prisma.menuItem.findMany({ select: { category: true }, distinct: ["category"] }),
   ]);
-  const ordered = categories.map((c) => c.name);
+  const ordered = categories.map((c) => c.name).filter((n) => n !== DOUGHNUT_CATEGORY);
   const extras = items
     .map((i) => i.category)
-    .filter((name) => name && !ordered.includes(name))
+    .filter((name) => name && name !== DOUGHNUT_CATEGORY && !ordered.includes(name))
     .sort();
   res.json([...ordered, ...extras]);
 });

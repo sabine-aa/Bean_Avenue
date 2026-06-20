@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Hanson Doughnuts — photo coming soon">
+  <rect width="400" height="300" fill="#fff6e9"/>
+  <rect width="400" height="300" fill="url(#g)"/>
+  <defs>
+    <radialGradient id="g" cx="50%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#ffe8cc" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- doughnut -->
+  <g transform="translate(200 128)">
+    <circle r="74" fill="#c8855a"/>
+    <circle r="74" fill="none" stroke="#9c6132" stroke-width="3"/>
+    <path d="M0,-74 a74,74 0 0 1 0,148 a74,74 0 0 1 0,-148 Z M0,-30 a30,30 0 0 0 0,60 a30,30 0 0 0 0,-60 Z" fill="#e6a06a"/>
+    <circle r="30" fill="#fff6e9"/>
+    <circle r="30" fill="none" stroke="#9c6132" stroke-width="3"/>
+    <!-- sprinkles -->
+    <rect x="-48" y="-18" width="12" height="4" rx="2" fill="#354e41" transform="rotate(25 -42 -16)"/>
+    <rect x="30" y="-34" width="12" height="4" rx="2" fill="#f26419" transform="rotate(-35 36 -32)"/>
+    <rect x="40" y="14" width="12" height="4" rx="2" fill="#c9a227" transform="rotate(40 46 16)"/>
+    <rect x="-36" y="30" width="12" height="4" rx="2" fill="#f26419" transform="rotate(-20 -30 32)"/>
+    <rect x="-8" y="-50" width="12" height="4" rx="2" fill="#c9a227" transform="rotate(60 -2 -48)"/>
+    <rect x="14" y="40" width="12" height="4" rx="2" fill="#354e41" transform="rotate(15 20 42)"/>
+  </g>
+  <text x="200" y="232" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="bold" fill="#354e41">Hanson Doughnuts</text>
+  <text x="200" y="258" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" letter-spacing="1.5" fill="#2f3b33" opacity="0.55">PHOTO COMING SOON</text>
+</svg>

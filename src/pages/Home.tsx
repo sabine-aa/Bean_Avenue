@@ -15,6 +15,14 @@ interface FeaturedSection {
   items: MenuItem[];
 }
 
+interface DoughnutPromo {
+  visible: boolean;
+  title: string;
+  description: string;
+  buttonText: string;
+  image: string | null;
+}
+
 export function Home() {
   const { account } = useCustomerAuth();
   const [featured, setFeatured] = useState<FeaturedSection>({
@@ -22,11 +30,13 @@ export function Home() {
     visible: true,
     items: [],
   });
+  const [doughnutPromo, setDoughnutPromo] = useState<DoughnutPromo | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const open = isOpenNow();
 
   useEffect(() => {
     api.get<FeaturedSection>("/api/featured").then(setFeatured).catch(() => {});
+    api.get<DoughnutPromo>("/api/doughnuts/promo").then(setDoughnutPromo).catch(() => {});
     api.get<Room[]>("/api/rooms").then(setRooms).catch(() => {});
   }, []);
 
@@ -121,7 +131,7 @@ export function Home() {
           <img
             src="/logo.png"
             alt="Bean Avenue — Brews, Bonds and Business"
-            className="fade-up mx-auto w-full max-w-md drop-shadow-xl sm:max-w-lg"
+            className="fade-up mx-auto w-full max-w-lg drop-shadow-xl sm:max-w-xl"
           />
           <p
             className="fade-up mx-auto mt-6 max-w-xl text-lg text-charcoal/80"
@@ -162,6 +172,37 @@ export function Home() {
             {featured.items.map((item) => (
               <MenuItemCard key={item.id} item={item} />
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Today's Hanson Doughnuts promo — black Hanson identity, orange accent */}
+      {doughnutPromo?.visible && (
+        <section className="mx-auto max-w-6xl px-4 pb-4">
+          <div className="overflow-hidden rounded-3xl bg-black shadow-xl ring-1 ring-white/10">
+            <div className="grid items-center gap-8 p-8 sm:grid-cols-2 sm:p-10">
+              <img
+                src={doughnutPromo.image ?? "/doughnut-placeholder.svg"}
+                alt="Hanson Doughnuts"
+                onError={(e) => (e.currentTarget.src = "/doughnut-placeholder.svg")}
+                className="mx-auto h-48 w-48 object-contain drop-shadow-[0_6px_24px_rgba(255,255,255,0.12)] sm:h-60 sm:w-60"
+              />
+              <div className="text-center sm:text-left">
+                <span className="inline-block rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white">
+                  Hanson Doughnuts
+                </span>
+                <h2 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl">
+                  {doughnutPromo.title}
+                </h2>
+                <p className="mt-3 text-white/70">{doughnutPromo.description}</p>
+                <Link
+                  to="/doughnuts"
+                  className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-white shadow-[0_0_24px_rgba(242,100,25,0.35)] transition hover:bg-terracotta-dark"
+                >
+                  {doughnutPromo.buttonText}
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       )}

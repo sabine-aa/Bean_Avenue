@@ -7,6 +7,7 @@ import { bannersRouter } from "./routes/banners";
 import { bookingsRouter } from "./routes/bookings";
 import { categoriesRouter } from "./routes/categories";
 import { customersRouter } from "./routes/customers";
+import { doughnutsRouter } from "./routes/doughnuts";
 import { eventsRouter } from "./routes/events";
 import { featuredRouter } from "./routes/featured";
 import { loyaltyRouter } from "./routes/loyalty";
@@ -36,6 +37,7 @@ app.post("/api/auth/login", (req, res) => {
 });
 
 app.use("/api/menu", menuRouter);
+app.use("/api/doughnuts", doughnutsRouter);
 app.use("/api/featured", featuredRouter);
 app.use("/api/categories", categoriesRouter);
 app.use("/api/rooms", roomsRouter);

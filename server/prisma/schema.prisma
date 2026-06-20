@@ -30,11 +30,13 @@ model MenuItem {
   price       Float            @default(0)
   options     String           @default("[]") // JSON-encoded OptionGroup[]
   tags        String           @default("[]") // JSON-encoded string[]
-  photo       String?
-  inStock     Boolean          @default(true)
-  isHidden    Boolean          @default(false)
-  sortOrder   Int              @default(0)
-  featured    FeaturedProduct?
+  photo         String?
+  ingredients   String? // ingredients / allergen info (mainly for doughnuts)
+  inStock       Boolean          @default(true) // false = sold out
+  isHidden      Boolean          @default(false)
+  availableToday Boolean         @default(true) // doughnuts: only show on the daily page when true
+  sortOrder     Int              @default(0)
+  featured      FeaturedProduct?
 }
 
 // Manager-curated homepage products ("The usual suspects"). References menu

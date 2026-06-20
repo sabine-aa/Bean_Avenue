@@ -16,6 +16,7 @@ const ACCOUNT_LINKS = [
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/menu", label: "Menu" },
+  { to: "/doughnuts", label: "Doughnuts" },
   { to: "/rooms", label: "Rooms" },
   { to: "/events", label: "Events" },
   { to: "/loyalty", label: "Loyalty" },
@@ -139,12 +140,14 @@ export function Layout() {
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 border-b border-oat bg-cream/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex shrink-0 items-center gap-2">
             <img src="/bean.png" alt="" className="h-9 w-9 drop-shadow-md" />
-            <span className="font-display text-2xl font-bold text-espresso">Bean Avenue</span>
+            <span className="whitespace-nowrap font-display text-2xl font-bold text-espresso">
+              Bean Avenue
+            </span>
           </Link>
 
-          <nav className="hidden items-center gap-6 md:flex" aria-label="Main">
+          <nav className="hidden items-center gap-5 lg:flex" aria-label="Main">
             {navLinks.map((l) => (
               <NavLink
                 key={l.to}
@@ -160,16 +163,16 @@ export function Layout() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               to="/menu"
-              className="btn-3d hidden rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream sm:block"
+              className="btn-3d hidden whitespace-nowrap rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream xl:block"
             >
               Order
             </Link>
             <Link
               to="/book"
-              className="btn-3d hidden rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream sm:block"
+              className="btn-3d hidden whitespace-nowrap rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream xl:block"
             >
               Book a Room
             </Link>
@@ -188,7 +191,7 @@ export function Layout() {
             {account && <NotificationBell />}
             <ProfileMenu />
             <button
-              className="rounded-lg p-2 text-xl md:hidden"
+              className="rounded-lg p-2 text-xl lg:hidden"
               aria-label="Toggle menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
@@ -199,7 +202,7 @@ export function Layout() {
         </div>
 
         {menuOpen && (
-          <nav className="border-t border-oat px-4 py-3 md:hidden" aria-label="Mobile">
+          <nav className="border-t border-oat px-4 py-3 lg:hidden" aria-label="Mobile">
             <div className="flex flex-col gap-3">
               {navLinks.map((l) => (
                 <NavLink

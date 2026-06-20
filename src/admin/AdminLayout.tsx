@@ -6,6 +6,7 @@ const links = [
   { to: "/admin/orders", label: "Orders" },
   { to: "/admin/menu", label: "Menu Manager" },
   { to: "/admin/addons", label: "Add-ons" },
+  { to: "/admin/doughnuts", label: "Hanson Doughnuts" },
   { to: "/admin/featured", label: "Homepage Featured" },
   { to: "/admin/bookings", label: "Room Bookings" },
   { to: "/admin/rooms", label: "Rooms" },

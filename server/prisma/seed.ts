@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { prisma } from "../src/db";
 import { seedAddons } from "./addons-data";
 import { seedCategories } from "./categories-data";
+import { seedDoughnuts } from "./doughnuts-data";
 import { seedFeatured } from "./featured-data";
 import { seedCategoryRewards } from "./rewards-data";
 
@@ -35,8 +36,8 @@ const rooms = [
     pricePerHour: 5,
     capacityMin: 1,
     capacityMax: 4,
-    openHour: 8,
-    closeHour: 22,
+    openHour: 7,
+    closeHour: 24,
     amenities: ["Fast Wi-Fi", "Power outlets", "Whiteboard", "Air conditioning"],
     rules: ["Keep noise to a minimum", "Leave it as you found it"],
     images: [
@@ -55,8 +56,8 @@ const rooms = [
     pricePerHour: 20,
     capacityMin: 4,
     capacityMax: 12,
-    openHour: 8,
-    closeHour: 22,
+    openHour: 7,
+    closeHour: 24,
     amenities: ["Fast Wi-Fi", "Power outlets", "TV / screen", "Conference table", "Air conditioning"],
     rules: ["Keep noise to a minimum", "Leave it as you found it"],
     images: ["/photos/conference-room.jpg"],
@@ -116,6 +117,7 @@ async function main() {
   const rewardCount = await seedCategoryRewards(prisma);
   await seedAddons(prisma);
   await seedCategories(prisma);
+  await seedDoughnuts(prisma);
   await seedFeatured(prisma);
 
   // Sample upcoming events (dates relative to today so they always show as upcoming).

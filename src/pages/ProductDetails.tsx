@@ -120,10 +120,13 @@ export function ProductDetails() {
   const unitPrice =
     item.price + selectedOptions.reduce((s, o) => s + o.priceDelta, 0) + addonTotal;
 
+  const isDoughnut = item.category === "Hanson Doughnuts";
+  const backTo = isDoughnut ? "/doughnuts" : "/menu";
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <Link to="/menu" className="text-sm font-semibold text-terracotta hover:underline">
-        ← Menu
+      <Link to={backTo} className="text-sm font-semibold text-terracotta hover:underline">
+        ← {isDoughnut ? "Hanson Doughnuts" : "Menu"}
       </Link>
       <div className="mt-4 grid gap-10 md:grid-cols-2">
         <Img src={item.photo} alt={item.name} className="h-80 w-full rounded-2xl md:h-[26rem]" />
@@ -142,6 +145,15 @@ export function ProductDetails() {
             ))}
           </div>
           <p className="mt-4 text-charcoal/80">{item.description}</p>
+
+          {item.ingredients && (
+            <div className="mt-4 rounded-xl bg-oat/40 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-charcoal/50">
+                Ingredients &amp; allergens
+              </p>
+              <p className="mt-1 text-sm text-charcoal/80">{item.ingredients}</p>
+            </div>
+          )}
 
           {item.options.map((group) => (
             <fieldset key={group.name} className="mt-6">
@@ -284,7 +296,7 @@ export function ProductDetails() {
               onClick={() => {
                 add(item, quantity, selectedOptions, selectedAddons, instructions);
                 toast(`${item.name} added to cart ☕`);
-                navigate("/menu");
+                navigate(backTo);
               }}
               className="btn-3d flex-1 rounded-full bg-espresso px-6 py-3 font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -1,15 +1,17 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { DOUGHNUT_CATEGORY } from "../lib/constants";
 import { outMenuItem, toJson } from "../lib/serialize";
 
 export const menuRouter = Router();
 
-// GET /api/menu  (public — visible items)   |   ?all=1 returns hidden too (admin list)
+// GET /api/menu  (public — visible items, excluding doughnuts which have their
+// own page)   |   ?all=1 returns everything (admin list)
 menuRouter.get("/", async (req, res) => {
   const all = req.query.all === "1";
   const items = await prisma.menuItem.findMany({
-    where: all ? undefined : { isHidden: false },
+    where: all ? undefined : { isHidden: false, category: { not: DOUGHNUT_CATEGORY } },
     orderBy: { sortOrder: "asc" },
   });
   res.json(items.map(outMenuItem));
@@ -48,10 +50,12 @@ menuRouter.post("/", requireAdmin, async (req, res) => {
       description: b.description ?? "",
       price: Number(b.price) || 0,
       photo: b.photo ?? null,
+      ingredients: b.ingredients ?? null,
       tags: toJson(b.tags ?? []),
       options: toJson(b.options ?? []),
       inStock: b.inStock ?? true,
       isHidden: b.isHidden ?? false,
+      availableToday: b.availableToday ?? true,
       sortOrder: (max._max.sortOrder ?? 0) + 1,
     },
   });
@@ -63,7 +67,7 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const b = req.body;
   const data: Record<string, unknown> = {};
-  for (const key of ["name", "category", "description", "photo", "inStock", "isHidden"]) {
+  for (const key of ["name", "category", "description", "photo", "ingredients", "inStock", "isHidden", "availableToday"]) {
     if (key in b) data[key] = b[key];
   }
   if ("price" in b) data.price = Number(b.price);

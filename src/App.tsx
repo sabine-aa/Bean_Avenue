@@ -5,6 +5,7 @@ import { AdminBanners } from "./admin/BannerManager";
 import { AdminBookings } from "./admin/Bookings";
 import { AdminCustomers } from "./admin/Customers";
 import { AdminDashboard } from "./admin/Dashboard";
+import { AdminDoughnuts } from "./admin/DoughnutsManager";
 import { AdminEvents } from "./admin/EventsManager";
 import { AdminFeatured } from "./admin/FeaturedManager";
 import { AdminLogin } from "./admin/Login";
@@ -19,6 +20,7 @@ import { AdminSuggestions } from "./admin/Suggestions";
 import { Layout } from "./components/Layout";
 import { About } from "./pages/About";
 import { Account } from "./pages/Account";
+import { Doughnuts } from "./pages/Doughnuts";
 import { Events } from "./pages/Events";
 import { BookingSuccess } from "./pages/BookingSuccess";
 import { BookRoom } from "./pages/BookRoom";
@@ -39,6 +41,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/menu" element={<Menu />} />
         <Route path="/menu/:id" element={<ProductDetails />} />
+        <Route path="/doughnuts" element={<Doughnuts />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success/:number" element={<OrderSuccess />} />
@@ -58,6 +61,7 @@ export default function App() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="menu" element={<AdminMenuManager />} />
         <Route path="addons" element={<AdminAddons />} />
+        <Route path="doughnuts" element={<AdminDoughnuts />} />
         <Route path="featured" element={<AdminFeatured />} />
         <Route path="bookings" element={<AdminBookings />} />
         <Route path="rooms" element={<AdminRooms />} />
