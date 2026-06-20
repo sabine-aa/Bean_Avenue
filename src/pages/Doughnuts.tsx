@@ -28,9 +28,9 @@ export function Doughnuts() {
 
       <header className="mt-4 flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
         <Img
-          src="/hanson-doughnuts-logo.png"
+          src="/hanson-doughnuts-logo.jpg"
           alt="Hanson Doughnuts"
-          className="h-24 w-24 shrink-0 rounded-full bg-espresso sm:h-28 sm:w-28"
+          className="h-24 w-24 shrink-0 rounded-full bg-black object-contain sm:h-28 sm:w-28"
         />
         <div>
           <span className="inline-block rounded-full bg-espresso px-3 py-1 text-xs font-bold uppercase tracking-wide text-cream">

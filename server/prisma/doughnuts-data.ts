@@ -65,7 +65,7 @@ export async function seedDoughnuts(prisma: PrismaClient) {
     ["doughnuts.title", "Today's Hanson Doughnuts"],
     ["doughnuts.description", "Discover today's freshly available doughnut selection at Bean Avenue."],
     ["doughnuts.buttonText", "View Today's Doughnuts"],
-    ["doughnuts.image", "/hanson-doughnuts-logo.png"],
+    ["doughnuts.image", "/hanson-doughnuts-logo.jpg"],
   ];
   for (const [key, value] of promo) {
     await prisma.setting.upsert({ where: { key }, create: { key, value }, update: {} });

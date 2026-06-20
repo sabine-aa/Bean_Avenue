@@ -11,7 +11,7 @@ const PROMO_DEFAULTS = {
   title: "Today's Hanson Doughnuts",
   description: "Discover today's freshly available doughnut selection at Bean Avenue.",
   buttonText: "View Today's Doughnuts",
-  image: "/hanson-doughnuts-logo.png",
+  image: "/hanson-doughnuts-logo.jpg",
 };
 
 async function getPromo() {
