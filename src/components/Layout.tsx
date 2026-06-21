@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { ChevronDownIcon, InstagramIcon, MapPinIcon, PhoneIcon, UserIcon, WhatsAppIcon } from "./icons";
+import { CartIcon, ChevronDownIcon, InstagramIcon, MapPinIcon, PhoneIcon, UserIcon, WhatsAppIcon } from "./icons";
 import { NotificationBell } from "./NotificationBell";
 
 const ACCOUNT_LINKS = [
@@ -68,7 +68,7 @@ function ProfileMenu() {
     return (
       <Link
         to="/loyalty"
-        className="flex items-center gap-1.5 rounded-full border border-oat px-4 py-2 text-sm font-semibold text-espresso transition hover:bg-oat"
+        className="tap flex items-center gap-1.5 rounded-full border border-espresso/15 bg-white px-3 py-2 text-sm font-semibold text-espresso transition hover:border-espresso/30 hover:bg-oat/60 sm:px-4"
       >
         <UserIcon className="h-4 w-4" />
         <span className="hidden sm:inline">Login</span>
@@ -81,7 +81,7 @@ function ProfileMenu() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full border border-oat bg-white px-2 py-1.5 text-sm font-semibold text-espresso transition hover:bg-oat sm:px-3"
+        className="tap flex items-center gap-2 rounded-full border border-espresso/15 bg-white px-2 py-1.5 text-sm font-semibold text-espresso transition hover:border-espresso/30 hover:bg-oat/60 sm:px-2.5"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -89,37 +89,39 @@ function ProfileMenu() {
           <UserIcon className="h-4 w-4" />
         </span>
         <span className="hidden max-w-[8rem] truncate sm:block">{firstName}</span>
-        <ChevronDownIcon className="h-4 w-4" />
+        <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div
-          className="absolute right-0 z-50 mt-2 w-60 overflow-hidden rounded-2xl border border-oat bg-white py-2 shadow-xl"
+          className="menu-in absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-espresso/10 bg-white py-2 shadow-[0_12px_40px_-12px_rgba(53,78,65,0.35)]"
           role="menu"
         >
-          <div className="border-b border-oat px-4 pb-2">
-            <p className="font-semibold text-espresso">{account.name}</p>
-            <p className="text-xs text-charcoal/50">
+          <div className="border-b border-oat px-4 pb-3 pt-1">
+            <p className="font-semibold text-espresso">{account.name || firstName}</p>
+            <p className="mt-0.5 text-xs text-charcoal/50">
               {account.beanBalance} beans · {account.tier}
             </p>
           </div>
-          {ACCOUNT_LINKS.map((l) => (
-            <Link
-              key={l.label}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className="block px-4 py-2 text-sm text-charcoal transition hover:bg-oat/50"
-              role="menuitem"
-            >
-              {l.label}
-            </Link>
-          ))}
+          <div className="py-1">
+            {ACCOUNT_LINKS.map((l) => (
+              <Link
+                key={l.label}
+                to={l.to}
+                onClick={() => setOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-charcoal transition hover:bg-oat/60 hover:text-espresso"
+                role="menuitem"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
           <button
             onClick={() => {
               setOpen(false);
               logout();
               navigate("/");
             }}
-            className="mt-1 block w-full border-t border-oat px-4 py-2 text-left text-sm font-semibold text-terracotta-dark transition hover:bg-oat/50"
+            className="block w-full border-t border-oat px-4 py-2.5 text-left text-sm font-semibold text-terracotta-dark transition hover:bg-terracotta/10"
             role="menuitem"
           >
             Logout
@@ -138,104 +140,119 @@ export function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-oat bg-cream/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/" className="flex shrink-0 items-center gap-2">
-            <img src="/bean.png" alt="" className="h-9 w-9 drop-shadow-md" />
-            <span className="whitespace-nowrap font-display text-2xl font-bold text-espresso">
-              Bean Avenue
-            </span>
-          </Link>
+      <header className="sticky top-0 z-40 border-b border-espresso/10 bg-cream/85 shadow-[0_1px_3px_rgba(53,78,65,0.06),0_10px_30px_-22px_rgba(53,78,65,0.4)] backdrop-blur-md">
+        <div className="mx-auto max-w-[120rem] px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between gap-3">
+            {/* LEFT — logo */}
+            <Link to="/" className="group flex shrink-0 items-center gap-2">
+              <img
+                src="/bean.png"
+                alt=""
+                className="h-9 w-9 drop-shadow-sm transition-transform duration-300 group-hover:-rotate-6"
+              />
+              <span className="whitespace-nowrap font-display text-xl font-bold text-espresso sm:text-2xl">
+                Bean Avenue
+              </span>
+            </Link>
 
-          <nav className="hidden items-center gap-5 lg:flex" aria-label="Main">
-            {navLinks.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors hover:text-terracotta ${
-                    isActive ? "text-terracotta" : "text-charcoal"
-                  }`
-                }
+            {/* CENTER — navigation, centered between logo and actions */}
+            <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex" aria-label="Main">
+              {navLinks.map((l) => (
+                <NavLink
+                  key={l.to}
+                  to={l.to}
+                  className={({ isActive }) =>
+                    `tap rounded-full px-3 py-2 text-sm transition-colors duration-200 ${
+                      isActive
+                        ? "bg-espresso/10 font-semibold text-espresso"
+                        : "font-medium text-charcoal/70 hover:bg-espresso/5 hover:text-espresso"
+                    }`
+                  }
+                >
+                  {l.label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* RIGHT — actions */}
+            <div className="flex shrink-0 items-center justify-end gap-1.5">
+              <Link
+                to="/menu"
+                className="btn-3d hidden whitespace-nowrap rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream lg:inline-flex"
               >
-                {l.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/menu"
-              className="btn-3d hidden whitespace-nowrap rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream xl:block"
-            >
-              Order
-            </Link>
-            <Link
-              to="/book"
-              className="btn-3d hidden whitespace-nowrap rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream xl:block"
-            >
-              Book a Room
-            </Link>
-            <Link
-              to="/cart"
-              aria-label={`Cart, ${count} items`}
-              className="relative rounded-full p-2 text-xl transition hover:bg-oat"
-            >
-              🛒
-              {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-terracotta px-1 text-xs font-bold text-cream">
-                  {count}
-                </span>
-              )}
-            </Link>
-            {account && <NotificationBell />}
-            <ProfileMenu />
-            <button
-              className="rounded-lg p-2 text-xl leading-none lg:hidden"
-              aria-label={menuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              {menuOpen ? "✕" : "☰"}
-            </button>
+                Order
+              </Link>
+              <Link
+                to="/book"
+                className="btn-3d hidden whitespace-nowrap rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream xl:inline-flex"
+              >
+                Book a Room
+              </Link>
+              <Link
+                to="/cart"
+                aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`}
+                className="tap relative rounded-full p-2 text-espresso transition hover:bg-espresso/8"
+              >
+                <CartIcon className="h-5 w-5" />
+                {count > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-terracotta px-1 text-[10px] font-bold text-cream">
+                    {count > 9 ? "9+" : count}
+                  </span>
+                )}
+              </Link>
+              {account && <NotificationBell />}
+              <ProfileMenu />
+              <button
+                className="tap rounded-lg p-2 text-xl leading-none text-espresso transition hover:bg-espresso/8 lg:hidden"
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((v) => !v)}
+              >
+                {menuOpen ? "✕" : "☰"}
+              </button>
+            </div>
           </div>
         </div>
 
         {menuOpen && (
-          <nav className="border-t border-oat px-4 py-3 lg:hidden" aria-label="Mobile">
-            <div className="flex flex-col gap-3">
+          <nav className="menu-in border-t border-espresso/10 bg-cream/95 px-4 py-4 backdrop-blur-md lg:hidden" aria-label="Mobile">
+            <div className="flex flex-col gap-1">
               {navLinks.map((l) => (
                 <NavLink
                   key={l.to}
                   to={l.to}
                   onClick={() => setMenuOpen(false)}
-                  className="text-sm font-medium"
+                  className={({ isActive }) =>
+                    `rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                      isActive ? "bg-espresso/10 text-espresso" : "text-charcoal hover:bg-oat/60"
+                    }`
+                  }
                 >
                   {l.label}
                 </NavLink>
               ))}
-              <div className="flex gap-2 pt-1">
+              <div className="mt-2 flex gap-2">
                 <Link
                   to="/menu"
                   onClick={() => setMenuOpen(false)}
-                  className="flex-1 rounded-full bg-espresso px-4 py-2 text-center text-sm font-semibold text-cream"
+                  className="btn-3d flex-1 rounded-full bg-espresso px-4 py-2.5 text-center text-sm font-semibold text-cream"
                 >
                   Order
                 </Link>
                 <Link
                   to="/book"
                   onClick={() => setMenuOpen(false)}
-                  className="flex-1 rounded-full bg-terracotta px-4 py-2 text-center text-sm font-semibold text-cream"
+                  className="btn-3d flex-1 rounded-full bg-terracotta px-4 py-2.5 text-center text-sm font-semibold text-cream"
                 >
                   Book a Room
                 </Link>
               </div>
 
               {/* Account section */}
-              <div className="mt-1 border-t border-oat pt-3">
+              <div className="mt-3 border-t border-oat pt-3">
                 {account ? (
                   <>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-charcoal/40">
+                    <p className="px-3 text-xs font-semibold uppercase tracking-wide text-charcoal/40">
                       {account.name} · {account.beanBalance} beans
                     </p>
                     {ACCOUNT_LINKS.map((l) => (
@@ -243,7 +260,7 @@ export function Layout() {
                         key={l.label}
                         to={l.to}
                         onClick={() => setMenuOpen(false)}
-                        className="block py-2 text-sm font-medium text-charcoal"
+                        className="block rounded-xl px-3 py-2 text-sm font-medium text-charcoal transition hover:bg-oat/60"
                       >
                         {l.label}
                       </NavLink>
@@ -254,7 +271,7 @@ export function Layout() {
                         logout();
                         navigate("/");
                       }}
-                      className="mt-1 block w-full rounded-full bg-oat px-4 py-2 text-center text-sm font-semibold text-terracotta-dark"
+                      className="mt-1 block w-full rounded-full bg-oat px-4 py-2.5 text-center text-sm font-semibold text-terracotta-dark transition hover:bg-terracotta/15"
                     >
                       Logout
                     </button>
@@ -263,7 +280,7 @@ export function Layout() {
                   <Link
                     to="/loyalty"
                     onClick={() => setMenuOpen(false)}
-                    className="block w-full rounded-full border border-oat px-4 py-2 text-center text-sm font-semibold text-espresso"
+                    className="block w-full rounded-full border border-espresso/20 px-4 py-2.5 text-center text-sm font-semibold text-espresso transition hover:bg-oat/60"
                   >
                     Login / Join
                   </Link>

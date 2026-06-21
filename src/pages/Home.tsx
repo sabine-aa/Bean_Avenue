@@ -62,69 +62,69 @@ export function Home() {
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[6%] top-16 hidden w-16 opacity-80 md:block"
+          className="float-bean absolute left-[6%] top-16 w-16 opacity-80 md:block"
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute right-[8%] top-28 hidden w-12 opacity-70 md:block"
+          className="float-bean absolute right-[8%] top-28 w-12 opacity-70 md:block"
           style={{ animationDelay: "1.4s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute bottom-12 left-[16%] hidden w-10 opacity-60 lg:block"
+          className="float-bean absolute bottom-12 left-[16%] w-10 opacity-60 lg:block"
           style={{ animationDelay: "2.8s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute bottom-20 right-[18%] hidden w-14 opacity-75 lg:block"
+          className="float-bean absolute bottom-20 right-[18%] w-14 opacity-75 lg:block"
           style={{ animationDelay: "0.7s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[28%] top-10 hidden w-9 opacity-60 lg:block"
+          className="float-bean absolute left-[28%] top-10 w-9 opacity-60 lg:block"
           style={{ animationDelay: "2.1s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute right-[30%] top-20 hidden w-8 opacity-50 lg:block"
+          className="float-bean absolute right-[30%] top-20 w-8 opacity-50 lg:block"
           style={{ animationDelay: "3.4s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[3%] bottom-24 hidden w-12 opacity-70 md:block"
+          className="float-bean absolute left-[3%] bottom-24 w-12 opacity-70 md:block"
           style={{ animationDelay: "1.9s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute right-[4%] bottom-10 hidden w-10 opacity-60 md:block"
+          className="float-bean absolute right-[4%] bottom-10 w-10 opacity-60 md:block"
           style={{ animationDelay: "3.1s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[44%] bottom-6 hidden w-7 opacity-50 lg:block"
+          className="float-bean absolute left-[44%] bottom-6 w-7 opacity-50 lg:block"
           style={{ animationDelay: "0.4s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute right-[14%] top-1/2 hidden w-9 opacity-55 lg:block"
+          className="float-bean absolute right-[14%] top-1/2 w-9 opacity-55 lg:block"
           style={{ animationDelay: "2.5s" }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-16 text-center sm:py-24">

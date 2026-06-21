@@ -93,7 +93,7 @@ export function Menu() {
       />
 
       {/* Mobile / tablet: one horizontally swipeable category row, sticky on scroll */}
-      <div className="sticky top-[57px] z-30 -mx-4 mt-3 bg-cream/95 px-4 py-2 backdrop-blur lg:hidden">
+      <div className="sticky top-16 z-30 -mx-4 mt-3 bg-cream/95 px-4 py-2 backdrop-blur lg:hidden">
         <div className="relative">
           <div
             ref={scrollerRef}
@@ -126,7 +126,7 @@ export function Menu() {
       {/* Body: desktop category sidebar on the left, products on the right */}
       <div className="mt-4 lg:flex lg:gap-8 lg:mt-5">
         <aside className="hidden lg:block lg:w-56 lg:shrink-0">
-          <nav className="sticky top-[72px] flex flex-col gap-1">
+          <nav className="sticky top-20 flex flex-col gap-1">
             {allCategories.map((c) => (
               <button
                 key={c}
