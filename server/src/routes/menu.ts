@@ -6,6 +6,13 @@ import { outMenuItem, toJson } from "../lib/serialize";
 
 export const menuRouter = Router();
 
+// Clamp a focal-point coordinate to an integer 0–100 (%), defaulting to centre.
+const clampPct = (v: unknown): number => {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, n));
+};
+
 // GET /api/menu  (public — visible items, excluding doughnuts which have their
 // own page)   |   ?all=1 returns everything (admin list)
 menuRouter.get("/", async (req, res) => {
@@ -50,6 +57,9 @@ menuRouter.post("/", requireAdmin, async (req, res) => {
       description: b.description ?? "",
       price: Number(b.price) || 0,
       photo: b.photo ?? null,
+      imageFit: b.imageFit === "contain" ? "contain" : "cover",
+      focalX: clampPct(b.focalX),
+      focalY: clampPct(b.focalY),
       ingredients: b.ingredients ?? null,
       tags: toJson(b.tags ?? []),
       options: toJson(b.options ?? []),
@@ -73,6 +83,9 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
   if ("price" in b) data.price = Number(b.price);
   if ("tags" in b) data.tags = toJson(b.tags);
   if ("options" in b) data.options = toJson(b.options);
+  if ("imageFit" in b) data.imageFit = b.imageFit === "contain" ? "contain" : "cover";
+  if ("focalX" in b) data.focalX = clampPct(b.focalX);
+  if ("focalY" in b) data.focalY = clampPct(b.focalY);
   const item = await prisma.menuItem.update({ where: { id }, data });
   res.json(outMenuItem(item));
 });

@@ -30,7 +30,8 @@ export function Doughnuts() {
         <Img
           src="/hanson-doughnuts-logo.jpg"
           alt="Hanson Doughnuts"
-          className="h-24 w-24 shrink-0 rounded-full bg-black object-contain sm:h-28 sm:w-28"
+          fit="contain"
+          className="h-24 w-24 shrink-0 rounded-full bg-black sm:h-28 sm:w-28"
         />
         <div>
           <span className="inline-block rounded-full bg-espresso px-3 py-1 text-xs font-bold uppercase tracking-wide text-cream">
@@ -49,7 +50,7 @@ export function Doughnuts() {
         <p className="mt-12 text-center text-charcoal/60">Loading today's doughnuts…</p>
       ) : items.length === 0 ? (
         <div className="mt-12 rounded-2xl bg-white p-10 text-center shadow-sm">
-          <Img src="/doughnut-placeholder.svg" alt="" className="mx-auto h-28 w-40 rounded-xl" />
+          <Img src="/doughnut-placeholder.svg" alt="" fit="contain" className="mx-auto h-28 w-40 rounded-xl" />
           <p className="mt-4 font-semibold text-espresso">No doughnuts available right now.</p>
           <p className="mt-1 text-sm text-charcoal/60">Check back soon for today's fresh selection.</p>
         </div>
@@ -60,14 +61,20 @@ export function Doughnuts() {
             return (
               <div key={d.id} className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
                 <Link to={`/menu/${d.id}`} className="relative block">
-                  <Img src={d.photo} alt={d.name} className="h-44 w-full" />
+                  <Img
+                    src={d.photo}
+                    alt={d.name}
+                    fit={d.imageFit === "contain" ? "contain" : "cover"}
+                    position={`${d.focalX ?? 50}% ${d.focalY ?? 50}%`}
+                    className="aspect-[4/3] w-full bg-oat/30"
+                  />
                   {soldOut && (
                     <span className="absolute left-2 top-2 rounded-full bg-terracotta-dark px-2.5 py-0.5 text-xs font-bold text-cream">
                       Sold Out
                     </span>
                   )}
                 </Link>
-                <div className="flex flex-1 flex-col p-4">
+                <div className="flex flex-1 flex-col p-3 sm:p-4">
                   <div className="flex items-start justify-between gap-2">
                     <Link
                       to={`/menu/${d.id}`}

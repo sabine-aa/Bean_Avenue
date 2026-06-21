@@ -2,6 +2,12 @@ import { Router } from "express";
 import { requireAdmin, requireCustomer } from "../auth";
 import { prisma } from "../db";
 import { accountResponse } from "../lib/account";
+import {
+  activeWindow,
+  computeBirthdayReward,
+  genBirthdayCode,
+  getBirthdaySettings,
+} from "../lib/birthday";
 import { genNumber, TIERS } from "../lib/helpers";
 import { notify } from "../lib/notify";
 
@@ -20,17 +26,35 @@ loyaltyRouter.get("/rewards", async (_req, res) => {
 
 // ---- Customer (token required) ----
 
-// GET /api/loyalty/me — the logged-in customer's full account
+// GET /api/loyalty/me — the logged-in customer's full account. Also lazily fires
+// the one-per-year "happy birthday" notification when the window is open.
 loyaltyRouter.get("/me", requireCustomer, async (req, res) => {
-  const account = await accountResponse(req.customerId!);
-  if (!account) return res.status(404).json({ error: "Account not found." });
-  res.json(account);
+  const customer = await prisma.customer.findUnique({ where: { id: req.customerId! } });
+  if (!customer) return res.status(404).json({ error: "Account not found." });
+
+  const reward = await computeBirthdayReward(customer);
+  if (reward.available && customer.birthday) {
+    const s = await getBirthdaySettings();
+    const win = activeWindow(customer.birthday, s);
+    if (win && customer.birthdayNotifiedYear !== win.year) {
+      await prisma.customer.update({ where: { id: customer.id }, data: { birthdayNotifiedYear: win.year } });
+      await notify(customer.id, {
+        type: "REWARD",
+        title: "Happy Birthday! 🎂",
+        message: "Happy Birthday! A free cupcake is waiting for you at Bean Avenue.",
+        link: "/account?tab=rewards",
+      });
+    }
+  }
+
+  res.json(await accountResponse(req.customerId!));
 });
 
 // PATCH /api/loyalty/me  { name?, birthday? } — edit basic details.
+// Birthday can be set ONCE; after that it's locked (changes go through support).
 // Phone/email changes go through the verified link flow (see /api/auth/link/*).
 loyaltyRouter.patch("/me", requireCustomer, async (req, res) => {
-  const data: { name?: string; birthday?: Date | null } = {};
+  const data: { name?: string; birthday?: Date; birthdaySetAt?: Date } = {};
   if ("name" in req.body) {
     const name = String(req.body.name ?? "").trim();
     if (!name) return res.status(400).json({ error: "Name can't be empty." });
@@ -38,10 +62,106 @@ loyaltyRouter.patch("/me", requireCustomer, async (req, res) => {
   }
   if ("birthday" in req.body) {
     const raw = String(req.body.birthday ?? "").trim();
-    data.birthday = raw ? new Date(raw) : null;
+    const existing = await prisma.customer.findUnique({ where: { id: req.customerId! } });
+    const alreadySet = !!existing?.birthday;
+    if (raw) {
+      const date = new Date(raw);
+      if (Number.isNaN(date.getTime())) return res.status(400).json({ error: "Enter a valid date of birth." });
+      if (date.getTime() > Date.now()) return res.status(400).json({ error: "Your birthday can't be in the future." });
+      // Only allow setting it the first time; ignore attempts to change a saved birthday.
+      if (!alreadySet) {
+        data.birthday = date;
+        data.birthdaySetAt = new Date();
+      } else if (existing!.birthday!.toISOString().slice(0, 10) !== raw.slice(0, 10)) {
+        return res.status(400).json({
+          error: "Your birthday is locked. Contact Bean Avenue support to change it.",
+        });
+      }
+    } else if (alreadySet) {
+      return res.status(400).json({ error: "Your birthday is locked. Contact Bean Avenue support to change it." });
+    }
   }
   await prisma.customer.update({ where: { id: req.customerId! }, data });
   res.json(await accountResponse(req.customerId!));
+});
+
+// POST /api/loyalty/birthday/claim — mint the one-time birthday cupcake voucher.
+loyaltyRouter.post("/birthday/claim", requireCustomer, async (req, res) => {
+  const customer = await prisma.customer.findUnique({ where: { id: req.customerId! } });
+  if (!customer) return res.status(404).json({ error: "Account not found." });
+
+  const reward = await computeBirthdayReward(customer);
+  if (!reward.available) {
+    return res.status(400).json({ error: reward.reason || "Your birthday reward isn't available right now." });
+  }
+
+  const s = await getBirthdaySettings();
+  const win = activeWindow(customer.birthday!, s)!;
+
+  // Block a second account (same verified phone/email) claiming the same year.
+  const dupe = await prisma.birthdayVoucher.findFirst({
+    where: {
+      year: win.year,
+      customerId: { not: customer.id },
+      OR: [
+        ...(customer.phone ? [{ phone: customer.phone }] : []),
+        ...(customer.email ? [{ email: customer.email }] : []),
+      ],
+    },
+  });
+  if (dupe) {
+    return res.status(409).json({ error: "A birthday reward has already been issued for this phone/email this year." });
+  }
+
+  // Optionally deduct beans if the manager configured a cost (default 0 = complimentary).
+  const deduct = Math.min(s.deductBeans, customer.beanBalance);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (deduct > 0) {
+        const balanceAfter = customer.beanBalance - deduct;
+        await tx.customer.update({ where: { id: customer.id }, data: { beanBalance: balanceAfter } });
+        await tx.loyaltyTransaction.create({
+          data: {
+            customerId: customer.id,
+            type: "REDEEM",
+            amount: -deduct,
+            balanceAfter,
+            source: "Birthday reward",
+            note: `Birthday ${s.rewardName}`,
+          },
+        });
+      }
+      await tx.birthdayVoucher.create({
+        data: {
+          code: genBirthdayCode(),
+          customerId: customer.id,
+          customerName: customer.name || "Customer",
+          phone: customer.phone,
+          email: customer.email,
+          rewardName: s.rewardName,
+          year: win.year,
+          expiresAt: win.end,
+          deductedBeans: deduct,
+        },
+      });
+    });
+  } catch (e) {
+    // Unique (customerId, year) — claimed in a parallel request.
+    if ((e as { code?: string }).code === "P2002") {
+      return res.status(409).json({ error: "You've already claimed this year's birthday reward." });
+    }
+    throw e;
+  }
+
+  await notify(customer.id, {
+    type: "VOUCHER",
+    title: "Birthday reward ready 🎂",
+    message: `Your ${s.rewardName} voucher is ready — show it at the counter to claim your free cupcake.`,
+    link: "/account?tab=rewards",
+  });
+
+  res.json(await accountResponse(customer.id, { message: "Birthday cupcake voucher created! 🎂" }));
 });
 
 // POST /api/loyalty/redeem  { rewardId } — spend beans, create a counter voucher

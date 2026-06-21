@@ -31,6 +31,9 @@ model MenuItem {
   options     String           @default("[]") // JSON-encoded OptionGroup[]
   tags        String           @default("[]") // JSON-encoded string[]
   photo         String?
+  imageFit      String           @default("cover") // how the photo fills the card: "cover" | "contain"
+  focalX        Int              @default(50) // focal point X % (0-100) — which part stays visible when cropped
+  focalY        Int              @default(50) // focal point Y % (0-100)
   ingredients   String? // ingredients / allergen info (mainly for doughnuts)
   inStock       Boolean          @default(true) // false = sold out
   isHidden      Boolean          @default(false)
@@ -80,6 +83,8 @@ model Customer {
   email         String?              @unique
   emailVerified Boolean              @default(false)
   birthday      DateTime?
+  birthdaySetAt DateTime? // when the birthday was first saved (locks it; gates the reward)
+  birthdayNotifiedYear Int? // last birthday-window year we sent the "happy birthday" notification for
   googleId      String?              @unique // reserved for Google sign-in
   appleId       String?              @unique // reserved for Apple sign-in
   passwordHash  String? // legacy; no longer used (auth is OTP-based)
@@ -95,6 +100,32 @@ model Customer {
   redemptions   Redemption[]
   suggestions   Suggestion[]
   notifications Notification[]
+  birthdayVouchers BirthdayVoucher[]
+}
+
+// A complimentary birthday reward voucher (one free cupcake). Separate from the
+// bean-based Redemption: it tracks staff verification and Used/Cancelled states,
+// and is limited to one per customer per birthday-window year.
+model BirthdayVoucher {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique
+  customerId    Int
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerName  String // snapshot
+  phone         String? // snapshot — used to block multi-account abuse
+  email         String? // snapshot
+  rewardName    String    @default("Birthday Cupcake")
+  year          Int // birthday-window anchor year this voucher belongs to
+  status        String    @default("AVAILABLE") // AVAILABLE | USED | EXPIRED | CANCELLED
+  issuedAt      DateTime  @default(now())
+  expiresAt     DateTime
+  usedAt        DateTime?
+  usedBy        String? // staff member who marked it used
+  deductedBeans Int       @default(0) // beans deducted on claim (0 = complimentary)
+  issuedByAdmin Boolean   @default(false) // true when the manager issued it manually
+  createdAt     DateTime  @default(now())
+
+  @@unique([customerId, year])
 }
 
 // One-time verification codes for phone/email OTP login & method-linking.
@@ -257,14 +288,71 @@ model AddonAssignment {
 model Event {
   id          Int      @id @default(autoincrement())
   title       String
+  category    String   @default("") // e.g. Workshop, Social Gathering, Coffee Experience
   description String   @default("")
   startTime   DateTime
+  durationMins Int? // length in minutes, null = not specified
+  location    String   @default("") // blank = use the café's default address
+  included    String   @default("") // "what's included", one item per line
   price       Float    @default(0) // 0 = free
-  spots       Int? // available spots, null = not tracked
+  spots       Int? // remaining spots, null = not tracked
+  maxSpots    Int? // capacity (used to derive "Almost Full"), null = not tracked
   image       String?
-  isHidden    Boolean  @default(false)
+  isPublished Boolean  @default(false) // false = draft, only the manager sees it
+  isHidden    Boolean  @default(false) // published but temporarily pulled from the page
+  isCompleted Boolean  @default(false) // event has happened
+  isCancelled Boolean  @default(false) // event was called off
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
+}
+
+// Customer-submitted event ideas ("Suggest an Event"). Private to the manager
+// unless turned into a public voting option. customerId links the account for
+// admin reference only — names/phones are never shown publicly.
+model EventSuggestion {
+  id            Int      @id @default(autoincrement())
+  customerId    Int? // linked account (private, admin reference)
+  idea          String // event idea or title
+  category      String   @default("")
+  description   String   @default("")
+  preferredDay  String   @default("")
+  preferredTime String   @default("")
+  name          String? // optional, private
+  phone         String? // optional, private
+  status        String   @default("NEW") // NEW | REVIEWED | CONSIDERING | APPROVED | REJECTED
+  adminNote     String?
+  createdAt     DateTime @default(now())
+}
+
+// Manager-published event ideas open for customer voting. Created manually or
+// converted from an EventSuggestion. Only isPublished options are shown publicly.
+model VotingOption {
+  id                 Int       @id @default(autoincrement())
+  title              String
+  description        String    @default("")
+  category           String    @default("")
+  image              String?
+  possibleDate       String    @default("") // freeform "possible date or time, if available"
+  isPublished        Boolean   @default(false)
+  closesAt           DateTime? // voting closing date, null = no deadline
+  status             String    @default("OPEN") // OPEN | CLOSED | SELECTED
+  sourceSuggestionId Int? // EventSuggestion it was converted from (if any)
+  convertedEventId   Int? // Event draft created when this idea was selected (if any)
+  sortOrder          Int       @default(0)
+  createdAt          DateTime  @default(now())
+  votes              Vote[]
+}
+
+// One row per customer per voting option. The unique constraint is what makes
+// duplicate voting impossible (rapid clicks, refreshes, multiple sessions).
+model Vote {
+  id             Int          @id @default(autoincrement())
+  votingOptionId Int
+  customerId     Int
+  createdAt      DateTime     @default(now())
+  votingOption   VotingOption @relation(fields: [votingOptionId], references: [id], onDelete: Cascade)
+
+  @@unique([votingOptionId, customerId])
 }
 
 // Customers who opted in to WhatsApp offers & updates.

@@ -17,6 +17,9 @@ export interface MenuItem {
   options: OptionGroup[];
   tags: string[];
   photo: string | null;
+  imageFit?: "cover" | "contain"; // how the photo fills the card (default "cover")
+  focalX?: number; // focal point X % (0-100) — which part stays when cropped
+  focalY?: number; // focal point Y % (0-100)
   ingredients?: string | null;
   inStock: boolean;
   isHidden: boolean;
@@ -235,14 +238,59 @@ export interface Redemption {
 export interface EventItem {
   id: number;
   title: string;
+  category: string;
   description: string;
   startTime: string;
+  durationMins: number | null;
+  location: string;
+  included: string; // "what's included", one item per line
   price: number;
-  spots: number | null;
+  spots: number | null; // remaining spots, null = not tracked
+  maxSpots: number | null; // capacity, null = not tracked
   image: string | null;
+  isPublished: boolean;
   isHidden: boolean;
+  isCompleted: boolean;
+  isCancelled: boolean;
   sortOrder: number;
   createdAt?: string;
+}
+
+export type EventSuggestionStatus = "NEW" | "REVIEWED" | "CONSIDERING" | "APPROVED" | "REJECTED";
+
+export interface EventSuggestion {
+  id: number;
+  customerId: number | null;
+  idea: string;
+  category: string;
+  description: string;
+  preferredDay: string;
+  preferredTime: string;
+  name: string | null;
+  phone: string | null;
+  status: EventSuggestionStatus;
+  adminNote: string | null;
+  createdAt: string;
+}
+
+export type VotingStatus = "OPEN" | "CLOSED" | "SELECTED";
+
+export interface VotingOption {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  image: string | null;
+  possibleDate: string;
+  isPublished: boolean;
+  closesAt: string | null;
+  status: VotingStatus;
+  sourceSuggestionId: number | null;
+  convertedEventId: number | null;
+  sortOrder: number;
+  createdAt: string;
+  voteCount: number;
+  hasVoted?: boolean; // present on the public endpoint when logged in
 }
 
 export interface Subscriber {
@@ -291,6 +339,66 @@ export interface Suggestion {
   customer?: { id: number; name: string; phone: string } | null;
 }
 
+export type BirthdayVoucherStatus = "AVAILABLE" | "USED" | "EXPIRED" | "CANCELLED";
+
+export interface BirthdayVoucher {
+  id: number;
+  code: string;
+  customerName: string;
+  rewardName: string;
+  year: number;
+  status: BirthdayVoucherStatus;
+  effectiveStatus?: BirthdayVoucherStatus;
+  issuedAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedBy: string | null;
+  deductedBeans: number;
+}
+
+export interface BirthdaySettings {
+  enabled: boolean;
+  daysBefore: number;
+  daysAfter: number;
+  rewardName: string;
+  eligibleCategory: string;
+  eligibleItemIds: number[];
+  deductBeans: number;
+}
+
+// Admin view of a voucher (includes linked customer + private contact details).
+export interface AdminBirthdayVoucher extends BirthdayVoucher {
+  customerId: number;
+  phone: string | null;
+  email: string | null;
+  issuedByAdmin: boolean;
+  customer?: { id: number; name: string; phone: string | null; email: string | null };
+}
+
+export interface UpcomingBirthday {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  birthday: string;
+  daysUntil: number;
+  claimedThisYear: boolean;
+}
+
+export interface BirthdayReward {
+  enabled: boolean;
+  hasBirthday: boolean;
+  birthdayLocked: boolean;
+  verified: boolean;
+  available: boolean;
+  windowStart: string | null;
+  windowEnd: string | null;
+  rewardName: string;
+  eligibleNote: string;
+  voucher: BirthdayVoucher | null;
+  reason: string;
+}
+
 export interface LoyaltyAccount {
   id: number;
   name: string;
@@ -299,6 +407,7 @@ export interface LoyaltyAccount {
   email?: string | null;
   emailVerified?: boolean;
   birthday?: string | null;
+  birthdayReward?: BirthdayReward;
   needsProfile?: boolean;
   beanBalance: number;
   lifetimeBeans: number;

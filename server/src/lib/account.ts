@@ -1,5 +1,6 @@
 import { signToken } from "../auth";
 import { prisma } from "../db";
+import { computeBirthdayReward } from "./birthday";
 import { nextTierInfo } from "./helpers";
 import { outBooking, outOrder } from "./serialize";
 
@@ -25,6 +26,7 @@ export async function accountResponse(customerId: number, extra: Record<string, 
     email: customer.email,
     emailVerified: customer.emailVerified,
     birthday: customer.birthday,
+    birthdayReward: await computeBirthdayReward(customer),
     beanBalance: customer.beanBalance,
     lifetimeBeans: customer.lifetimeBeans,
     tier: customer.tier,

@@ -20,6 +20,15 @@ export function ProductDetails() {
   const [addonGroups, setAddonGroups] = useState<AddonGroup[]>([]);
   const [selected, setSelected] = useState<Record<number, number>>({}); // addonId -> quantity
   const [instructions, setInstructions] = useState("");
+  const [zoomed, setZoomed] = useState(false); // full-size image lightbox
+
+  // Close the lightbox on Escape.
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoomed(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomed]);
 
   useEffect(() => {
     setItem(null);
@@ -129,7 +138,29 @@ export function ProductDetails() {
         ← {isDoughnut ? "Hanson Doughnuts" : "Menu"}
       </Link>
       <div className="mt-4 grid gap-10 md:grid-cols-2">
-        <Img src={item.photo} alt={item.name} className="h-80 w-full rounded-2xl md:h-[26rem]" />
+        <div className="md:sticky md:top-24 md:self-start">
+          <button
+            type="button"
+            onClick={() => item.photo && setZoomed(true)}
+            className="group relative block w-full cursor-zoom-in overflow-hidden rounded-2xl"
+            aria-label={`View larger image of ${item.name}`}
+          >
+            <Img
+              src={item.photo}
+              alt={item.name}
+              fit={item.imageFit === "contain" ? "contain" : "cover"}
+              position={`${item.focalX ?? 50}% ${item.focalY ?? 50}%`}
+              className={`h-96 w-full rounded-2xl bg-oat/30 md:h-[32rem] ${
+                item.imageFit === "contain" ? "p-2" : ""
+              }`}
+            />
+            {item.photo && (
+              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-espresso/80 px-3 py-1 text-xs font-semibold text-cream opacity-0 transition group-hover:opacity-100">
+                Click to enlarge
+              </span>
+            )}
+          </button>
+        </div>
         <div>
           <div className="flex items-start justify-between gap-4">
             <h1 className="font-display text-3xl font-bold text-espresso">{item.name}</h1>
@@ -319,6 +350,32 @@ export function ProductDetails() {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Full-size image lightbox */}
+      {zoomed && item.photo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${item.name} — full size`}
+          onClick={() => setZoomed(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-espresso/80 p-4 backdrop-blur-sm"
+        >
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-cream/90 text-2xl font-bold text-espresso hover:bg-cream"
+          >
+            ×
+          </button>
+          <img
+            src={item.photo}
+            alt={item.name}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-full cursor-zoom-out rounded-2xl object-contain shadow-2xl"
+          />
+        </div>
       )}
     </div>
   );

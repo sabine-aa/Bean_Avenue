@@ -13,11 +13,17 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
   return (
     <div className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
       <Link to={`/menu/${item.id}`} className="block">
-        <Img src={item.photo} alt={item.name} className="h-44 w-full" />
+        <Img
+          src={item.photo}
+          alt={item.name}
+          fit={item.imageFit === "contain" ? "contain" : "cover"}
+          position={`${item.focalX ?? 50}% ${item.focalY ?? 50}%`}
+          className="aspect-[4/3] w-full bg-oat/30"
+        />
       </Link>
-      <div className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="flex items-start justify-between gap-2">
-          <Link to={`/menu/${item.id}`} className="font-display text-lg font-semibold text-espresso hover:text-terracotta">
+          <Link to={`/menu/${item.id}`} className="font-display text-base font-semibold leading-tight text-espresso hover:text-terracotta sm:text-lg">
             {item.name}
           </Link>
           <span className="whitespace-nowrap font-semibold text-terracotta">{money(item.price)}</span>

@@ -5,18 +5,19 @@ import { api } from "../lib/api";
 export function OffersSignup() {
   const toast = useToast();
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(""); // local part; +961 is added on submit
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (sending || !phone.trim()) return;
+    const local = phone.replace(/[^\d]/g, "").replace(/^0+/, ""); // digits only, no leading 0
+    if (sending || !local) return;
     setSending(true);
     try {
-      await api.post("/api/subscribers", { name: name.trim() || undefined, phone: phone.trim() });
+      // The backend upserts on phone, so duplicates are never added twice.
+      await api.post("/api/subscribers", { name: name.trim() || undefined, phone: `+961${local}` });
       setDone(true);
-      toast("You're on the list! 🎉");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't sign you up — try again.", "error");
     } finally {
@@ -25,38 +26,48 @@ export function OffersSignup() {
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl bg-espresso p-6 text-cream shadow-lg sm:p-8">
-      <h2 className="font-display text-2xl font-bold">Get Bean Avenue offers and updates</h2>
-      <p className="mt-1 text-sm text-oat">
+    <section className="overflow-hidden rounded-3xl bg-espresso p-8 text-cream shadow-lg sm:p-10">
+      <h2 className="font-display text-3xl font-bold sm:text-4xl">Get Bean Avenue offers and updates</h2>
+      <p className="mt-3 max-w-2xl text-lg text-oat">
         Sign up to hear about special offers, new drinks, and events — straight to your phone.
       </p>
 
       {done ? (
-        <p className="mt-5 rounded-2xl bg-sage/20 p-4 text-sm font-semibold text-cream">
-          ✅ Thanks! We'll be in touch with the good stuff.
-        </p>
+        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-sage/25 p-5 text-cream">
+          <span className="text-2xl">✅</span>
+          <div>
+            <p className="text-lg font-bold">You're on the list!</p>
+            <p className="text-sm text-oat">We'll be in touch with the good stuff. No spam, promise.</p>
+          </div>
+        </div>
       ) : (
-        <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4 sm:flex-row">
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (optional)"
             autoComplete="name"
-            className="w-full rounded-full border-0 bg-white px-4 py-2.5 text-charcoal placeholder:text-charcoal/50 sm:w-44"
+            className="w-full rounded-full border-0 bg-white px-5 py-3.5 text-base text-charcoal placeholder:text-charcoal/50 sm:w-48"
           />
-          <input
-            required
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number"
-            autoComplete="tel"
-            className="w-full flex-1 rounded-full border-0 bg-white px-4 py-2.5 text-charcoal placeholder:text-charcoal/50"
-          />
+          <div className="flex w-full flex-1 items-center overflow-hidden rounded-full bg-white">
+            <span className="select-none border-r border-oat py-3.5 pl-5 pr-3 text-base font-semibold text-charcoal/70">
+              +961
+            </span>
+            <input
+              required
+              type="tel"
+              inputMode="numeric"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="70 123 456"
+              autoComplete="tel"
+              className="w-full border-0 bg-transparent px-3 py-3.5 text-base text-charcoal placeholder:text-charcoal/40 focus:outline-none"
+            />
+          </div>
           <button
             type="submit"
             disabled={sending || !phone.trim()}
-            className="btn-3d rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream transition hover:bg-terracotta-dark disabled:opacity-60"
+            className="btn-3d rounded-full bg-terracotta px-8 py-3.5 text-base font-semibold text-cream transition hover:bg-terracotta-dark disabled:opacity-60"
           >
             {sending ? "…" : "Sign me up"}
           </button>

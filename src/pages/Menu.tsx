@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { MenuItemCard } from "../components/MenuItemCard";
+import { ChevronRightIcon } from "../components/icons";
 import { useCart } from "../context/CartContext";
 import { api, money } from "../lib/api";
 import type { MenuItem } from "../types";
@@ -12,6 +13,15 @@ export function Menu() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const { count, subtotal } = useCart();
+
+  // Mobile category bar: show a "scroll for more" hint until swiped to the end.
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const updateScrollHint = () => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  };
 
   useEffect(() => {
     Promise.all([
@@ -44,6 +54,17 @@ export function Menu() {
 
   const active = category ?? presentCategories[0] ?? "All";
 
+  // Categories in display order, with "All" appended at the very end. Used by
+  // both the desktop sidebar and the mobile horizontal bar.
+  const allCategories = useMemo(() => [...presentCategories, "All"], [presentCategories]);
+
+  // Re-evaluate the mobile scroll hint when categories load or the window resizes.
+  useEffect(() => {
+    updateScrollHint();
+    window.addEventListener("resize", updateScrollHint);
+    return () => window.removeEventListener("resize", updateScrollHint);
+  }, [allCategories]);
+
   const filtered = items
     .filter(
       (i) =>
@@ -55,54 +76,85 @@ export function Menu() {
     .sort((a, b) => catIndex(a.category) - catIndex(b.category) || a.sortOrder - b.sortOrder);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 pb-24">
-      <h1 className="font-display text-4xl font-bold text-espresso">The Menu</h1>
-      <p className="mt-2 text-charcoal/70">Order for pickup — your cup will be waiting.</p>
+    <div className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8">
+      <h1 className="font-display text-3xl font-bold text-espresso sm:text-4xl">The Menu</h1>
+      <p className="mt-1 text-sm text-charcoal/70 sm:text-base">
+        Order for pickup — your cup will be waiting.
+      </p>
 
-      <div className="sticky top-[57px] z-30 -mx-4 mt-6 bg-cream/95 px-4 py-3 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-2">
-          {presentCategories.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-                active === c ? "bg-espresso text-cream" : "bg-oat text-espresso hover:bg-espresso/15"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-          {/* "All" stays available but at the end, and isn't selected on open */}
-          <button
-            onClick={() => setCategory("All")}
-            className={`rounded-full px-4 py-1.5 text-sm font-semibold transition ${
-              active === "All" ? "bg-espresso text-cream" : "bg-oat text-espresso hover:bg-espresso/15"
-            }`}
+      {/* Search — full width on mobile, compact on larger screens */}
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search the menu…"
+        aria-label="Search the menu"
+        className="mt-4 w-full rounded-full border border-oat bg-white px-4 py-2 text-sm sm:max-w-sm"
+      />
+
+      {/* Mobile / tablet: one horizontally swipeable category row, sticky on scroll */}
+      <div className="sticky top-[57px] z-30 -mx-4 mt-3 bg-cream/95 px-4 py-2 backdrop-blur lg:hidden">
+        <div className="relative">
+          <div
+            ref={scrollerRef}
+            onScroll={updateScrollHint}
+            className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth pr-8"
           >
-            All
-          </button>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the menu…"
-            aria-label="Search the menu"
-            className="ml-auto w-full rounded-full border border-oat bg-white px-4 py-1.5 text-sm sm:w-56"
-          />
+            {allCategories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  active === c
+                    ? "bg-espresso text-cream shadow-md"
+                    : "bg-oat text-espresso hover:bg-espresso/15"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+          {/* "Swipe for more" hint — fades out once scrolled to the end */}
+          {canScrollRight && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-cream via-cream/90 to-transparent pl-8 pr-1">
+              <ChevronRightIcon className="h-5 w-5 animate-pulse text-espresso" />
+            </div>
+          )}
         </div>
       </div>
 
-      {loading ? (
-        <p className="mt-12 text-center text-charcoal/60">Brewing the menu…</p>
-      ) : filtered.length === 0 ? (
-        <p className="mt-12 text-center text-charcoal/60">Nothing matched — try another search?</p>
-      ) : (
-        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => (
-            <MenuItemCard key={item.id} item={item} />
-          ))}
+      {/* Body: desktop category sidebar on the left, products on the right */}
+      <div className="mt-4 lg:flex lg:gap-8 lg:mt-5">
+        <aside className="hidden lg:block lg:w-56 lg:shrink-0">
+          <nav className="sticky top-[72px] flex flex-col gap-1">
+            {allCategories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`rounded-xl px-4 py-2 text-left text-sm font-semibold transition ${
+                  active === c ? "bg-espresso text-cream" : "text-espresso hover:bg-oat"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="min-w-0 flex-1">
+          {loading ? (
+            <p className="mt-12 text-center text-charcoal/60">Brewing the menu…</p>
+          ) : filtered.length === 0 ? (
+            <p className="mt-12 text-center text-charcoal/60">Nothing matched — try another search?</p>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
+              {filtered.map((item) => (
+                <MenuItemCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {count > 0 && (
         <Link

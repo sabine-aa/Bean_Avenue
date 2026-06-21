@@ -25,6 +25,7 @@ interface CustomerAuthValue {
   linkRequest: (target: OtpTarget) => Promise<OtpRequestResult>;
   linkVerify: (target: OtpTarget, code: string) => Promise<void>;
   updateProfile: (details: { name?: string; birthday?: string }) => Promise<void>;
+  claimBirthday: () => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
 }
@@ -71,6 +72,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       },
       updateProfile: async (details) => {
         setAccount(await customerApi.patch<LoyaltyAccount>("/api/loyalty/me", details));
+      },
+      claimBirthday: async () => {
+        setAccount(await customerApi.post<LoyaltyAccount>("/api/loyalty/birthday/claim", {}));
       },
       logout: () => {
         setCustomerToken(null);

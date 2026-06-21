@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { BirthdayRewardCard } from "../components/BirthdayReward";
 import { ItemExtras } from "../components/ItemExtras";
 import { LinkMethod } from "../components/LinkMethod";
 import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
@@ -59,11 +60,14 @@ export function Account() {
   }
   if (!account) return <Navigate to="/loyalty" replace />;
 
+  const birthdayLocked = !!account?.birthday;
+
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateProfile({ name, birthday: birthday || undefined });
+      // Birthday is set-once; only send it the first time so a locked one is never touched.
+      await updateProfile({ name, birthday: birthdayLocked ? undefined : birthday || undefined });
       toast("Profile updated.");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't save.", "error");
@@ -205,7 +209,9 @@ export function Account() {
       <div className="mt-6">
         {/* MY ACCOUNT */}
         {tab === "account" && (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-6">
+            <BirthdayRewardCard actionableOnly />
+            <div className="grid gap-6 md:grid-cols-2">
             <div className="rounded-2xl bg-espresso p-6 text-cream shadow-md">
               <p className="text-sm text-oat">Beans balance</p>
               <p className="mt-1 font-display text-5xl font-bold">{account.beanBalance}</p>
@@ -238,15 +244,30 @@ export function Account() {
                     className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
                   />
                 </label>
-                <label className="mt-3 block text-sm font-semibold text-espresso">
-                  Birthday <span className="font-normal text-charcoal/50">(optional)</span>
+                <div className="mt-3">
+                  <label className="block text-sm font-semibold text-espresso" htmlFor="birthday">
+                    Date of birth <span className="font-normal text-charcoal/50">(optional)</span>
+                  </label>
                   <input
+                    id="birthday"
                     type="date"
                     value={birthday}
+                    disabled={birthdayLocked}
+                    max={new Date().toISOString().slice(0, 10)}
                     onChange={(e) => setBirthday(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal disabled:cursor-not-allowed disabled:bg-oat/40 disabled:text-charcoal/60"
                   />
-                </label>
+                  {birthdayLocked ? (
+                    <p className="mt-1.5 text-xs text-charcoal/50">
+                      🔒 Your birthday is saved and locked. To change it, contact Bean Avenue support.
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-charcoal/50">
+                      We use your birthday only to provide your birthday reward and related account
+                      benefits. Once saved it can't be changed without contacting support.
+                    </p>
+                  )}
+                </div>
                 <button
                   type="submit"
                   disabled={saving}
@@ -266,6 +287,7 @@ export function Account() {
                   <LinkMethod channel="email" />
                 </div>
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -295,7 +317,14 @@ export function Account() {
 
         {/* MY REWARDS */}
         {tab === "rewards" && (
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="space-y-6">
+            <section>
+              <h2 className="font-display text-xl font-bold text-espresso">Birthday reward</h2>
+              <div className="mt-3">
+                <BirthdayRewardCard />
+              </div>
+            </section>
+            <div className="grid gap-6 lg:grid-cols-2">
             <section>
               <h2 className="font-display text-xl font-bold text-espresso">Redeemed rewards</h2>
               {redemptions.length === 0 ? (
@@ -354,6 +383,7 @@ export function Account() {
                 </ul>
               )}
             </section>
+            </div>
           </div>
         )}
 

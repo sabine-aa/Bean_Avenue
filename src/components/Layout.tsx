@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
-import { ChevronDownIcon, UserIcon } from "./icons";
+import { ChevronDownIcon, InstagramIcon, MapPinIcon, PhoneIcon, UserIcon, WhatsAppIcon } from "./icons";
 import { NotificationBell } from "./NotificationBell";
 
 const ACCOUNT_LINKS = [
@@ -191,12 +191,12 @@ export function Layout() {
             {account && <NotificationBell />}
             <ProfileMenu />
             <button
-              className="rounded-lg p-2 text-xl lg:hidden"
-              aria-label="Toggle menu"
+              className="rounded-lg p-2 text-xl leading-none lg:hidden"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((v) => !v)}
             >
-              ☰
+              {menuOpen ? "✕" : "☰"}
             </button>
           </div>
         </div>
@@ -279,53 +279,69 @@ export function Layout() {
       </main>
 
       <footer className="mt-16 bg-espresso text-cream">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-6xl gap-x-8 gap-y-12 px-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="flex items-center gap-2">
-              <img src="/bean.png" alt="" className="h-8 w-8 brightness-0 invert" />
-              <p className="font-display text-xl font-bold">Bean Avenue</p>
+            <div className="flex items-center gap-2.5">
+              <img src="/bean.png" alt="" className="h-9 w-9 brightness-0 invert" />
+              <p className="font-display text-2xl font-bold">Bean Avenue</p>
             </div>
-            <p className="mt-2 text-sm text-oat">Brews, bonds and business.</p>
-            <p className="mt-4 text-sm text-oat">{ADDRESS}</p>
+            <p className="mt-3 text-base text-oat">Brews, bonds and business.</p>
             <a
-              href="https://www.google.com/maps/search/?api=1&query=Bean%20Avenue%20Aley%20Lebanon"
+              href={MAPS_LINK}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 inline-block text-sm text-sage underline-offset-2 hover:underline"
+              className="mt-4 inline-flex items-center gap-2 text-base text-oat transition hover:text-cream"
             >
-              Open in Maps →
+              <MapPinIcon className="h-5 w-5 shrink-0 text-sage" />
+              {ADDRESS}
             </a>
           </div>
+
           <div>
-            <p className="font-semibold">Hours</p>
-            <ul className="mt-3 space-y-1 text-sm text-oat">
+            <p className="font-display text-lg font-bold">Hours</p>
+            <ul className="mt-4 space-y-2 text-base text-oat">
               {HOURS.map((h) => (
-                <li key={h.day} className="flex justify-between gap-4">
+                <li key={h.day} className="flex items-baseline justify-between gap-4">
                   <span>{h.day}</span>
-                  <span>
+                  <span className="tabular-nums text-cream/90">
                     {h.open} – {h.close}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
+
           <div>
-            <p className="font-semibold">Find your way</p>
-            <ul className="mt-3 space-y-2 text-sm text-oat">
-              <li><Link to="/menu" className="hover:text-cream">Menu</Link></li>
-              <li><Link to="/rooms" className="hover:text-cream">Rooms & Spaces</Link></li>
-              <li><Link to="/loyalty" className="hover:text-cream">Loyalty — earn beans</Link></li>
-              <li><Link to="/admin" className="hover:text-cream">Staff login</Link></li>
+            <p className="font-display text-lg font-bold">Find your way</p>
+            <ul className="mt-4 space-y-1 text-base text-oat">
+              {[
+                { to: "/menu", label: "Menu" },
+                { to: "/rooms", label: "Rooms & Spaces" },
+                { to: "/events", label: "Events & Workshops" },
+                { to: "/loyalty", label: "Loyalty — earn beans" },
+                { to: "/admin", label: "Staff login" },
+              ].map((l) => (
+                <li key={l.to}>
+                  <Link to={l.to} className="-mx-2 block rounded-lg px-2 py-1.5 transition hover:bg-mocha/60 hover:text-cream">
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
+
           <div>
-            <p className="font-semibold">Say hello</p>
-            <ul className="mt-3 space-y-2 text-sm text-oat">
+            <p className="font-display text-lg font-bold">Say hello</p>
+            <ul className="mt-4 space-y-1 text-base text-oat">
               <li>
-                <a href={`tel:${PHONE_TEL}`} className="hover:text-cream">{PHONE_DISPLAY}</a>
+                <a href={`tel:${PHONE_TEL}`} className="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-mocha/60 hover:text-cream">
+                  <PhoneIcon className="h-5 w-5 shrink-0 text-sage" />
+                  {PHONE_DISPLAY}
+                </a>
               </li>
               <li>
-                <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="hover:text-cream">
+                <a href={INSTAGRAM_URL} target="_blank" rel="noreferrer" className="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-mocha/60 hover:text-cream">
+                  <InstagramIcon className="h-5 w-5 shrink-0 text-sage" />
                   @beanavenue.lb
                 </a>
               </li>
@@ -334,13 +350,14 @@ export function Layout() {
               href={WHATSAPP_URL}
               target="_blank"
               rel="noreferrer"
-              className="btn-3d mt-4 inline-block rounded-full bg-sage px-5 py-2 text-sm font-semibold text-cream"
+              className="btn-3d mt-5 inline-flex items-center gap-2.5 rounded-full bg-sage px-6 py-3 text-base font-semibold text-cream"
             >
-              💬 WhatsApp us
+              <WhatsAppIcon className="h-5 w-5" />
+              WhatsApp us
             </a>
           </div>
         </div>
-        <div className="border-t border-mocha py-4 text-center text-xs text-oat">
+        <div className="border-t border-mocha py-5 text-center text-sm text-oat">
           © {new Date().getFullYear()} Bean Avenue. Made with too much espresso.
         </div>
       </footer>

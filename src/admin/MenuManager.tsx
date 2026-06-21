@@ -12,6 +12,9 @@ const EMPTY = {
   photo: "",
   tags: [] as string[],
   optionsJson: "[]",
+  imageFit: "cover" as "cover" | "contain",
+  focalX: 50,
+  focalY: 50,
 };
 
 export function AdminMenuManager() {
@@ -57,6 +60,9 @@ export function AdminMenuManager() {
             photo: item.photo ?? "",
             tags: item.tags,
             optionsJson: JSON.stringify(item.options, null, 2),
+            imageFit: item.imageFit === "contain" ? "contain" : "cover",
+            focalX: item.focalX ?? 50,
+            focalY: item.focalY ?? 50,
           }
         : EMPTY
     );
@@ -79,6 +85,9 @@ export function AdminMenuManager() {
       photo: form.photo || null,
       tags: form.tags,
       options,
+      imageFit: form.imageFit,
+      focalX: form.focalX,
+      focalY: form.focalY,
     };
     try {
       if (creating) await api.post("/api/menu", body);
@@ -205,6 +214,87 @@ export function AdminMenuManager() {
               className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
             />
           </label>
+          <div className="text-sm font-semibold text-espresso sm:col-span-2">
+            Image display
+            {/* Fit mode */}
+            <div className="mt-2 flex flex-wrap gap-2 font-normal">
+              {(["cover", "contain"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setForm({ ...form, imageFit: f })}
+                  className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+                    form.imageFit === f
+                      ? "border-espresso bg-espresso text-cream"
+                      : "border-oat bg-white text-espresso hover:border-espresso"
+                  }`}
+                >
+                  {f === "cover" ? "Fill card (cover)" : "Show whole product (contain)"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs font-normal text-charcoal/50">
+              <b>Fill</b> crops the photo to fill the card — best for most photos.{" "}
+              <b>Contain</b> shows the entire product on a neutral background — use it only
+              when filling would cut off part of the product.
+            </p>
+
+            {/* Live previews at desktop + mobile card sizes */}
+            <div className="mt-3 flex flex-wrap gap-5 font-normal">
+              <div>
+                <p className="mb-1 text-xs font-semibold text-charcoal/60">Desktop card</p>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    if (form.imageFit !== "cover") return;
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const x = Math.round(((e.clientX - r.left) / r.width) * 100);
+                    const y = Math.round(((e.clientY - r.top) / r.height) * 100);
+                    setForm({
+                      ...form,
+                      focalX: Math.max(0, Math.min(100, x)),
+                      focalY: Math.max(0, Math.min(100, y)),
+                    });
+                  }}
+                  className={`relative block w-64 overflow-hidden rounded-xl border border-oat ${
+                    form.imageFit === "cover" ? "cursor-crosshair" : "cursor-default"
+                  }`}
+                  aria-label="Set focal point"
+                >
+                  <Img
+                    src={form.photo || null}
+                    alt={form.name || "Product preview"}
+                    fit={form.imageFit}
+                    position={`${form.focalX}% ${form.focalY}%`}
+                    className="aspect-[4/3] w-full bg-oat/30"
+                  />
+                  {form.photo && form.imageFit === "cover" && (
+                    <span
+                      className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cream bg-espresso/30 ring-2 ring-espresso"
+                      style={{ left: `${form.focalX}%`, top: `${form.focalY}%` }}
+                    />
+                  )}
+                </button>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-semibold text-charcoal/60">Mobile card</p>
+                <div className="w-40 overflow-hidden rounded-xl border border-oat">
+                  <Img
+                    src={form.photo || null}
+                    alt={form.name || "Product preview"}
+                    fit={form.imageFit}
+                    position={`${form.focalX}% ${form.focalY}%`}
+                    className="aspect-[4/3] w-full bg-oat/30"
+                  />
+                </div>
+              </div>
+            </div>
+            <p className="mt-2 text-xs font-normal text-charcoal/50">
+              {form.imageFit === "cover"
+                ? "Click the desktop preview to choose which part of the photo stays visible (the focal point ●). Confirm the product looks right on both sizes before saving."
+                : "Contain shows the whole product, so no focal point is needed."}
+            </p>
+          </div>
           <fieldset className="text-sm font-semibold text-espresso">
             Dietary tags
             <div className="mt-1 flex gap-3 font-normal">
@@ -267,7 +357,13 @@ export function AdminMenuManager() {
               <button onClick={() => move(idx, -1)} aria-label="Move up" className="px-1 text-charcoal/40 hover:text-espresso">▲</button>
               <button onClick={() => move(idx, 1)} aria-label="Move down" className="px-1 text-charcoal/40 hover:text-espresso">▼</button>
             </div>
-            <Img src={item.photo} alt={item.name} className="h-14 w-14 rounded-xl" />
+            <Img
+              src={item.photo}
+              alt={item.name}
+              fit={item.imageFit === "contain" ? "contain" : "cover"}
+              position={`${item.focalX ?? 50}% ${item.focalY ?? 50}%`}
+              className="h-14 w-14 shrink-0 rounded-xl bg-oat/30"
+            />
             <div className="flex-1">
               <p className="font-semibold text-espresso">
                 {item.name}

@@ -2,11 +2,13 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLayout } from "./admin/AdminLayout";
 import { AdminAddons } from "./admin/AddonsManager";
 import { AdminBanners } from "./admin/BannerManager";
+import { AdminBirthdayRewards } from "./admin/BirthdayRewards";
 import { AdminBookings } from "./admin/Bookings";
 import { AdminCustomers } from "./admin/Customers";
 import { AdminDashboard } from "./admin/Dashboard";
 import { AdminDoughnuts } from "./admin/DoughnutsManager";
 import { AdminEvents } from "./admin/EventsManager";
+import { AdminEventSuggestions } from "./admin/EventSuggestions";
 import { AdminFeatured } from "./admin/FeaturedManager";
 import { AdminLogin } from "./admin/Login";
 import { AdminLoyalty } from "./admin/LoyaltyLedger";
@@ -22,6 +24,7 @@ import { About } from "./pages/About";
 import { Account } from "./pages/Account";
 import { Doughnuts } from "./pages/Doughnuts";
 import { Events } from "./pages/Events";
+import { EventDetails } from "./pages/EventDetails";
 import { BookingSuccess } from "./pages/BookingSuccess";
 import { BookRoom } from "./pages/BookRoom";
 import { Cart } from "./pages/Cart";
@@ -50,6 +53,7 @@ export default function App() {
         <Route path="/booking-success/:number" element={<BookingSuccess />} />
         <Route path="/loyalty" element={<Loyalty />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetails />} />
         <Route path="/account" element={<Account />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
@@ -67,8 +71,10 @@ export default function App() {
         <Route path="rooms" element={<AdminRooms />} />
         <Route path="customers" element={<AdminCustomers />} />
         <Route path="rewards" element={<AdminRewards />} />
+        <Route path="birthday" element={<AdminBirthdayRewards />} />
         <Route path="loyalty" element={<AdminLoyalty />} />
         <Route path="events" element={<AdminEvents />} />
+        <Route path="event-suggestions" element={<AdminEventSuggestions />} />
         <Route path="banners" element={<AdminBanners />} />
         <Route path="subscribers" element={<AdminSubscribers />} />
         <Route path="suggestions" element={<AdminSuggestions />} />

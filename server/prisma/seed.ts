@@ -120,22 +120,9 @@ async function main() {
   await seedDoughnuts(prisma);
   await seedFeatured(prisma);
 
-  // Sample upcoming events (dates relative to today so they always show as upcoming).
-  const day = 24 * 60 * 60 * 1000;
-  const at = (daysAhead: number, hour: number) => {
-    const d = new Date(Date.now() + daysAhead * day);
-    d.setHours(hour, 0, 0, 0);
-    return d;
-  };
-  const events = [
-    { title: "Late-Night Study Session", description: "Free-flowing coffee, quiet corners, and good focus energy. Stay productive till close.", startTime: at(3, 19), price: 0, spots: 20, image: "/photos/study-room-library.jpg", sortOrder: 1 },
-    { title: "Business & Productivity Workshop", description: "A hands-on session on planning, focus, and getting things done — with a coffee in hand.", startTime: at(7, 18), price: 15, spots: 12, image: "/photos/conference-room.jpg", sortOrder: 2 },
-    { title: "Board Game Night", description: "Bring friends, grab a drink, and play. We supply the games and the snacks.", startTime: at(10, 20), price: 5, spots: 24, image: null, sortOrder: 3 },
-    { title: "Coffee Tasting", description: "Taste your way through our beans and learn what makes each cup special.", startTime: at(14, 17), price: 10, spots: 15, image: null, sortOrder: 4 },
-  ];
-  for (const event of events) {
-    await prisma.event.create({ data: event });
-  }
+  // No sample events are seeded — the Events page shows only real events the
+  // manager creates and publishes from the admin dashboard. Until then customers
+  // see the "Something is brewing" empty state.
 
   await prisma.banner.create({
     data: {
@@ -148,7 +135,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${menu.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, ${events.length} events, and 1 banner.`
+    `Seeded ${menu.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, and 1 banner.`
   );
 }
 

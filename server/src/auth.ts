@@ -32,6 +32,18 @@ declare global {
   }
 }
 
+/** True if the request carries a valid admin token. Use for "admins can also see drafts" reads. */
+export function isAdminRequest(req: Request): boolean {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return false;
+  try {
+    const payload = jwt.verify(header.slice(7), SECRET) as { role?: string };
+    return payload.role === "admin";
+  } catch {
+    return false;
+  }
+}
+
 /** Express middleware: attaches req.customerId if a valid customer token is present, but never blocks. */
 export function optionalCustomer(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
