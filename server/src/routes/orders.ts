@@ -1,17 +1,32 @@
 import { Router } from "express";
-import { optionalCustomer, requireAdmin } from "../auth";
+import { isAdminRequest, optionalCustomer, requireAdmin, requireCustomer } from "../auth";
 import { prisma } from "../db";
-import { earnBeans, genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
+import { actorFrom, logActivity } from "../lib/activity";
+import { quoteDelivery } from "../lib/delivery";
+import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
+import { awardOrderBeans, reverseOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
+import { paymentProvider } from "../lib/payments";
 import { outOrder, parseArr, toJson } from "../lib/serialize";
+import { storefrontConfig } from "../lib/settings";
 
-// Customer-friendly notification text per order status.
+// Customer-friendly notification text per order status (pickup + delivery stages).
 const ORDER_NOTIFICATIONS: Record<string, { title: string; message: (n: string) => string }> = {
-  PREPARING: { title: "Order accepted", message: (n) => `We're preparing order ${n} now.` },
-  READY: { title: "Your order is ready", message: (n) => `Order ${n} is ready for pickup.` },
-  PICKED_UP: { title: "Order completed", message: (n) => `Order ${n} is complete. Enjoy! ☕` },
+  RECEIVED: { title: "Order received", message: (n) => `We got your order ${n}. We'll keep you posted.` },
+  ACCEPTED: { title: "Order accepted", message: (n) => `Order ${n} has been accepted.` },
+  PREPARING: { title: "Preparing your order", message: (n) => `Your order ${n} is being prepared.` },
+  READY_FOR_PICKUP: { title: "Ready for pickup", message: (n) => `Order ${n} is ready for pickup.` },
+  READY_FOR_DELIVERY: { title: "Ready for delivery", message: (n) => `Order ${n} is packed and ready for delivery.` },
+  OUT_FOR_DELIVERY: { title: "Out for delivery", message: (n) => `Your order ${n} is out for delivery.` },
+  DELIVERED: { title: "Delivered", message: (n) => `Order ${n} has been delivered. Enjoy! ☕` },
+  COMPLETED: { title: "Order completed", message: (n) => `Order ${n} is complete. Enjoy! ☕` },
   CANCELLED: { title: "Order cancelled", message: (n) => `Order ${n} was cancelled.` },
 };
+
+// Allowed status sets per fulfillment type.
+const PICKUP_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "COMPLETED", "CANCELLED"];
+const DELIVERY_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
+const DONE_STATUSES = ["DELIVERED", "COMPLETED"];
 
 export const ordersRouter = Router();
 
@@ -26,24 +41,28 @@ interface IncomingItem {
 interface OptionChoice { label: string; priceDelta: number }
 interface OptionGroup { name: string; choices: OptionChoice[] }
 
-// POST /api/orders  (public; uses the logged-in customer when a token is present)
-ordersRouter.post("/", optionalCustomer, async (req, res) => {
-  const { customerName, phone, email, pickupTime, promoCode, items } = req.body as {
-    customerName: string;
-    phone: string;
-    email?: string;
-    pickupTime?: string;
-    promoCode?: string;
-    items: IncomingItem[];
-  };
+interface BuiltLine {
+  menuItemId: number;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  selectedOptions: string;
+  addons: string;
+  specialInstructions: string | null;
+  lineTotal: number;
+}
 
-  if (!items?.length) return res.status(400).json({ error: "Your cart is empty." });
+/** Resolve cart lines against the live menu (never trust client prices). */
+async function buildLines(
+  items: IncomingItem[]
+): Promise<{ built: BuiltLine[]; meta: { category: string; unitPrice: number }[]; addonsTotal: number } | { error: string }> {
+  const built: BuiltLine[] = [];
+  const meta: { category: string; unitPrice: number }[] = [];
+  let addonsTotal = 0;
 
-  // Resolve each line against the live menu (never trust client prices).
-  const built = [];
   for (const line of items) {
     const menuItem = await prisma.menuItem.findUnique({ where: { id: Number(line.menuItemId) } });
-    if (!menuItem) return res.status(400).json({ error: "An item in your cart is no longer available." });
+    if (!menuItem) return { error: "An item in your cart is no longer available." };
 
     const groups = parseArr(menuItem.options) as OptionGroup[];
     const selected = (line.selectedOptions ?? []).map((sel) => {
@@ -52,8 +71,6 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
       return { group: sel.group, choice: sel.choice, priceDelta: choice?.priceDelta ?? 0 };
     });
 
-    // Resolve add-ons against the DB (never trust client prices), respecting
-    // availability and each add-on's max quantity.
     const resolvedAddons: { addonId: number; name: string; price: number; quantity: number }[] = [];
     for (const sel of line.addons ?? []) {
       const addon = await prisma.addon.findUnique({ where: { id: Number(sel.addonId) } });
@@ -61,15 +78,14 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
       const qty = Math.min(Math.max(1, Math.round(Number(sel.quantity) || 1)), addon.maxQuantity);
       resolvedAddons.push({ addonId: addon.id, name: addon.name, price: addon.price, quantity: qty });
     }
-    const addonTotal = resolvedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
-
-    const unitPrice = round2(
-      menuItem.price + selected.reduce((s, o) => s + o.priceDelta, 0) + addonTotal
-    );
+    const lineAddonTotal = resolvedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
     const quantity = Number(line.quantity) || 1;
+    const unitPrice = round2(menuItem.price + selected.reduce((s, o) => s + o.priceDelta, 0) + lineAddonTotal);
     const specialInstructions = line.specialInstructions
       ? String(line.specialInstructions).trim().slice(0, 300) || null
       : null;
+
+    addonsTotal += lineAddonTotal * quantity;
     built.push({
       menuItemId: menuItem.id,
       name: menuItem.name,
@@ -80,43 +96,177 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
       specialInstructions,
       lineTotal: round2(unitPrice * quantity),
     });
+    meta.push({ category: menuItem.category, unitPrice });
   }
+  return { built, meta, addonsTotal: round2(addonsTotal) };
+}
+
+/**
+ * Value of an applied reward voucher (loyalty discount), validated against the
+ * logged-in customer. DISCOUNT rewards take $ off; otherwise it's a free item
+ * (cheapest eligible line). Returns 0 when nothing valid is applied.
+ */
+async function loyaltyDiscountFor(
+  code: string | undefined,
+  customerId: number | undefined,
+  meta: { category: string; unitPrice: number }[],
+  subtotal: number
+): Promise<number> {
+  if (!code || !customerId) return 0;
+  const redemption = await prisma.redemption.findUnique({ where: { code: code.trim() }, include: { reward: true } });
+  if (!redemption || redemption.customerId !== customerId || redemption.status !== "ACTIVE") return 0;
+
+  const reward = redemption.reward;
+  if (reward && reward.type === "DISCOUNT" && reward.value > 0) {
+    return round2(Math.min(reward.value, subtotal));
+  }
+  // Free item: discount the cheapest eligible line (matching category if set).
+  const eligible = meta.filter((m) => !reward?.category || m.category === reward.category);
+  const pool = eligible.length ? eligible : meta;
+  if (!pool.length) return 0;
+  const cheapest = pool.reduce((min, m) => Math.min(min, m.unitPrice), Infinity);
+  return round2(Math.min(cheapest, subtotal));
+}
+
+// POST /api/orders  (public; uses the logged-in customer when a token is present)
+ordersRouter.post("/", optionalCustomer, async (req, res) => {
+  const body = req.body as {
+    customerName: string;
+    phone: string;
+    email?: string;
+    fulfillment?: string;
+    pickupTime?: string;
+    promoCode?: string;
+    loyaltyRedemptionCode?: string;
+    paymentMethod?: string;
+    items: IncomingItem[];
+    delivery?: {
+      name?: string; phone?: string; label?: string; addressLine?: string;
+      building?: string; floor?: string; apartment?: string; area?: string;
+      landmark?: string; instructions?: string; lat?: number; lng?: number;
+    };
+  };
+
+  const { customerName, phone, email, items } = body;
+  if (!items?.length) return res.status(400).json({ error: "Your cart is empty." });
+  if (!String(customerName ?? "").trim()) return res.status(400).json({ error: "Please enter your name." });
+  if (!String(phone ?? "").trim()) return res.status(400).json({ error: "Please enter a phone number." });
+
+  const fulfillment = body.fulfillment === "DELIVERY" ? "DELIVERY" : "PICKUP";
+  const config = await storefrontConfig();
+
+  // Build line items + money.
+  const result = await buildLines(items);
+  if ("error" in result) return res.status(400).json({ error: result.error });
+  const { built, meta, addonsTotal } = result;
 
   const subtotal = round2(built.reduce((s, l) => s + l.lineTotal, 0));
-  const discount = promoDiscount(promoCode, subtotal);
-  const total = round2(subtotal - discount);
-  const beansEarned = Math.floor(total);
+  const discount = promoDiscount(body.promoCode, subtotal);
+  const loyaltyDiscount = await loyaltyDiscountFor(body.loyaltyRedemptionCode, req.customerId, meta, round2(subtotal - discount));
+
+  // ---- Delivery: validate availability + minimum BEFORE creating anything. ----
+  let deliveryFee = 0;
+  let deliverySnapshot: Record<string, unknown> = {};
+  if (fulfillment === "DELIVERY") {
+    const d = body.delivery ?? {};
+    if (!String(d.area ?? "").trim()) return res.status(400).json({ error: "Please enter your delivery area." });
+    if (!String(d.addressLine ?? "").trim() && !String(d.building ?? "").trim()) {
+      return res.status(400).json({ error: "Please enter your delivery address." });
+    }
+    const quote = await quoteDelivery({ area: d.area, lat: d.lat, lng: d.lng }, subtotal, config);
+    if (!quote.available) return res.status(422).json({ error: quote.reason, deliveryUnavailable: true });
+    if (quote.belowMinimum) {
+      return res.status(422).json({
+        error: `This area has a minimum order of $${quote.minOrder.toFixed(2)} for delivery. Add a little more to your cart, or choose pickup.`,
+        belowMinimum: true,
+        minOrder: quote.minOrder,
+      });
+    }
+    deliveryFee = quote.fee;
+    deliverySnapshot = {
+      zoneId: quote.zone!.id,
+      zoneName: quote.zone!.name,
+      estimatedDelivery: quote.zone!.estimatedTime,
+      deliveryName: String(d.name ?? customerName).trim().slice(0, 120),
+      deliveryPhone: String(d.phone ?? phone).trim().slice(0, 30),
+      addressLabel: d.label ? String(d.label).slice(0, 20) : null,
+      addressLine: String(d.addressLine ?? "").trim().slice(0, 200) || null,
+      building: String(d.building ?? "").trim().slice(0, 120) || null,
+      floor: String(d.floor ?? "").trim().slice(0, 60) || null,
+      apartment: String(d.apartment ?? "").trim().slice(0, 60) || null,
+      area: String(d.area ?? "").trim().slice(0, 120) || null,
+      landmark: String(d.landmark ?? "").trim().slice(0, 200) || null,
+      deliveryInstructions: String(d.instructions ?? "").trim().slice(0, 400) || null,
+      lat: Number.isFinite(Number(d.lat)) ? Number(d.lat) : null,
+      lng: Number.isFinite(Number(d.lng)) ? Number(d.lng) : null,
+    };
+  }
+
+  // ---- Payment method validity against what the manager enabled. ----
+  let paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
+  const validMethods: string[] = [];
+  if (config.payment.online) validMethods.push("ONLINE");
+  if (fulfillment === "DELIVERY" && config.payment.cashOnDelivery) validMethods.push("CASH_ON_DELIVERY");
+  if (fulfillment === "PICKUP" && config.payment.cashAtPickup) validMethods.push("CASH_AT_PICKUP");
+  if (!validMethods.length) return res.status(400).json({ error: "No payment methods are available right now. Please contact us." });
+  if (!validMethods.includes(paymentMethod)) paymentMethod = validMethods[0];
+
+  // ---- Tax + total. ----
+  const taxable = Math.max(0, round2(subtotal - discount - loyaltyDiscount + deliveryFee));
+  const tax = round2(taxable * (config.tax.rate / 100));
+  const total = round2(subtotal - discount - loyaltyDiscount + deliveryFee + tax);
+  const beansEarned = Math.floor(Math.max(0, subtotal - discount - loyaltyDiscount));
+
   // Prefer the logged-in (verified) customer; fall back to phone for guests.
   let customer = req.customerId
     ? await prisma.customer.findUnique({ where: { id: req.customerId } })
     : null;
   if (!customer && phone) customer = await getOrCreateCustomer(phone, customerName);
 
+  const isOnline = paymentMethod === "ONLINE";
   const order = await prisma.order.create({
     data: {
       number: genNumber("ORD"),
       customerId: customer?.id,
-      customerName,
-      phone,
+      customerName: String(customerName).trim(),
+      phone: String(phone).trim(),
       email: email || null,
+      fulfillment,
+      pickupTime: fulfillment === "PICKUP" ? body.pickupTime || "ASAP" : null,
       subtotal,
+      addonsTotal,
       discount,
+      loyaltyDiscount,
+      deliveryFee,
+      tax,
       total,
-      promoCode: promoCode || null,
-      pickupTime: pickupTime || null,
-      status: "NEW",
+      promoCode: body.promoCode || null,
+      loyaltyRedemptionCode: loyaltyDiscount > 0 ? body.loyaltyRedemptionCode!.trim() : null,
+      paymentMethod,
+      // Online orders are NOT confirmed until the gateway confirms payment.
+      status: isOnline ? "AWAITING_PAYMENT" : "RECEIVED",
+      paymentStatus: isOnline ? "PENDING" : "CASH_DUE",
       beansEarned,
+      ...deliverySnapshot,
       items: { create: built },
     },
     include: { items: true },
   });
 
-  if (customer) {
-    await earnBeans(customer.id, beansEarned, "Order", order.number);
+  // Reserve the reward voucher to this order (returned if the order is undone).
+  if (loyaltyDiscount > 0 && body.loyaltyRedemptionCode) {
+    await prisma.redemption.updateMany({
+      where: { code: body.loyaltyRedemptionCode.trim(), status: "ACTIVE" },
+      data: { status: "CLAIMED", claimedAt: new Date() },
+    });
+  }
+
+  // Cash orders are confirmed immediately; online wait for payment success.
+  if (!isOnline && customer) {
     await notify(customer.id, {
       type: "ORDER",
       title: "Order received",
-      message: `We got your order ${order.number}. We'll let you know when it's ready.`,
+      message: `We got your order ${order.number}. We'll let you know as it progresses.`,
       link: `/order-success/${order.number}`,
     });
   }
@@ -124,59 +274,160 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
   res.status(201).json(outOrder(order));
 });
 
-// GET /api/orders/track/:number  (public)
-ordersRouter.get("/track/:number", async (req, res) => {
+// GET /api/orders/track/:number  (public, but delivery PII only for the owner/admin)
+ordersRouter.get("/track/:number", optionalCustomer, async (req, res) => {
   const order = await prisma.order.findUnique({
     where: { number: req.params.number },
     include: { items: true },
   });
   if (!order) return res.status(404).json({ error: "Order not found." });
-  res.json(outOrder(order));
+
+  // Sensitive delivery contact/address fields are only returned to the order's
+  // owner (or an admin); a bare order number link reveals only status + items.
+  const isOwner = !!order.customerId && order.customerId === req.customerId;
+  const out = outOrder(order) as Record<string, unknown>;
+  if (!isOwner && !isAdminRequest(req)) {
+    for (const k of ["deliveryPhone", "addressLine", "building", "floor", "apartment", "landmark", "deliveryInstructions", "lat", "lng", "email", "phone"]) {
+      delete out[k];
+    }
+  }
+  res.json(out);
+});
+
+// POST /api/orders/:number/cancel  (customer) — rules depend on status
+ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
+  const order = await prisma.order.findUnique({ where: { number: req.params.number } });
+  if (!order || order.customerId !== req.customerId) return res.status(404).json({ error: "Order not found." });
+  if (order.status === "CANCELLED") return res.status(400).json({ error: "This order is already cancelled." });
+  if (DONE_STATUSES.includes(order.status)) return res.status(400).json({ error: "This order is already complete." });
+
+  // Customers may self-cancel only before staff start working on it.
+  if (!["AWAITING_PAYMENT", "RECEIVED"].includes(order.status)) {
+    return res.status(409).json({
+      error: "This order is already being prepared. Please contact Bean Avenue staff to cancel it.",
+      needsStaff: true,
+    });
+  }
+
+  const reason = String(req.body.reason ?? "Cancelled by customer").trim().slice(0, 200) || "Cancelled by customer";
+
+  // Refund a paid online order automatically.
+  let refunded = false;
+  if (order.paymentStatus === "PAID") {
+    const payment = await prisma.payment.findFirst({ where: { orderId: order.id, status: "PAID" } });
+    if (payment) {
+      const r = await paymentProvider.refund(payment.transactionId, payment.amount, payment.refundedAmount, payment.amount);
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: r.status, refundedAmount: r.refundedAmount } });
+      refunded = true;
+    }
+  }
+
+  await prisma.order.update({
+    where: { id: order.id },
+    data: {
+      status: "CANCELLED",
+      cancelReason: reason,
+      cancelledBy: "customer",
+      ...(refunded ? { paymentStatus: "REFUNDED" } : {}),
+    },
+  });
+  await reverseOrderBeans(order.id);
+
+  await notify(order.customerId, {
+    type: "ORDER",
+    title: "Order cancelled",
+    message: refunded
+      ? `Order ${order.number} was cancelled and your payment has been refunded.`
+      : `Order ${order.number} was cancelled.`,
+    link: `/order-success/${order.number}`,
+  });
+
+  const updated = await prisma.order.findUnique({ where: { id: order.id }, include: { items: true } });
+  res.json(outOrder(updated!));
 });
 
 // GET /api/orders  (admin) — filtered list
 ordersRouter.get("/", requireAdmin, async (req, res) => {
-  const { status, search } = req.query as Record<string, string>;
+  const { status, search, fulfillment } = req.query as Record<string, string>;
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
+  if (fulfillment) where.fulfillment = fulfillment;
   if (search) {
     where.OR = [
       { customerName: { contains: search } },
       { phone: { contains: search } },
       { number: { contains: search } },
+      { area: { contains: search } },
     ];
   }
   const orders = await prisma.order.findMany({
     where,
-    include: { items: true },
+    include: { items: true, payments: { orderBy: { createdAt: "desc" } } },
     orderBy: { createdAt: "desc" },
   });
   res.json(orders.map(outOrder));
 });
 
-// PATCH /api/orders/:id/status  (admin)  { status, reason? }
+// PATCH /api/orders/:id/status  (admin/staff)  { status, reason? }
 ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
   const status = String(req.body.status);
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) return res.status(404).json({ error: "Order not found." });
+
+  const allowed = order.fulfillment === "DELIVERY" ? DELIVERY_STATUSES : PICKUP_STATUSES;
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: `Invalid status for a ${order.fulfillment.toLowerCase()} order.` });
+  }
   if (status === "CANCELLED" && !String(req.body.reason ?? "").trim()) {
     return res.status(400).json({ error: "A reason is required to cancel an order." });
   }
   const reason = status === "CANCELLED" ? String(req.body.reason).trim() : null;
+  const actor = actorFrom(req);
 
-  const order = await prisma.order.update({
-    where: { id: Number(req.params.id) },
-    data: { status, ...(status === "CANCELLED" ? { cancelReason: reason } : {}) },
+  // Cash orders become collected (and confirmed) once completed/delivered.
+  const cashSettled = DONE_STATUSES.includes(status) && order.paymentMethod !== "ONLINE" && order.paymentStatus === "CASH_DUE";
+
+  const updated = await prisma.order.update({
+    where: { id },
+    data: {
+      status,
+      ...(status === "CANCELLED" ? { cancelReason: reason, cancelledBy: actor } : {}),
+      ...(cashSettled ? { paymentStatus: "CASH_COLLECTED" } : {}),
+    },
     include: { items: true },
   });
 
+  // Loyalty: award on completion; reverse on cancel. Both idempotent.
+  if (DONE_STATUSES.includes(status)) await awardOrderBeans(id);
+  if (status === "CANCELLED") await reverseOrderBeans(id);
+
+  await logActivity(actor, "STATUS_CHANGE", `Order ${order.number} → ${status}${reason ? ` (${reason})` : ""}`, "order", order.number);
+
   const meta = ORDER_NOTIFICATIONS[status];
-  if (meta && order.customerId) {
-    await notify(order.customerId, {
-      type: "ORDER",
+  if (meta && updated.customerId) {
+    await notify(updated.customerId, {
+      type: status.includes("DELIVER") ? "DELIVERY" : "ORDER",
       title: meta.title,
-      message:
-        status === "CANCELLED" && reason
-          ? `${meta.message(order.number)} Reason: ${reason}`
-          : meta.message(order.number),
+      message: status === "CANCELLED" && reason ? `${meta.message(updated.number)} Reason: ${reason}` : meta.message(updated.number),
+      link: `/order-success/${updated.number}`,
+    });
+  }
+  res.json(outOrder(updated));
+});
+
+// PATCH /api/orders/:id/assign  (admin) — assign a delivery to a staff member/driver
+ordersRouter.patch("/:id/assign", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  const driverName = String(req.body.driverName ?? "").trim().slice(0, 120) || null;
+  const order = await prisma.order.update({ where: { id }, data: { driverName }, include: { items: true } });
+  const actor = actorFrom(req);
+  await logActivity(actor, "ASSIGN_DRIVER", `Order ${order.number} assigned to ${driverName ?? "—"}`, "order", order.number);
+  if (driverName && order.customerId) {
+    await notify(order.customerId, {
+      type: "DELIVERY",
+      title: "Driver assigned",
+      message: `${driverName} will deliver your order ${order.number}.`,
       link: `/order-success/${order.number}`,
     });
   }

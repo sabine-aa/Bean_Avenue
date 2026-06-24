@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { AddressFields, AddressFormValue, emptyAddress } from "../components/AddressFields";
 import { BirthdayRewardCard } from "../components/BirthdayReward";
 import { ItemExtras } from "../components/ItemExtras";
 import { LinkMethod } from "../components/LinkMethod";
@@ -7,13 +8,14 @@ import { OrderStatusTimeline } from "../components/OrderStatusTimeline";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { useToast } from "../context/ToastContext";
-import { api, formatDateTime, money } from "../lib/api";
-import { ORDER_STATUS_META } from "../lib/orderStatus";
-import type { MenuItem, Order } from "../types";
+import { customerApi, formatDateTime, money } from "../lib/api";
+import { isTerminal, normalizeStatus, paymentStatusMeta, statusMeta } from "../lib/orderStatus";
+import type { MenuItem, Order, SavedAddress } from "../types";
 
 const TABS = [
   { key: "account", label: "My Account" },
   { key: "orders", label: "My Orders" },
+  { key: "addresses", label: "Addresses" },
   { key: "recent", label: "Recently Ordered" },
   { key: "rewards", label: "My Rewards" },
   { key: "bookings", label: "My Bookings" },
@@ -45,8 +47,19 @@ export function Account() {
   // Pull a fresh copy (orders/bookings) when the page opens, and load the menu for reorder.
   useEffect(() => {
     refresh().catch(() => {});
-    api.get<MenuItem[]>("/api/menu").then(setMenu).catch(() => {});
+    customerApi.get<MenuItem[]>("/api/menu").then(setMenu).catch(() => {});
   }, [refresh]);
+
+  async function cancelOrder(order: Order) {
+    if (!confirm(`Cancel order ${order.number}?`)) return;
+    try {
+      await customerApi.post(`/api/orders/${order.number}/cancel`, {});
+      await refresh();
+      toast("Order cancelled.");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't cancel the order.", "error");
+    }
+  }
 
   useEffect(() => {
     if (account) {
@@ -105,36 +118,43 @@ export function Account() {
   const redemptions = account.redemptions ?? [];
 
   function OrderCard({ order }: { order: Order }) {
-    const meta = ORDER_STATUS_META[order.status] ?? { label: order.status, badge: "bg-oat" };
+    const meta = statusMeta(order.status);
+    const status = normalizeStatus(order.status);
     const canReorder = order.items.some((it) => menu.find((m) => m.id === it.menuItemId)?.inStock);
-    const isActive = order.status !== "PICKED_UP" && order.status !== "CANCELLED";
+    const isActive = !isTerminal(order.status);
+    const canCancel = ["AWAITING_PAYMENT", "RECEIVED"].includes(status) && order.paymentStatus !== "REFUNDED";
     return (
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="font-display font-bold text-espresso">{order.number}</p>
+            <p className="font-display font-bold text-espresso">
+              {order.fulfillment === "DELIVERY" ? "🛵" : "🏪"} {order.number}
+            </p>
             <p className="text-xs text-charcoal/50">{formatDateTime(order.createdAt)}</p>
           </div>
-          <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${meta.badge}`}>
-            {meta.label}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${paymentStatusMeta(order.paymentStatus).badge}`}>
+              {paymentStatusMeta(order.paymentStatus).label}
+            </span>
+          </div>
         </div>
 
         {/* status progress */}
         <div className="mt-3 rounded-xl bg-oat/30 p-3">
-          <OrderStatusTimeline status={order.status} compact />
+          <OrderStatusTimeline status={order.status} fulfillment={order.fulfillment} compact />
         </div>
+
+        {order.fulfillment === "DELIVERY" && order.area && (
+          <p className="mt-2 text-xs text-charcoal/60">📍 {[order.building, order.area].filter(Boolean).join(", ")}</p>
+        )}
 
         <ul className="mt-3 space-y-1.5 text-sm">
           {order.items.map((it) => (
             <li key={it.id} className="flex justify-between gap-2">
               <span>
                 {it.quantity}× {it.name}
-                <ItemExtras
-                  options={it.selectedOptions}
-                  addons={it.addons}
-                  instructions={it.specialInstructions}
-                />
+                <ItemExtras options={it.selectedOptions} addons={it.addons} instructions={it.specialInstructions} />
               </span>
               <span className="font-medium">{money(it.lineTotal)}</span>
             </li>
@@ -143,11 +163,17 @@ export function Account() {
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-oat pt-3">
           <div className="text-sm">
             <span className="font-bold text-espresso">Total {money(order.total)}</span>
-            {order.beansEarned > 0 && (
-              <span className="ml-2 text-sage-dark">· 🫘 +{order.beansEarned} beans</span>
-            )}
+            {order.beansEarned > 0 && <span className="ml-2 text-sage-dark">· 🫘 +{order.beansEarned} beans</span>}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {canCancel && (
+              <button
+                onClick={() => cancelOrder(order)}
+                className="rounded-full border border-terracotta/40 px-4 py-2 text-sm font-semibold text-terracotta-dark transition hover:bg-terracotta hover:text-cream"
+              >
+                Cancel
+              </button>
+            )}
             {isActive && (
               <Link
                 to={`/order-success/${order.number}`}
@@ -303,6 +329,9 @@ export function Account() {
           </div>
         )}
 
+        {/* ADDRESSES */}
+        {tab === "addresses" && <AddressesTab addresses={account.addresses ?? []} onChange={() => refresh()} />}
+
         {/* RECENTLY ORDERED */}
         {tab === "recent" && (
           <div className="space-y-4">
@@ -423,6 +452,121 @@ export function Account() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AddressesTab({ addresses, onChange }: { addresses: SavedAddress[]; onChange: () => void }) {
+  const toast = useToast();
+  const [editing, setEditing] = useState<AddressFormValue | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function startNew() {
+    setEditingId(null);
+    setEditing(emptyAddress());
+  }
+  function startEdit(a: SavedAddress) {
+    setEditingId(a.id);
+    setEditing({
+      label: a.label, fullName: a.fullName, phone: a.phone, addressLine: a.addressLine,
+      building: a.building, floor: a.floor, apartment: a.apartment, area: a.area,
+      landmark: a.landmark, instructions: a.instructions, lat: a.lat, lng: a.lng,
+    });
+  }
+
+  async function save() {
+    if (!editing) return;
+    if (!editing.fullName.trim() || !editing.phone.trim() || !editing.area.trim()) {
+      return toast("Name, phone and area are required.", "error");
+    }
+    setSaving(true);
+    try {
+      if (editingId) await customerApi.patch(`/api/addresses/${editingId}`, editing);
+      else await customerApi.post("/api/addresses", editing);
+      setEditing(null);
+      setEditingId(null);
+      onChange();
+      toast("Address saved.");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't save.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(a: SavedAddress) {
+    if (!confirm(`Delete the "${a.label}" address?`)) return;
+    try {
+      await customerApi.delete(`/api/addresses/${a.id}`);
+      onChange();
+      toast("Address deleted.");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't delete.", "error");
+    }
+  }
+
+  async function makeDefault(a: SavedAddress) {
+    try {
+      await customerApi.patch(`/api/addresses/${a.id}`, { isDefault: true });
+      onChange();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 className="font-display text-xl font-bold text-espresso">{editingId ? "Edit address" : "New address"}</h2>
+        <div className="mt-4">
+          <AddressFields value={editing} onChange={setEditing} />
+        </div>
+        <div className="mt-5 flex gap-2">
+          <button onClick={save} disabled={saving} className="btn-3d rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream disabled:opacity-60">
+            {saving ? "Saving…" : "Save address"}
+          </button>
+          <button onClick={() => { setEditing(null); setEditingId(null); }} className="rounded-full border border-oat px-6 py-2.5 font-semibold text-espresso">
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-charcoal/60">Saved delivery addresses for faster checkout.</p>
+        <button onClick={startNew} className="btn-3d rounded-full bg-espresso px-5 py-2 text-sm font-semibold text-cream">+ Add address</button>
+      </div>
+      {addresses.length === 0 ? (
+        <div className="rounded-2xl bg-white p-10 text-center text-charcoal/60 shadow-sm">No saved addresses yet.</div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {addresses.map((a) => (
+            <div key={a.id} className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-display font-bold text-espresso">{a.label}</span>
+                {a.isDefault ? (
+                  <span className="rounded-full bg-sage/20 px-2.5 py-0.5 text-xs font-semibold text-sage-dark">Default</span>
+                ) : (
+                  <button onClick={() => makeDefault(a)} className="text-xs font-semibold text-terracotta hover:underline">Make default</button>
+                )}
+              </div>
+              <p className="mt-2 text-sm text-charcoal/80">{a.fullName} · {a.phone}</p>
+              <p className="text-sm text-charcoal/60">
+                {[a.building, a.addressLine, a.apartment && `Apt ${a.apartment}`, a.area].filter(Boolean).join(", ")}
+              </p>
+              {a.landmark && <p className="text-xs text-charcoal/50">Near {a.landmark}</p>}
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => startEdit(a)} className="rounded-full border border-oat px-4 py-1.5 text-sm font-semibold text-espresso hover:bg-oat">Edit</button>
+                <button onClick={() => remove(a)} className="rounded-full border border-terracotta/40 px-4 py-1.5 text-sm font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

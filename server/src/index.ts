@@ -3,12 +3,14 @@ import cors from "cors";
 import express from "express";
 import { signToken } from "./auth";
 import { addonsRouter } from "./routes/addons";
+import { addressesRouter } from "./routes/addresses";
 import { bannersRouter } from "./routes/banners";
 import { birthdayRouter } from "./routes/birthday";
 import { bookingsRouter } from "./routes/bookings";
 import { categoriesRouter } from "./routes/categories";
 import { customerAuthRouter } from "./routes/customerAuth";
 import { customersRouter } from "./routes/customers";
+import { deliveryRouter } from "./routes/delivery";
 import { doughnutsRouter } from "./routes/doughnuts";
 import { eventsRouter } from "./routes/events";
 import { eventSuggestionsRouter } from "./routes/eventSuggestions";
@@ -17,16 +19,22 @@ import { loyaltyRouter } from "./routes/loyalty";
 import { menuRouter } from "./routes/menu";
 import { notificationsRouter } from "./routes/notifications";
 import { ordersRouter } from "./routes/orders";
+import { paymentsRouter } from "./routes/payments";
 import { reportsRouter } from "./routes/reports";
 import { rewardsRouter } from "./routes/rewards";
 import { roomsRouter } from "./routes/rooms";
 import { subscribersRouter } from "./routes/subscribers";
 import { suggestionsRouter } from "./routes/suggestions";
+import { uploadsRouter, UPLOADS_DIR } from "./routes/uploads";
 import { votingRouter } from "./routes/voting";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+// Raised limit so base64 image uploads (admin photos) fit in the JSON body.
+app.use(express.json({ limit: "12mb" }));
+
+// Serve uploaded images (GET); the POST upload route is mounted just after.
+app.use("/api/uploads", express.static(UPLOADS_DIR));
 
 // Admin login — checks credentials from .env and returns a token.
 app.post("/api/auth/login", (req, res) => {
@@ -50,6 +58,9 @@ app.use("/api/categories", categoriesRouter);
 app.use("/api/rooms", roomsRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/orders", ordersRouter);
+app.use("/api/payments", paymentsRouter);
+app.use("/api/delivery", deliveryRouter);
+app.use("/api/addresses", addressesRouter);
 app.use("/api/loyalty", loyaltyRouter);
 app.use("/api/birthday", birthdayRouter);
 app.use("/api/rewards", rewardsRouter);
@@ -63,6 +74,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/subscribers", subscribersRouter);
 app.use("/api/banners", bannersRouter);
 app.use("/api/reports", reportsRouter);
+app.use("/api/uploads", uploadsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 

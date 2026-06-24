@@ -6,6 +6,7 @@ import { AdminBirthdayRewards } from "./admin/BirthdayRewards";
 import { AdminBookings } from "./admin/Bookings";
 import { AdminCustomers } from "./admin/Customers";
 import { AdminDashboard } from "./admin/Dashboard";
+import { AdminDelivery } from "./admin/Delivery";
 import { AdminDoughnuts } from "./admin/DoughnutsManager";
 import { AdminEvents } from "./admin/EventsManager";
 import { AdminEventSuggestions } from "./admin/EventSuggestions";
@@ -14,6 +15,7 @@ import { AdminLogin } from "./admin/Login";
 import { AdminLoyalty } from "./admin/LoyaltyLedger";
 import { AdminMenuManager } from "./admin/MenuManager";
 import { AdminOrders } from "./admin/Orders";
+import { AdminPayments } from "./admin/Payments";
 import { AdminReports } from "./admin/Reports";
 import { AdminRewards } from "./admin/RewardsManager";
 import { AdminRooms } from "./admin/RoomsManagement";
@@ -63,6 +65,8 @@ export default function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="delivery" element={<AdminDelivery />} />
+        <Route path="payments" element={<AdminPayments />} />
         <Route path="menu" element={<AdminMenuManager />} />
         <Route path="addons" element={<AdminAddons />} />
         <Route path="doughnuts" element={<AdminDoughnuts />} />

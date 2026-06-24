@@ -8,8 +8,15 @@ export const reportsRouter = Router();
 
 reportsRouter.use(requireAdmin);
 
-const INACTIVE_ORDER = ["CANCELLED"];
+// AWAITING_PAYMENT orders are unconfirmed (online payment not completed) so they
+// don't count as revenue. Legacy statuses (NEW/READY/PICKED_UP) still appear on
+// old orders, so the "open orders" list includes them too.
+const INACTIVE_ORDER = ["CANCELLED", "AWAITING_PAYMENT"];
 const INACTIVE_BOOKING = ["CANCELLED", "NO_SHOW"];
+const OPEN_ORDER_STATUSES = [
+  "NEW", "RECEIVED", "ACCEPTED", "PREPARING",
+  "READY", "READY_FOR_PICKUP", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY",
+];
 
 // GET /api/reports/dashboard
 reportsRouter.get("/dashboard", async (_req, res) => {
@@ -19,7 +26,7 @@ reportsRouter.get("/dashboard", async (_req, res) => {
 
   const [openOrders, todaysBookings, ordersToday, newCustomersToday, rooms] = await Promise.all([
     prisma.order.findMany({
-      where: { status: { in: ["NEW", "PREPARING", "READY"] } },
+      where: { status: { in: OPEN_ORDER_STATUSES } },
       include: { items: true },
       orderBy: { createdAt: "asc" },
     }),

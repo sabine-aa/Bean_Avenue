@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { ImageField } from "../components/ImageField";
 import { Img } from "../components/Img";
 import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
@@ -206,13 +207,9 @@ export function AdminMenuManager() {
               className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
             />
           </label>
-          <label className="text-sm font-semibold text-espresso">
-            Photo URL
-            <input
-              value={form.photo}
-              onChange={(e) => setForm({ ...form, photo: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
-            />
+          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+            Photo
+            <ImageField value={form.photo} onChange={(photo) => setForm({ ...form, photo })} />
           </label>
           <div className="text-sm font-semibold text-espresso sm:col-span-2">
             Image display

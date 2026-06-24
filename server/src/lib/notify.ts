@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 
-type NotificationType = "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS";
+type NotificationType = "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS" | "PAYMENT" | "DELIVERY";
 
 /**
  * Save an in-website notification for a customer. No-op for guest actions

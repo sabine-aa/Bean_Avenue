@@ -101,6 +101,7 @@ model Customer {
   suggestions   Suggestion[]
   notifications Notification[]
   birthdayVouchers BirthdayVoucher[]
+  addresses     Address[]
 }
 
 // A complimentary birthday reward voucher (one free cupcake). Separate from the
@@ -191,6 +192,7 @@ model Reward {
   category     String? // matches a menu category, e.g. "Espresso Based"
   cost         Int // beans required to redeem
   type         String       @default("FREE_ITEM") // "FREE_ITEM" | "DISCOUNT"
+  value        Float        @default(0) // DISCOUNT rewards: $ off the order (0 = use free-item logic)
   icon         String       @default("🎁")
   image        String? // product image URL/path; falls back to icon when empty
   redeemMethod String       @default("Show voucher at counter")
@@ -224,16 +226,137 @@ model Order {
   customerName String
   phone        String
   email        String?
-  subtotal     Float
-  discount     Float       @default(0)
-  total        Float
-  promoCode    String?
-  pickupTime   String?
-  status       String      @default("NEW") // NEW | PREPARING | READY | PICKED_UP | CANCELLED
+
+  // ---- Fulfillment ----
+  fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
+  pickupTime   String?     // pickup: "ASAP" or a scheduled time string
+
+  // ---- Money breakdown (all Float, rounded with round2) ----
+  subtotal        Float    // sum of line totals (includes add-ons & option deltas)
+  addonsTotal     Float    @default(0) // portion of subtotal that is add-ons (for the summary line)
+  discount        Float    @default(0) // promo-code discount
+  loyaltyDiscount Float    @default(0) // discount from an applied reward voucher
+  deliveryFee     Float    @default(0)
+  tax             Float    @default(0)
+  total           Float
+  promoCode       String?
+  loyaltyRedemptionCode String? // redemption voucher applied at checkout (returned on cancel)
+
+  // ---- Status & lifecycle ----
+  // Order Received → Accepted → Preparing → (Ready for Pickup → Completed)
+  //                                       → (Ready for Delivery → Out for Delivery → Delivered)
+  // AWAITING_PAYMENT = online order placed but not yet paid (NOT confirmed).
+  // Legacy values NEW/READY/PICKED_UP are aliased in the frontend status helper.
+  status       String      @default("RECEIVED") // AWAITING_PAYMENT | RECEIVED | ACCEPTED | PREPARING | READY_FOR_PICKUP | READY_FOR_DELIVERY | OUT_FOR_DELIVERY | DELIVERED | COMPLETED | CANCELLED
   cancelReason String?
-  beansEarned  Int         @default(0)
+  cancelledBy  String?     // "customer" | "staff" | admin name
+
+  // ---- Payment ----
+  paymentMethod String     @default("CASH_AT_PICKUP") // ONLINE | CASH_ON_DELIVERY | CASH_AT_PICKUP
+  // PENDING | PAID | FAILED | CANCELLED | REFUNDED | PARTIALLY_REFUNDED | CASH_DUE | CASH_COLLECTED
+  paymentStatus String     @default("CASH_DUE")
+  paidAt       DateTime?
+
+  // ---- Delivery details (snapshot — saved addresses can be edited/deleted later) ----
+  zoneId            Int?
+  zone              DeliveryZone? @relation(fields: [zoneId], references: [id])
+  zoneName          String?
+  deliveryName      String?
+  deliveryPhone     String?
+  addressLabel      String?  // Home | Work | Other
+  addressLine       String?
+  building          String?
+  floor             String?
+  apartment         String?
+  area              String?
+  landmark          String?
+  deliveryInstructions String?
+  lat               Float?
+  lng               Float?
+  estimatedDelivery String?  // snapshot of the zone's estimated delivery time
+  driverName        String?  // assigned staff member / driver (text now; Driver model can come later)
+
+  // ---- Loyalty ----
+  beansEarned  Int         @default(0) // beans this order WILL earn (awarded only after paid/completed)
+  beansAwarded Boolean     @default(false) // true once beans were actually credited (guards double-award)
+  beansReversed Boolean    @default(false) // guards against double-removing beans on cancel/refund
+
   createdAt    DateTime    @default(now())
   items        OrderItem[]
+  payments     Payment[]
+}
+
+// A delivery zone / area the manager defines in the admin dashboard. The system
+// checks a customer's address against these before allowing a delivery checkout.
+model DeliveryZone {
+  id            Int      @id @default(autoincrement())
+  name          String
+  fee           Float    @default(0)
+  minOrder      Float    @default(0) // minimum order value for delivery to this zone
+  estimatedTime String   @default("") // e.g. "30–45 min"
+  maxDistanceKm Float?   // location-based cap; null = name/area match only
+  centerLat     Float?   // zone centre, used with maxDistanceKm
+  centerLng     Float?
+  isAvailable   Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  orders        Order[]
+}
+
+// A saved delivery address belonging to a logged-in customer (Home/Work/Other).
+model Address {
+  id           Int      @id @default(autoincrement())
+  customerId   Int
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  label        String   @default("Home") // Home | Work | Other
+  fullName     String
+  phone        String
+  addressLine  String   @default("")
+  building     String   @default("")
+  floor        String   @default("")
+  apartment    String   @default("")
+  area         String   @default("")
+  landmark     String   @default("")
+  instructions String   @default("")
+  lat          Float?
+  lng          Float?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// A payment record. We NEVER store full card data — only what the gateway safely
+// returns. Reusable for orders now and room/event bookings or deposits later.
+model Payment {
+  id             Int      @id @default(autoincrement())
+  orderId        Int?
+  order          Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  bookingId      Int?     // reserved for booking/event deposits
+  provider       String   @default("mock")
+  transactionId  String   @unique
+  method         String   @default("CARD") // CARD | CASH
+  amount         Float
+  currency       String   @default("USD")
+  // PENDING | PAID | FAILED | CANCELLED | REFUNDED | PARTIALLY_REFUNDED
+  status         String   @default("PENDING")
+  cardBrand      String?
+  cardLast4      String?
+  refundedAmount Float    @default(0)
+  failureReason  String?
+  customerId     Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// An audit trail for sensitive admin actions (refunds, cash collection, driver
+// assignment, zone/settings changes) — records who did what and when.
+model AdminActivityLog {
+  id        Int      @id @default(autoincrement())
+  actor     String   // admin name/email
+  action    String   // REFUND | RECORD_CASH | ASSIGN_DRIVER | ZONE_SAVE | SETTINGS_SAVE | STATUS_CHANGE | CANCEL
+  entity    String?  // order | payment | zone | settings
+  entityId  String?  // order number / payment txn / zone id
+  detail    String   @default("")
+  createdAt DateTime @default(now())
 }
 
 model OrderItem {

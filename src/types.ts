@@ -93,7 +93,64 @@ export interface CartLine {
   specialInstructions: string;
 }
 
-export type OrderStatus = "NEW" | "PREPARING" | "READY" | "PICKED_UP" | "CANCELLED";
+export type Fulfillment = "PICKUP" | "DELIVERY";
+
+export type PaymentMethod = "ONLINE" | "CASH_ON_DELIVERY" | "CASH_AT_PICKUP";
+
+export type PaymentStatus =
+  | "PENDING"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED"
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED"
+  | "CASH_DUE"
+  | "CASH_COLLECTED";
+
+export type OrderStatus =
+  | "AWAITING_PAYMENT"
+  | "RECEIVED"
+  | "ACCEPTED"
+  | "PREPARING"
+  | "READY_FOR_PICKUP"
+  | "COMPLETED"
+  | "READY_FOR_DELIVERY"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "CANCELLED"
+  // legacy values still present on old orders (aliased in orderStatus.ts)
+  | "NEW"
+  | "READY"
+  | "PICKED_UP";
+
+export interface OrderItemLine {
+  id: number;
+  menuItemId: number | null;
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  selectedOptions: SelectedOption[];
+  addons: OrderAddon[];
+  specialInstructions: string | null;
+  lineTotal: number;
+}
+
+export interface Payment {
+  id: number;
+  orderId: number | null;
+  provider: string;
+  transactionId: string;
+  method: "CARD" | "CASH";
+  amount: number;
+  currency: string;
+  status: "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED" | "PARTIALLY_REFUNDED";
+  cardBrand: string | null;
+  cardLast4: string | null;
+  refundedAmount: number;
+  failureReason: string | null;
+  createdAt: string;
+  order?: { number: string; customerName: string; phone: string; fulfillment: Fulfillment; total: number } | null;
+}
 
 export interface Order {
   id: number;
@@ -101,26 +158,107 @@ export interface Order {
   customerName: string;
   phone: string;
   email: string | null;
+
+  fulfillment: Fulfillment;
+  pickupTime: string | null;
+
   subtotal: number;
+  addonsTotal: number;
   discount: number;
+  loyaltyDiscount: number;
+  deliveryFee: number;
+  tax: number;
   total: number;
   promoCode: string | null;
-  pickupTime: string | null;
+  loyaltyRedemptionCode?: string | null;
+
   status: OrderStatus;
   cancelReason?: string | null;
+  cancelledBy?: string | null;
+
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  paidAt?: string | null;
+
+  // Delivery snapshot (present when fulfillment === "DELIVERY"; PII hidden on
+  // public track responses for non-owners)
+  zoneName?: string | null;
+  deliveryName?: string | null;
+  deliveryPhone?: string | null;
+  addressLabel?: string | null;
+  addressLine?: string | null;
+  building?: string | null;
+  floor?: string | null;
+  apartment?: string | null;
+  area?: string | null;
+  landmark?: string | null;
+  deliveryInstructions?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  estimatedDelivery?: string | null;
+  driverName?: string | null;
+
   beansEarned: number;
   createdAt: string;
-  items: {
-    id: number;
-    menuItemId: number | null;
-    name: string;
-    unitPrice: number;
-    quantity: number;
-    selectedOptions: SelectedOption[];
-    addons: OrderAddon[];
-    specialInstructions: string | null;
-    lineTotal: number;
-  }[];
+  items: OrderItemLine[];
+  payments?: Payment[];
+}
+
+export interface SavedAddress {
+  id: number;
+  label: string;
+  fullName: string;
+  phone: string;
+  addressLine: string;
+  building: string;
+  floor: string;
+  apartment: string;
+  area: string;
+  landmark: string;
+  instructions: string;
+  lat: number | null;
+  lng: number | null;
+  isDefault: boolean;
+  createdAt?: string;
+}
+
+export interface DeliveryZone {
+  id: number;
+  name: string;
+  fee: number;
+  minOrder: number;
+  estimatedTime: string;
+  maxDistanceKm: number | null;
+  centerLat: number | null;
+  centerLng: number | null;
+  isAvailable: boolean;
+  sortOrder: number;
+}
+
+export interface DeliveryQuote {
+  available: boolean;
+  reason?: string;
+  zone?: { id: number; name: string; estimatedTime: string };
+  fee: number;
+  minOrder: number;
+  belowMinimum: boolean;
+  freeApplied: boolean;
+}
+
+export interface StorefrontConfig {
+  currency: string;
+  tax: { rate: number; label: string };
+  delivery: {
+    enabled: boolean;
+    paused: boolean;
+    hoursOpen: boolean;
+    available: boolean;
+    freeThreshold: number;
+    defaultEstimate: string;
+    hours: { enabled: boolean; start: string; end: string };
+  };
+  pickup: { enabled: boolean; prepTime: string; scheduleEnabled: boolean; location: string };
+  payment: { online: boolean; cashOnDelivery: boolean; cashAtPickup: boolean };
 }
 
 export interface Room {
@@ -189,6 +327,7 @@ export interface Reward {
   category: string | null;
   cost: number;
   type: RewardType;
+  value?: number; // DISCOUNT rewards: $ off the order
   icon: string;
   image: string | null;
   redeemMethod: string;
@@ -313,7 +452,7 @@ export interface Banner {
   createdAt?: string;
 }
 
-export type NotificationType = "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS";
+export type NotificationType = "ORDER" | "BOOKING" | "REWARD" | "VOUCHER" | "POINTS" | "PAYMENT" | "DELIVERY";
 
 export interface AppNotification {
   id: number;
@@ -417,6 +556,7 @@ export interface LoyaltyAccount {
   redemptions?: Redemption[];
   orders?: Order[];
   bookings?: Booking[];
+  addresses?: SavedAddress[];
   message?: string;
   voucherCode?: string;
 }

@@ -263,3 +263,91 @@ export function MapPinIcon({ className = "h-6 w-6" }: IconProps) {
     </svg>
   );
 }
+
+const stroke = {
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 2,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+// A storefront — used for the Pickup option.
+export function StoreIcon({ className = "h-6 w-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M3 9.5 4.5 4h15L21 9.5" />
+      <path d="M4 9.5v9a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-9" />
+      <path d="M3 9.5a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 4 0 2.5 2.5 0 0 0 4 0 2.5 2.5 0 0 0 5 0" />
+      <path d="M9 20v-5h6v5" />
+    </svg>
+  );
+}
+
+// A delivery moped — used for the Delivery option.
+export function ScooterIcon({ className = "h-6 w-6" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <circle cx="6" cy="18" r="2.5" />
+      <circle cx="18" cy="18" r="2.5" />
+      <path d="M8.5 18h7" />
+      <path d="M18 15.5V9h-3l-2.5 6" />
+      <path d="M15 9h-4l-1.5 4.5" />
+      <path d="M3 6h3l1.2 3.5" />
+    </svg>
+  );
+}
+
+export function TrashIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+export function EditIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export function TagIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L3 13V3h10l7.59 7.59a2 2 0 0 1 0 2.82Z" />
+      <circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function PlusIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+export function MinusIcon({ className = "h-4 w-4" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+export function BeanIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} aria-hidden className={className}>
+      <path d="M7 4c5 0 13 3 13 9 0 4-3 7-8 7C6 20 3 16 3 11 3 7 5 4 7 4Z" />
+      <path d="M9.5 6.5c3 1.5 4 5 1.5 9" />
+    </svg>
+  );
+}

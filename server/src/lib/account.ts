@@ -15,6 +15,7 @@ export async function accountResponse(customerId: number, extra: Record<string, 
       redemptions: { orderBy: { createdAt: "desc" }, take: 50 },
       orders: { include: { items: true }, orderBy: { createdAt: "desc" }, take: 30 },
       bookings: { include: { room: true }, orderBy: { startTime: "desc" }, take: 30 },
+      addresses: { orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] },
     },
   });
   if (!customer) return null;
@@ -35,6 +36,7 @@ export async function accountResponse(customerId: number, extra: Record<string, 
     redemptions: customer.redemptions,
     orders: customer.orders.map(outOrder),
     bookings: customer.bookings.map(outBooking),
+    addresses: customer.addresses,
     ...extra,
   };
 }

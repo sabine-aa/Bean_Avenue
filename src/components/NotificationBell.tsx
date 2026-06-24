@@ -11,6 +11,8 @@ const ICON: Record<string, string> = {
   REWARD: "🎁",
   VOUCHER: "🎟",
   POINTS: "🫘",
+  PAYMENT: "💳",
+  DELIVERY: "🛵",
 };
 
 export function NotificationBell() {
