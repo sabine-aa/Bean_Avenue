@@ -8,6 +8,15 @@ export interface OptionGroup {
   choices: OptionChoice[];
 }
 
+// Nutrition facts (mainly for Protein Drinks). All optional — only shown when set.
+export interface Nutrition {
+  kcal?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  fibers?: number;
+}
+
 export interface MenuItem {
   id: number;
   name: string;
@@ -21,8 +30,10 @@ export interface MenuItem {
   focalX?: number; // focal point X % (0-100) — which part stays when cropped
   focalY?: number; // focal point Y % (0-100)
   ingredients?: string | null;
+  nutrition?: Nutrition | null;
   inStock: boolean;
   isHidden: boolean;
+  isBestSeller?: boolean;
   availableToday?: boolean;
   sortOrder: number;
   suggestions?: MenuItem[];
@@ -338,25 +349,28 @@ export interface Reward {
   _count?: { redemptions: number };
 }
 
-// The menu categories rewards can be organised under.
+// The menu categories rewards & add-ons can be organised under. Kept in sync with
+// the seeded CATEGORY_ORDER (server/prisma/categories-data.ts).
 export const REWARD_CATEGORIES = [
-  "Special Item",
   "Espresso Based",
-  "Sandwiches",
-  "Salads",
-  "Freshly Baked",
-  "Desserts",
-  "Beverages",
-  "Refreshers",
-  "Iced Teas",
-  "Milk Shakes",
-  "Frappes",
-  "Hot Teas",
-  "Rakwah",
-  "Frozen Yogurt",
-  "Iced Drinks",
   "Filtered Coffee",
   "Hot Drinks",
+  "Iced Drinks",
+  "Special Items",
+  "Rakwah",
+  "Frappes",
+  "Milkshakes",
+  "Hot Teas",
+  "Refreshers",
+  "Iced Teas",
+  "Beverages",
+  "Protein Drinks",
+  "Soft Cream",
+  "Desserts",
+  "Freshly Baked",
+  "Salads",
+  "Sandwiches",
+  "Hanson Doughnuts",
 ] as const;
 
 export type RedemptionStatus = "ACTIVE" | "CLAIMED" | "EXPIRED";

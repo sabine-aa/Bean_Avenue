@@ -11,8 +11,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // Menu categories with a manager-controlled display order.
@@ -35,8 +36,10 @@ model MenuItem {
   focalX        Int              @default(50) // focal point X % (0-100) — which part stays visible when cropped
   focalY        Int              @default(50) // focal point Y % (0-100)
   ingredients   String? // ingredients / allergen info (mainly for doughnuts)
+  nutrition     String           @default("") // JSON {kcal,protein,carbs,fat,fibers} — mainly for Protein Drinks
   inStock       Boolean          @default(true) // false = sold out
   isHidden      Boolean          @default(false)
+  isBestSeller  Boolean          @default(false) // manager-flagged best seller (badge on the card)
   availableToday Boolean         @default(true) // doughnuts: only show on the daily page when true
   sortOrder     Int              @default(0)
   featured      FeaturedProduct?

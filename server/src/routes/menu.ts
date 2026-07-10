@@ -61,10 +61,12 @@ menuRouter.post("/", requireAdmin, async (req, res) => {
       focalX: clampPct(b.focalX),
       focalY: clampPct(b.focalY),
       ingredients: b.ingredients ?? null,
+      nutrition: b.nutrition ? JSON.stringify(b.nutrition) : "",
       tags: toJson(b.tags ?? []),
       options: toJson(b.options ?? []),
       inStock: b.inStock ?? true,
       isHidden: b.isHidden ?? false,
+      isBestSeller: b.isBestSeller ?? false,
       availableToday: b.availableToday ?? true,
       sortOrder: (max._max.sortOrder ?? 0) + 1,
     },
@@ -77,10 +79,11 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const b = req.body;
   const data: Record<string, unknown> = {};
-  for (const key of ["name", "category", "description", "photo", "ingredients", "inStock", "isHidden", "availableToday"]) {
+  for (const key of ["name", "category", "description", "photo", "ingredients", "inStock", "isHidden", "isBestSeller", "availableToday"]) {
     if (key in b) data[key] = b[key];
   }
   if ("price" in b) data.price = Number(b.price);
+  if ("nutrition" in b) data.nutrition = b.nutrition ? JSON.stringify(b.nutrition) : "";
   if ("tags" in b) data.tags = toJson(b.tags);
   if ("options" in b) data.options = toJson(b.options);
   if ("imageFit" in b) data.imageFit = b.imageFit === "contain" ? "contain" : "cover";

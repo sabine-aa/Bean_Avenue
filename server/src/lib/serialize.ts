@@ -17,8 +17,22 @@ export function parseArr(value: unknown): unknown[] {
 
 export const toJson = (value: unknown): string => JSON.stringify(value ?? []);
 
+// Parse a JSON object column (e.g. nutrition). Returns null for empty/invalid.
+export function parseObj(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function outMenuItem<T extends Record<string, unknown>>(m: T) {
-  return { ...m, options: parseArr(m.options), tags: parseArr(m.tags) };
+  return { ...m, options: parseArr(m.options), tags: parseArr(m.tags), nutrition: parseObj(m.nutrition) };
 }
 
 export function outRoom<T extends Record<string, unknown>>(r: T) {

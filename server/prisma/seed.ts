@@ -7,25 +7,36 @@ import { seedAddons } from "./addons-data";
 import { seedCategories } from "./categories-data";
 import { seedDoughnuts } from "./doughnuts-data";
 import { seedFeatured } from "./featured-data";
+import { MENU_ITEMS } from "./menu-data";
 import { seedCategoryRewards } from "./rewards-data";
 
+// Carry over the photos & descriptions from the previous catalogue for any item
+// that survived the rebuild (matched by name). menu-data.ts values win when set.
 const here = dirname(fileURLToPath(import.meta.url));
-
-interface SeedMenuItem {
-  id: number;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  options: unknown;
-  tags: unknown;
-  photo: string | null;
-  inStock: boolean;
-  isHidden: boolean;
-  sortOrder: number;
+const legacy = new Map<string, { photo: string | null; description: string }>();
+try {
+  const old = JSON.parse(readFileSync(join(here, "seed-menu.json"), "utf-8")) as {
+    name: string;
+    photo: string | null;
+    description: string;
+  }[];
+  for (const o of old) legacy.set(o.name.toLowerCase().trim(), { photo: o.photo ?? null, description: o.description ?? "" });
+} catch {
+  /* legacy file optional */
 }
 
-const menu: SeedMenuItem[] = JSON.parse(readFileSync(join(here, "seed-menu.json"), "utf-8"));
+// Photo-only aliases: items that were named differently before. We reuse the old
+// PHOTO (visually the same drink) but not the description, which may not fit.
+const PHOTO_ALIASES: Record<string, string> = {
+  "biscoff milkshake": "biscoff frappé",
+  "chocolate milkshake": "chocolate frappé",
+  "cookies and cream milkshake": "cookies and cream frappé",
+  "dubai chocolate cup": "strawberry dubai chocolate",
+  "organic matcha": "matcha latte",
+  "iced organic matcha": "iced matcha",
+  "san sebastian": "san sebastian cheesecake",
+  "triple chocolate croissant": "chocolate croissant",
+};
 
 const rooms = [
   {
@@ -85,20 +96,26 @@ async function main() {
   await prisma.menuItem.deleteMany();
   await prisma.room.deleteMany();
 
-  for (const m of menu) {
+  for (let i = 0; i < MENU_ITEMS.length; i++) {
+    const m = MENU_ITEMS[i];
+    const key = m.name.toLowerCase().trim();
+    const leg = legacy.get(key);
+    const aliasPhoto = PHOTO_ALIASES[key] ? legacy.get(PHOTO_ALIASES[key])?.photo ?? null : null;
     await prisma.menuItem.create({
       data: {
-        id: m.id,
         name: m.name,
         category: m.category,
-        description: m.description,
+        description: m.description ?? leg?.description ?? "",
         price: m.price,
         options: JSON.stringify(m.options ?? []),
-        tags: JSON.stringify(m.tags ?? []),
-        photo: m.photo,
-        inStock: m.inStock,
-        isHidden: m.isHidden,
-        sortOrder: m.sortOrder,
+        tags: JSON.stringify([]),
+        nutrition: m.nutrition ? JSON.stringify(m.nutrition) : "",
+        photo: m.photo !== undefined ? m.photo : leg?.photo ?? aliasPhoto,
+        imageFit: m.imageFit ?? "cover",
+        inStock: true,
+        isHidden: false,
+        isBestSeller: m.isBestSeller ?? false,
+        sortOrder: i,
       },
     });
   }
@@ -135,7 +152,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${menu.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, and 1 banner.`
+    `Seeded ${MENU_ITEMS.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, and 1 banner.`
   );
 }
 

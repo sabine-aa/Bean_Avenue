@@ -58,13 +58,15 @@ async function createAndSend(channel: Channel, identifier: string, purpose: "LOG
       expiresAt: new Date(Date.now() + CODE_TTL_MS),
     },
   });
-  await sendOtp(channel, identifier, code);
+  const delivered = await sendOtp(channel, identifier, code);
   return {
     status: 200,
     ok: true,
     resendInSeconds: RESEND_INTERVAL_S,
     expiresInSeconds: CODE_TTL_MS / 1000,
-    devCode: devCodesEnabled() ? code : undefined,
+    // Only reveal the code on-screen when it wasn't actually delivered (no
+    // provider connected yet) — never once real email/WhatsApp is sending.
+    devCode: !delivered && devCodesEnabled() ? code : undefined,
   };
 }
 
@@ -137,6 +139,24 @@ customerAuthRouter.post("/otp/verify", async (req, res) => {
           ? { name: "", phone: target.identifier, phoneVerified: true }
           : { name: "", email: target.identifier, emailVerified: true },
     });
+  }
+
+  // Verified by email but the customer also provided a phone number — save it as
+  // contact info (best effort; skip if it already belongs to another account).
+  if (target.channel === "EMAIL") {
+    const phone = normalizePhone(req.body.countryCode as string, String(req.body.phone ?? ""));
+    if (phone && phone !== customer.phone) {
+      const owner = await prisma.customer.findUnique({ where: { phone } });
+      if (!owner || owner.id === customer.id) {
+        customer = await prisma.customer.update({ where: { id: customer.id }, data: { phone } });
+      }
+    }
+  }
+
+  // Save the first/last name captured on the sign-up form.
+  const providedName = String(req.body.name ?? "").trim().slice(0, 80);
+  if (providedName && providedName !== customer.name) {
+    customer = await prisma.customer.update({ where: { id: customer.id }, data: { name: providedName } });
   }
 
   const account = await accountResponse(customer.id, { needsProfile: !customer.name?.trim() });

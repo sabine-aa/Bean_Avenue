@@ -10,46 +10,51 @@ export const ADDON_GROUPS: {
   categories: string[];
   addons: { name: string; price: number; maxQuantity?: number }[];
 }[] = [
+  // Coffee/drink add-ons, straight off the printed menu board.
   {
-    name: "Extra Shots",
+    name: "Add-ons",
     selection: "MULTIPLE",
-    categories: ["Espresso Based", "Iced Drinks", "Hot Drinks", "Filtered Coffee", "Frappes", "Rakwah"],
+    categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks", "Iced Drinks", "Frappes"],
     addons: [
-      { name: "Extra espresso shot", price: 1.0, maxQuantity: 3 },
-      { name: "Decaf shot", price: 1.0, maxQuantity: 3 },
+      { name: "Lactose Free", price: 0.33 },
+      { name: "Add Syrup", price: 0.33 },
+      { name: "Non-Dairy Milk", price: 1.0 },
+      { name: "Decaf", price: 0.75 },
     ],
   },
+  // Iced Teas: "ADD-ON BOBA +1.0".
   {
-    name: "Milk",
-    selection: "SINGLE",
-    categories: ["Espresso Based", "Iced Drinks", "Hot Drinks", "Filtered Coffee", "Frappes", "Milk Shakes"],
+    name: "Boba",
+    selection: "MULTIPLE",
+    maxSelect: 1,
+    categories: ["Iced Teas"],
+    addons: [{ name: "Boba", price: 1.0 }],
+  },
+  // Dessert board add-ons. Applied to whole categories by default — the manager
+  // can narrow this to specific items in the Add-ons admin.
+  {
+    name: "Dessert Add-ons",
+    selection: "MULTIPLE",
+    categories: ["Desserts", "Freshly Baked"],
     addons: [
-      { name: "Oat milk", price: 0.5 },
-      { name: "Almond milk", price: 0.5 },
-      { name: "Lactose-free milk", price: 0.5 },
+      { name: "MerryCream", price: 2.0 },
+      { name: "Sauce", price: 0.5 },
     ],
   },
+  // Cream Avenue soft-serve free toppings (all $0 — "FREE TOPPINGS").
   {
-    name: "Syrup",
+    name: "Free Toppings",
     selection: "MULTIPLE",
-    maxSelect: 3,
-    categories: ["Espresso Based", "Iced Drinks", "Hot Drinks", "Frappes", "Milk Shakes", "Iced Teas", "Hot Teas", "Refreshers", "Beverages"],
+    categories: ["Soft Cream"],
     addons: [
-      { name: "Vanilla", price: 0.5 },
-      { name: "Caramel", price: 0.5 },
-      { name: "Hazelnut", price: 0.5 },
-      { name: "Chocolate", price: 0.5 },
-      { name: "White chocolate", price: 0.5 },
-    ],
-  },
-  {
-    name: "Toppings",
-    selection: "MULTIPLE",
-    categories: ["Espresso Based", "Iced Drinks", "Frappes", "Milk Shakes", "Frozen Yogurt", "Desserts"],
-    addons: [
-      { name: "Whipped cream", price: 0.5 },
-      { name: "Extra sauce", price: 0.5 },
-      { name: "Extra toppings", price: 0.5 },
+      { name: "Strawberry", price: 0 },
+      { name: "Caramel", price: 0 },
+      { name: "Chocolate", price: 0 },
+      { name: "Pistachio", price: 0 },
+      { name: "Lotus Crumble", price: 0 },
+      { name: "Oreo Crumble", price: 0 },
+      { name: "Granola", price: 0 },
+      { name: "Sprinkles", price: 0 },
     ],
   },
 ];

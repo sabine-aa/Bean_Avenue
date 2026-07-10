@@ -9,6 +9,7 @@ export interface OtpTarget {
   phone?: string;
   countryCode?: string;
   email?: string;
+  name?: string; // full name captured on the sign-up form (saved on verify)
 }
 
 interface OtpRequestResult {

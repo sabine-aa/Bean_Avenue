@@ -168,7 +168,12 @@ export function ProductDetails() {
               {money(unitPrice)}
             </span>
           </div>
-          <div className="mt-2 flex gap-1">
+          <div className="mt-2 flex flex-wrap gap-1">
+            {item.isBestSeller && (
+              <span className="rounded-full bg-terracotta px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-cream">
+                ★ Best Seller
+              </span>
+            )}
             {item.tags.map((t) => (
               <span key={t} className="rounded-full bg-sage/20 px-2 py-0.5 text-xs font-semibold text-sage-dark">
                 {t}
@@ -183,6 +188,30 @@ export function ProductDetails() {
                 Ingredients &amp; allergens
               </p>
               <p className="mt-1 text-sm text-charcoal/80">{item.ingredients}</p>
+            </div>
+          )}
+
+          {item.nutrition && Object.values(item.nutrition).some((v) => v != null) && (
+            <div className="mt-4 rounded-xl bg-sage/10 px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-charcoal/50">Nutrition</p>
+              <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {(
+                  [
+                    ["Calories", item.nutrition.kcal != null ? String(item.nutrition.kcal) : null],
+                    ["Protein", item.nutrition.protein != null ? `${item.nutrition.protein}g` : null],
+                    ["Carbs", item.nutrition.carbs != null ? `${item.nutrition.carbs}g` : null],
+                    ["Fat", item.nutrition.fat != null ? `${item.nutrition.fat}g` : null],
+                    ["Fibers", item.nutrition.fibers != null ? `${item.nutrition.fibers}g` : null],
+                  ] as [string, string | null][]
+                )
+                  .filter(([, v]) => v != null)
+                  .map(([label, value]) => (
+                    <div key={label} className="rounded-lg bg-white px-2 py-2 text-center shadow-sm">
+                      <span className="block font-display text-base font-bold text-espresso">{value}</span>
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-charcoal/50">{label}</span>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
 
