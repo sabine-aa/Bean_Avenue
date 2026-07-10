@@ -237,6 +237,7 @@ model Order {
   staffName    String?
   orderType    String?     // POS: TAKEAWAY | DINE_IN
   tableNumber  String?     // POS dine-in table label
+  clientRef    String?     @unique // POS offline idempotency key (dedupes re-synced sales)
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
 

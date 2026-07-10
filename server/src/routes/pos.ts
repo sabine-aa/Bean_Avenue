@@ -111,8 +111,16 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift();
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string };
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
+
+  // Idempotency: a sale queued offline then re-synced carries a clientRef — if we
+  // already recorded it, return the existing order instead of charging twice.
+  const clientRef = String(body.clientRef ?? "").trim() || null;
+  if (clientRef) {
+    const existing = await prisma.order.findUnique({ where: { clientRef }, include: { items: true } });
+    if (existing) return res.status(200).json(outOrder(existing));
+  }
   const orderType = String(body.orderType ?? "TAKEAWAY").toUpperCase() === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
   const tableNumber = orderType === "DINE_IN" ? String(body.tableNumber ?? "").trim().slice(0, 20) || null : null;
 
@@ -146,6 +154,7 @@ posRouter.post("/sale", async (req, res) => {
       fulfillment: "PICKUP",
       orderType,
       tableNumber,
+      clientRef,
       subtotal,
       addonsTotal,
       discount,

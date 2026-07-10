@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Img } from "../components/Img";
-import { api, isPosTokenValid, money, posApi, setPosToken } from "../lib/api";
+import { ApiError, api, isPosTokenValid, money, posApi, setPosToken } from "../lib/api";
+import { cacheMenu, cachedCats, cachedMenu, flushQueue, getQueue, queueSale } from "../lib/posOffline";
 import type { AddonGroup, MenuItem, Order } from "../types";
+
+const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 // ---- Shared models ------------------------------------------------------------
 type Sel = { group: string; choice: string; priceDelta: number };
@@ -160,10 +163,34 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [shiftPanel, setShiftPanel] = useState(false);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
   const [table, setTable] = useState("");
+  const [online, setOnline] = useState(navigator.onLine);
+  const [pending, setPending] = useState(getQueue().length);
 
+  // Load the menu; if we're offline, fall back to the last cached copy.
   useEffect(() => {
-    api.get<MenuItem[]>("/api/menu").then((m) => setItems(m.filter((i) => i.inStock && !i.isHidden))).catch(() => {});
-    api.get<string[]>("/api/categories").then(setCats).catch(() => {});
+    Promise.all([api.get<MenuItem[]>("/api/menu"), api.get<string[]>("/api/categories")])
+      .then(([m, c]) => {
+        const menu = m.filter((i) => i.inStock && !i.isHidden);
+        setItems(menu);
+        setCats(c);
+        cacheMenu(menu, c);
+      })
+      .catch(() => {
+        setItems(cachedMenu());
+        setCats(cachedCats());
+      });
+  }, []);
+
+  // Keep queued offline sales syncing whenever we're online.
+  useEffect(() => {
+    const sync = async () => setPending(await flushQueue());
+    const goOnline = () => { setOnline(true); sync(); };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    sync();
+    const t = setInterval(() => { setOnline(navigator.onLine); if (navigator.onLine) sync(); }, 15000);
+    return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); clearInterval(t); };
   }, []);
 
   const visible = useMemo(() => {
@@ -195,26 +222,45 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   async function completeSale(method: "CASH" | "CARD") {
     if (!lines.length || busy) return;
     setBusy(true);
+    const payload = {
+      clientRef: makeRef(),
+      paymentMethod: method,
+      discount: disc,
+      orderType,
+      tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
+      customerPhone: phone.trim() || undefined,
+      items: lines.map((l) => ({
+        menuItemId: l.item.id,
+        quantity: l.quantity,
+        selectedOptions: l.options.map((o) => ({ group: o.group, choice: o.choice })),
+        addons: l.addons.map((a) => ({ addonId: a.addonId, quantity: a.quantity })),
+        specialInstructions: l.note || undefined,
+      })),
+    };
     try {
-      const order = await posApi.post<Order>("/api/pos/sale", {
-        paymentMethod: method,
-        discount: disc,
-        orderType,
-        tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
-        customerPhone: phone.trim() || undefined,
-        items: lines.map((l) => ({
-          menuItemId: l.item.id,
-          quantity: l.quantity,
-          selectedOptions: l.options.map((o) => ({ group: o.group, choice: o.choice })),
-          addons: l.addons.map((a) => ({ addonId: a.addonId, quantity: a.quantity })),
-          specialInstructions: l.note || undefined,
-        })),
-      });
+      const order = await posApi.post<Order>("/api/pos/sale", payload);
       setReceipt(order);
       setPay(null);
       reload();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Couldn't complete the sale.");
+      // A real server rejection → show it. A network failure (offline) → save the
+      // sale locally and sync it automatically when the connection returns.
+      if (e instanceof ApiError && navigator.onLine) {
+        alert(e.message);
+      } else {
+        queueSale(payload);
+        setPending(getQueue().length);
+        setOnline(navigator.onLine);
+        setReceipt({
+          number: "SAVED OFFLINE",
+          total,
+          paymentMethod: method,
+          createdAt: new Date().toISOString(),
+          beansEarned: 0,
+          items: lines.map((l) => ({ id: l.id, menuItemId: l.item.id, name: l.item.name, unitPrice: unitPrice(l), quantity: l.quantity, selectedOptions: l.options, addons: [], specialInstructions: l.note || null, lineTotal: lineTotal(l) })),
+        } as unknown as Order);
+        setPay(null);
+      }
     } finally {
       setBusy(false);
     }
@@ -235,6 +281,14 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           </button>
         </div>
       </div>
+
+      {(!online || pending > 0) && (
+        <div className={`px-4 py-1 text-center text-sm font-semibold ${online ? "bg-amber-400/40 text-amber-900" : "bg-terracotta text-cream"}`}>
+          {online
+            ? `Syncing ${pending} offline sale${pending === 1 ? "" : "s"}…`
+            : `⚠ Offline — ${pending} sale${pending === 1 ? "" : "s"} saved locally, will sync when back online`}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
