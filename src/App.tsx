@@ -19,6 +19,7 @@ import { AdminPayments } from "./admin/Payments";
 import { AdminReports } from "./admin/Reports";
 import { AdminRewards } from "./admin/RewardsManager";
 import { AdminRooms } from "./admin/RoomsManagement";
+import { AdminStaff } from "./admin/StaffManager";
 import { AdminSubscribers } from "./admin/Subscribers";
 import { AdminSuggestions } from "./admin/Suggestions";
 import { Layout } from "./components/Layout";
@@ -86,6 +87,7 @@ export default function App() {
         <Route path="subscribers" element={<AdminSubscribers />} />
         <Route path="suggestions" element={<AdminSuggestions />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="staff" element={<AdminStaff />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

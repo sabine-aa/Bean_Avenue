@@ -1,4 +1,5 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -150,6 +151,12 @@ async function main() {
       isVisible: true,
     },
   });
+
+  // Default POS staff (a Manager, PIN 1234) so the register works out of the box.
+  // The manager can change PINs / add cashiers from the admin dashboard.
+  if ((await prisma.staffUser.count()) === 0) {
+    await prisma.staffUser.create({ data: { name: "Manager", pinHash: await bcrypt.hash("1234", 8), role: "MANAGER" } });
+  }
 
   console.log(
     `Seeded ${MENU_ITEMS.length} menu items, ${rooms.length} rooms, ${rewardCount} rewards, and 1 banner.`

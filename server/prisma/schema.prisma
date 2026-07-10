@@ -232,6 +232,9 @@ model Order {
 
   // ---- Channel & fulfillment ----
   channel      String      @default("ONLINE") // ONLINE | POS (in-store register sale)
+  shiftId      Int?        // POS: the register shift this sale belongs to
+  staffId      Int?        // POS: the staff member who rang it
+  staffName    String?
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
 
@@ -502,6 +505,46 @@ model Banner {
   endDate    DateTime?
   isVisible  Boolean   @default(true)
   createdAt  DateTime  @default(now())
+}
+
+// A POS staff member who signs into the register with a PIN.
+model StaffUser {
+  id        Int      @id @default(autoincrement())
+  name      String
+  pinHash   String
+  role      String   @default("CASHIER") // CASHIER | MANAGER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// A register shift / cash-drawer session.
+model Shift {
+  id           Int            @id @default(autoincrement())
+  staffId      Int
+  staffName    String
+  status       String         @default("OPEN") // OPEN | CLOSED
+  openingFloat Float          @default(0)
+  cashPayIns   Float          @default(0)
+  cashPayOuts  Float          @default(0)
+  countedCash  Float? // cash counted at close
+  expectedCash Float? // float + cash sales + payins − payouts
+  difference   Float? // counted − expected
+  note         String?
+  openedAt     DateTime       @default(now())
+  closedAt     DateTime?
+  movements    CashMovement[]
+}
+
+// A manual cash pay-in / pay-out against a shift (petty cash, tips out, etc.).
+model CashMovement {
+  id        Int      @id @default(autoincrement())
+  shiftId   Int
+  shift     Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  type      String // PAYIN | PAYOUT
+  amount    Float
+  reason    String   @default("")
+  staffName String
+  createdAt DateTime @default(now())
 }
 
 model Booking {

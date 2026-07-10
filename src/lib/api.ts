@@ -1,5 +1,6 @@
 const TOKEN_KEY = "bean-avenue-admin-token";
 const CUSTOMER_TOKEN_KEY = "bean-avenue-customer-token";
+const POS_TOKEN_KEY = "bean-avenue-pos-token";
 
 // In dev the Vite proxy forwards /api to the local backend; in production the
 // frontend (Cloudflare) calls the deployed API directly.
@@ -33,6 +34,8 @@ export const getToken = () => readToken(TOKEN_KEY);
 export const setToken = (token: string | null) => writeToken(TOKEN_KEY, token);
 export const getCustomerToken = () => readToken(CUSTOMER_TOKEN_KEY);
 export const setCustomerToken = (token: string | null) => writeToken(CUSTOMER_TOKEN_KEY, token);
+export const getPosToken = () => readToken(POS_TOKEN_KEY);
+export const setPosToken = (token: string | null) => writeToken(POS_TOKEN_KEY, token);
 
 /** True if the JWT is missing or past its expiry (decoded client-side, no verify). */
 function isExpired(token: string | null): boolean {
@@ -46,6 +49,7 @@ function isExpired(token: string | null): boolean {
 }
 
 export const isAdminTokenValid = () => !isExpired(getToken());
+export const isPosTokenValid = () => !isExpired(getPosToken());
 
 // When an admin call comes back 401, the session is gone — clear it and bounce
 // to the login screen (only from inside the admin area).
@@ -110,6 +114,7 @@ function makeApi(tokenGetter: () => string | null, onUnauthorized?: () => void) 
 // token when none is stored). `customerApi` carries the logged-in customer token.
 export const api = makeApi(getToken, handleAdminUnauthorized);
 export const customerApi = makeApi(getCustomerToken, () => setCustomerToken(null));
+export const posApi = makeApi(getPosToken, () => setPosToken(null));
 
 export const money = (n: number) => `$${n.toFixed(2)}`;
 

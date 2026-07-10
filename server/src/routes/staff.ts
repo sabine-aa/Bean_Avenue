@@ -1,0 +1,70 @@
+import bcrypt from "bcryptjs";
+import { Router } from "express";
+import { requireAdmin } from "../auth";
+import { prisma } from "../db";
+import { round2 } from "../lib/helpers";
+
+export const staffRouter = Router();
+staffRouter.use(requireAdmin);
+
+const publicStaff = (s: { id: number; name: string; role: string; isActive: boolean }) => ({
+  id: s.id,
+  name: s.name,
+  role: s.role,
+  isActive: s.isActive,
+});
+
+// GET /api/staff — list staff (never expose PIN hashes).
+staffRouter.get("/", async (_req, res) => {
+  const staff = await prisma.staffUser.findMany({ orderBy: { id: "asc" } });
+  res.json(staff.map(publicStaff));
+});
+
+// GET /api/staff/shifts — recent shift Z-reports with sale totals.
+staffRouter.get("/shifts", async (_req, res) => {
+  const shifts = await prisma.shift.findMany({ orderBy: { openedAt: "desc" }, take: 60, include: { movements: true } });
+  const out = [];
+  for (const sh of shifts) {
+    const sales = await prisma.order.findMany({ where: { shiftId: sh.id, channel: "POS" }, select: { total: true, paymentMethod: true } });
+    out.push({
+      ...sh,
+      salesCount: sales.length,
+      cashSales: round2(sales.filter((s) => s.paymentMethod === "CASH").reduce((a, s) => a + s.total, 0)),
+      cardSales: round2(sales.filter((s) => s.paymentMethod === "CARD").reduce((a, s) => a + s.total, 0)),
+    });
+  }
+  res.json(out);
+});
+
+// POST /api/staff  { name, pin, role }
+staffRouter.post("/", async (req, res) => {
+  const name = String(req.body?.name ?? "").trim().slice(0, 60);
+  const pin = String(req.body?.pin ?? "").trim();
+  const role = String(req.body?.role ?? "CASHIER").toUpperCase() === "MANAGER" ? "MANAGER" : "CASHIER";
+  if (!name) return res.status(400).json({ error: "Name is required." });
+  if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: "PIN must be 4–6 digits." });
+  const staff = await prisma.staffUser.create({ data: { name, pinHash: await bcrypt.hash(pin, 8), role } });
+  res.status(201).json(publicStaff(staff));
+});
+
+// PATCH /api/staff/:id  { name?, pin?, role?, isActive? }
+staffRouter.patch("/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const data: Record<string, unknown> = {};
+  if (req.body.name !== undefined) data.name = String(req.body.name).trim().slice(0, 60);
+  if (req.body.role !== undefined) data.role = String(req.body.role).toUpperCase() === "MANAGER" ? "MANAGER" : "CASHIER";
+  if (req.body.isActive !== undefined) data.isActive = !!req.body.isActive;
+  if (req.body.pin !== undefined) {
+    const pin = String(req.body.pin).trim();
+    if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: "PIN must be 4–6 digits." });
+    data.pinHash = await bcrypt.hash(pin, 8);
+  }
+  const staff = await prisma.staffUser.update({ where: { id }, data });
+  res.json(publicStaff(staff));
+});
+
+// DELETE /api/staff/:id
+staffRouter.delete("/:id", async (req, res) => {
+  await prisma.staffUser.delete({ where: { id: Number(req.params.id) } }).catch(() => {});
+  res.json({ ok: true });
+});

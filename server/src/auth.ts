@@ -22,12 +22,31 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Make the verified customer id available to handlers.
+/** Express middleware: requires a valid POS staff token (from PIN login). */
+export function requireStaff(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return res.status(401).json({ error: "Please sign in to the register." });
+  try {
+    const p = jwt.verify(header.slice(7), SECRET) as { staffId?: number; name?: string; staffRole?: string; role?: string };
+    if (p.role !== "staff" || !p.staffId) return res.status(403).json({ error: "Register access only." });
+    req.staffId = p.staffId;
+    req.staffName = p.name;
+    req.staffRole = p.staffRole;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Your register session expired — please sign in again." });
+  }
+}
+
+// Make the verified customer id + staff info available to handlers.
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       customerId?: number;
+      staffId?: number;
+      staffName?: string;
+      staffRole?: string;
     }
   }
 }
