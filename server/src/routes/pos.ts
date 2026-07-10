@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
+import { recordStockSale, validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
 import { terminalProvider } from "../lib/paymentTerminal";
@@ -12,8 +13,13 @@ import { buildLines, type IncomingItem } from "./orders";
 
 export const posRouter = Router();
 
-// Current (one) open register shift, or null.
-const openShift = () => prisma.shift.findFirst({ where: { status: "OPEN" }, orderBy: { openedAt: "desc" } });
+// Which register/device is making the request (multi-terminal). Each terminal
+// runs its own independent shift + cash drawer.
+const terminalOf = (req: { headers: Record<string, unknown> }) =>
+  String(req.headers["x-pos-terminal"] || "").trim().slice(0, 40) || "Register 1";
+
+// The open shift for a given register, or null.
+const openShift = (terminal: string) => prisma.shift.findFirst({ where: { status: "OPEN", terminal }, orderBy: { openedAt: "desc" } });
 
 // Enrich a shift with live sale + expected-cash totals.
 async function withTotals(shift: NonNullable<Awaited<ReturnType<typeof openShift>>>) {
@@ -41,7 +47,7 @@ posRouter.post("/login", async (req, res) => {
   for (const s of staff) {
     if (await bcrypt.compare(pin, s.pinHash)) {
       const token = signToken({ staffId: s.id, name: s.name, staffRole: s.role, role: "staff" });
-      const shift = await openShift();
+      const shift = await openShift(terminalOf(req));
       return res.json({ token, staff: { id: s.id, name: s.name, role: s.role }, shift: shift ? await withTotals(shift) : null, config: await posConfig() });
     }
   }
@@ -53,27 +59,29 @@ posRouter.use(requireStaff);
 
 // GET /api/pos/session — who am I + the current open shift (with totals).
 posRouter.get("/session", async (req, res) => {
-  const shift = await openShift();
+  const shift = await openShift(terminalOf(req));
   res.json({
     staff: { id: req.staffId, name: req.staffName, role: req.staffRole },
     shift: shift ? await withTotals(shift) : null,
     config: await posConfig(),
+    terminal: terminalOf(req),
   });
 });
 
 // POST /api/pos/shift/open  { openingFloat }
 posRouter.post("/shift/open", async (req, res) => {
-  if (await openShift()) return res.status(409).json({ error: "A shift is already open." });
+  const terminal = terminalOf(req);
+  if (await openShift(terminal)) return res.status(409).json({ error: `A shift is already open on ${terminal}.` });
   const openingFloat = round2(Math.max(0, Number(req.body?.openingFloat) || 0));
   const shift = await prisma.shift.create({
-    data: { staffId: req.staffId!, staffName: req.staffName ?? "Staff", openingFloat, status: "OPEN" },
+    data: { staffId: req.staffId!, staffName: req.staffName ?? "Staff", terminal, openingFloat, status: "OPEN" },
   });
   res.status(201).json(await withTotals(shift));
 });
 
 // POST /api/pos/shift/close  { countedCash, note? }
 posRouter.post("/shift/close", async (req, res) => {
-  const shift = await openShift();
+  const shift = await openShift(terminalOf(req));
   if (!shift) return res.status(400).json({ error: "No open shift." });
   const t = await withTotals(shift);
   const countedCash = round2(Math.max(0, Number(req.body?.countedCash) || 0));
@@ -94,7 +102,7 @@ posRouter.post("/shift/close", async (req, res) => {
 
 // POST /api/pos/cash  { type: PAYIN|PAYOUT, amount, reason }
 posRouter.post("/cash", async (req, res) => {
-  const shift = await openShift();
+  const shift = await openShift(terminalOf(req));
   if (!shift) return res.status(400).json({ error: "Open a shift first." });
   const type = String(req.body?.type ?? "").toUpperCase() === "PAYOUT" ? "PAYOUT" : "PAYIN";
   const amount = round2(Math.max(0, Number(req.body?.amount) || 0));
@@ -105,12 +113,13 @@ posRouter.post("/cash", async (req, res) => {
     where: { id: shift.id },
     data: type === "PAYIN" ? { cashPayIns: { increment: amount } } : { cashPayOuts: { increment: amount } },
   });
-  res.json(await withTotals((await openShift())!));
+  res.json(await withTotals((await openShift(terminalOf(req)))!));
 });
 
 // POST /api/pos/sale — record a completed in-store sale (needs an open shift).
 posRouter.post("/sale", async (req, res) => {
-  const shift = await openShift();
+  const terminal = terminalOf(req);
+  const shift = await openShift(terminal);
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
   const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string };
@@ -133,6 +142,10 @@ posRouter.post("/sale", async (req, res) => {
   }
   const orderType = String(body.orderType ?? "TAKEAWAY").toUpperCase() === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
   const tableNumber = orderType === "DINE_IN" ? String(body.tableNumber ?? "").trim().slice(0, 20) || null : null;
+
+  // Block overselling any stock-tracked item before we take payment.
+  const stockError = await validateStock(body.items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
+  if (stockError) return res.status(409).json({ error: stockError });
 
   const result = await buildLines(body.items);
   if ("error" in result) return res.status(400).json({ error: result.error });
@@ -159,6 +172,7 @@ posRouter.post("/sale", async (req, res) => {
       number: genNumber("POS"),
       channel: "POS",
       shiftId: shift.id,
+      terminal,
       staffId: req.staffId,
       staffName: req.staffName ?? "Staff",
       customerId: customer?.id,
@@ -199,6 +213,7 @@ posRouter.post("/sale", async (req, res) => {
     },
   });
   if (customer) await awardOrderBeans(order.id);
+  await recordStockSale(body.items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })), { orderId: order.id, staffName: req.staffName ?? "Staff" });
 
   res.status(201).json(outOrder(order));
 });

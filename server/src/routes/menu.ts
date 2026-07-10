@@ -21,7 +21,9 @@ menuRouter.get("/", async (req, res) => {
     where: all ? undefined : { isHidden: false, category: { not: DOUGHNUT_CATEGORY } },
     orderBy: { sortOrder: "asc" },
   });
-  res.json(items.map(outMenuItem));
+  // For customers/register, a tracked item at zero stock reads as sold out so all
+  // existing "inStock" UI just works. Admin (?all) keeps the raw stock fields.
+  res.json(items.map((m) => (all ? outMenuItem(m) : { ...outMenuItem(m), inStock: m.inStock && !(m.trackStock && m.stockQty <= 0) })));
 });
 
 // PATCH /api/menu/reorder  (admin) — must be declared before "/:id"

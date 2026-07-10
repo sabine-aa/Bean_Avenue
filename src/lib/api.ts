@@ -1,6 +1,7 @@
 const TOKEN_KEY = "bean-avenue-admin-token";
 const CUSTOMER_TOKEN_KEY = "bean-avenue-customer-token";
 const POS_TOKEN_KEY = "bean-avenue-pos-token";
+const POS_TERMINAL_KEY = "bean-avenue-pos-terminal";
 
 // In dev the Vite proxy forwards /api to the local backend; in production the
 // frontend (Cloudflare) calls the deployed API directly.
@@ -36,6 +37,10 @@ export const getCustomerToken = () => readToken(CUSTOMER_TOKEN_KEY);
 export const setCustomerToken = (token: string | null) => writeToken(CUSTOMER_TOKEN_KEY, token);
 export const getPosToken = () => readToken(POS_TOKEN_KEY);
 export const setPosToken = (token: string | null) => writeToken(POS_TOKEN_KEY, token);
+// Which register this device is. Sent on every request so each terminal gets its
+// own shift/cash drawer; defaults to "Register 1" for a single-till shop.
+export const getPosTerminal = () => readToken(POS_TERMINAL_KEY) || "Register 1";
+export const setPosTerminal = (name: string) => writeToken(POS_TERMINAL_KEY, name.trim().slice(0, 40) || "Register 1");
 
 /** True if the JWT is missing or past its expiry (decoded client-side, no verify). */
 function isExpired(token: string | null): boolean {
@@ -79,6 +84,7 @@ function makeRequest(tokenGetter: () => string | null, onUnauthorized?: () => vo
       ...options,
       headers: {
         "Content-Type": "application/json",
+        "x-pos-terminal": readToken(POS_TERMINAL_KEY) || "Register 1",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },

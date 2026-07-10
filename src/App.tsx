@@ -11,6 +11,7 @@ import { AdminDoughnuts } from "./admin/DoughnutsManager";
 import { AdminEvents } from "./admin/EventsManager";
 import { AdminEventSuggestions } from "./admin/EventSuggestions";
 import { AdminFeatured } from "./admin/FeaturedManager";
+import { AdminInventory } from "./admin/Inventory";
 import { AdminLogin } from "./admin/Login";
 import { AdminLoyalty } from "./admin/LoyaltyLedger";
 import { AdminMenuManager } from "./admin/MenuManager";
@@ -89,6 +90,7 @@ export default function App() {
         <Route path="subscribers" element={<AdminSubscribers />} />
         <Route path="suggestions" element={<AdminSuggestions />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="inventory" element={<AdminInventory />} />
         <Route path="staff" element={<AdminStaff />} />
       </Route>
 

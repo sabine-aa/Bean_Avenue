@@ -37,12 +37,33 @@ model MenuItem {
   focalY        Int              @default(50) // focal point Y % (0-100)
   ingredients   String? // ingredients / allergen info (mainly for doughnuts)
   nutrition     String           @default("") // JSON {kcal,protein,carbs,fat,fibers} — mainly for Protein Drinks
-  inStock       Boolean          @default(true) // false = sold out
+  inStock       Boolean          @default(true) // false = sold out (manual override)
   isHidden      Boolean          @default(false)
   isBestSeller  Boolean          @default(false) // manager-flagged best seller (badge on the card)
   availableToday Boolean         @default(true) // doughnuts: only show on the daily page when true
+  trackStock    Boolean          @default(false) // count finished-goods stock and auto-deduct on each sale
+  stockQty      Int              @default(0) // units on hand (only meaningful when trackStock)
+  lowStockAt    Int              @default(0) // alert threshold; stockQty <= this (and > 0) = low
   sortOrder     Int              @default(0)
   featured      FeaturedProduct?
+  stockMoves    StockMovement[]
+}
+
+// An audit-logged change to a menu item's stock — every sale, restock, wastage
+// or manual recount. The running stockQty is the sum of these deltas.
+model StockMovement {
+  id         Int      @id @default(autoincrement())
+  menuItemId Int
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  delta      Int // signed: +restock/+recount-up, −sale/−waste
+  balance    Int // stockQty after applying this delta
+  type       String // SALE | RECEIVE | WASTE | ADJUST | COUNT
+  reason     String?
+  staffName  String?
+  orderId    Int? // set when the movement came from a sale
+  createdAt  DateTime @default(now())
+
+  @@index([menuItemId, createdAt])
 }
 
 // Manager-curated homepage products ("The usual suspects"). References menu
@@ -237,6 +258,7 @@ model Order {
   staffName    String?
   orderType    String?     // POS: TAKEAWAY | DINE_IN
   tableNumber  String?     // POS dine-in table label
+  terminal     String?     // POS: which register/device rang the sale (multi-terminal)
   clientRef    String?     @unique // POS offline idempotency key (dedupes re-synced sales)
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
@@ -526,6 +548,7 @@ model Shift {
   id           Int            @id @default(autoincrement())
   staffId      Int
   staffName    String
+  terminal     String         @default("Register 1") // which register/device this drawer belongs to
   status       String         @default("OPEN") // OPEN | CLOSED
   openingFloat Float          @default(0)
   cashPayIns   Float          @default(0)

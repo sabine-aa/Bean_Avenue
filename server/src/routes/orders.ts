@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { actorFrom, logActivity } from "../lib/activity";
 import { quoteDelivery } from "../lib/delivery";
 import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
+import { recordStockSale, restoreStock, validateStock } from "../lib/inventory";
 import { awardOrderBeans, reverseOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
 import { paymentProvider } from "../lib/payments";
@@ -155,6 +156,10 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
   const fulfillment = body.fulfillment === "DELIVERY" ? "DELIVERY" : "PICKUP";
   const config = await storefrontConfig();
 
+  // Don't let the storefront oversell a stock-tracked item.
+  const stockError = await validateStock(items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
+  if (stockError) return res.status(409).json({ error: stockError });
+
   // Build line items + money.
   const result = await buildLines(items);
   if ("error" in result) return res.status(400).json({ error: result.error });
@@ -253,6 +258,9 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
     include: { items: true },
   });
 
+  // Deduct tracked stock for the order (restored if it's later cancelled).
+  await recordStockSale(items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })), { orderId: order.id });
+
   // Reserve the reward voucher to this order (returned if the order is undone).
   if (loyaltyDiscount > 0 && body.loyaltyRedemptionCode) {
     await prisma.redemption.updateMany({
@@ -332,6 +340,7 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
     },
   });
   await reverseOrderBeans(order.id);
+  await restoreStock(order.id);
 
   await notify(order.customerId, {
     type: "ORDER",
@@ -402,7 +411,7 @@ ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
 
   // Loyalty: award on completion; reverse on cancel. Both idempotent.
   if (DONE_STATUSES.includes(status)) await awardOrderBeans(id);
-  if (status === "CANCELLED") await reverseOrderBeans(id);
+  if (status === "CANCELLED") { await reverseOrderBeans(id); await restoreStock(id); }
 
   await logActivity(actor, "STATUS_CHANGE", `Order ${order.number} → ${status}${reason ? ` (${reason})` : ""}`, "order", order.number);
 

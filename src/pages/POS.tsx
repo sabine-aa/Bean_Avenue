@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Img } from "../components/Img";
-import { ApiError, api, isPosTokenValid, money, posApi, setPosToken } from "../lib/api";
+import { ApiError, api, getPosTerminal, isPosTokenValid, money, posApi, setPosToken, setPosTerminal } from "../lib/api";
 import { cacheMenu, cachedCats, cachedMenu, flushQueue, getQueue, queueSale } from "../lib/posOffline";
 import type { AddonGroup, MenuItem, Order } from "../types";
 
@@ -17,7 +17,7 @@ type Shift = {
   salesCount: number; cashSales: number; cardSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
 };
 type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string } };
-type Session = { staff: Staff; shift: Shift | null; config?: PosConfig };
+type Session = { staff: Staff; shift: Shift | null; config?: PosConfig; terminal?: string };
 
 const unitPrice = (l: Line) =>
   Math.round((l.item.price + l.options.reduce((s, o) => s + o.priceDelta, 0) + l.addons.reduce((s, a) => s + a.price * a.quantity, 0)) * 100) / 100;
@@ -65,6 +65,12 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [terminal, setTerminal] = useState(getPosTerminal());
+
+  function renameTerminal() {
+    const name = window.prompt("Name this register (each till has its own shift & cash drawer):", terminal);
+    if (name && name.trim()) { setPosTerminal(name); setTerminal(getPosTerminal()); }
+  }
 
   async function submit(p: string) {
     if (busy) return;
@@ -105,7 +111,8 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
         <button onClick={() => press("0")} className="h-16 w-16 rounded-full bg-mocha/60 text-2xl font-bold active:scale-95">0</button>
         <button onClick={() => submit(pin)} disabled={pin.length < 4 || busy} className="h-16 w-16 rounded-full bg-terracotta text-lg font-bold disabled:opacity-40">→</button>
       </div>
-      <Link to="/" className="mt-8 text-sm text-cream/50 hover:text-cream">← Back to site</Link>
+      <button onClick={renameTerminal} className="mt-6 text-sm text-cream/50 hover:text-cream">🖥 {terminal} · change</button>
+      <Link to="/" className="mt-3 text-sm text-cream/50 hover:text-cream">← Back to site</Link>
     </div>
   );
 }
@@ -280,6 +287,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           <Img src="/bean.png" alt="" className="h-6 w-6" />
           <span className="font-display text-base font-bold">Bean Avenue POS</span>
           <span className="ml-2 text-sm text-charcoal/50">{session.staff.name}</span>
+          <span className="rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">🖥 {session.terminal ?? getPosTerminal()}</span>
         </div>
         <div className="flex items-center gap-2">
           <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
