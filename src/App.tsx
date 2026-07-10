@@ -36,6 +36,7 @@ import { Home } from "./pages/Home";
 import { Loyalty } from "./pages/Loyalty";
 import { Menu } from "./pages/Menu";
 import { OrderSuccess } from "./pages/OrderSuccess";
+import { POS } from "./pages/POS";
 import { ProductDetails } from "./pages/ProductDetails";
 import { Rooms } from "./pages/Rooms";
 
@@ -60,6 +61,8 @@ export default function App() {
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
       </Route>
+
+      <Route path="/pos" element={<POS />} />
 
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminLayout />}>

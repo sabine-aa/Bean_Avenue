@@ -106,7 +106,7 @@ export interface CartLine {
 
 export type Fulfillment = "PICKUP" | "DELIVERY";
 
-export type PaymentMethod = "ONLINE" | "CASH_ON_DELIVERY" | "CASH_AT_PICKUP";
+export type PaymentMethod = "ONLINE" | "CASH_ON_DELIVERY" | "CASH_AT_PICKUP" | "CASH" | "CARD";
 
 export type PaymentStatus =
   | "PENDING"

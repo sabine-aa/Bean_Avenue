@@ -30,7 +30,7 @@ const DONE_STATUSES = ["DELIVERED", "COMPLETED"];
 
 export const ordersRouter = Router();
 
-interface IncomingItem {
+export interface IncomingItem {
   menuItemId: number;
   quantity: number;
   selectedOptions: { group: string; choice: string }[];
@@ -53,7 +53,7 @@ interface BuiltLine {
 }
 
 /** Resolve cart lines against the live menu (never trust client prices). */
-async function buildLines(
+export async function buildLines(
   items: IncomingItem[]
 ): Promise<{ built: BuiltLine[]; meta: { category: string; unitPrice: number }[]; addonsTotal: number } | { error: string }> {
   const built: BuiltLine[] = [];
@@ -348,8 +348,10 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
 
 // GET /api/orders  (admin) — filtered list
 ordersRouter.get("/", requireAdmin, async (req, res) => {
-  const { status, search, fulfillment } = req.query as Record<string, string>;
+  const { status, search, fulfillment, channel } = req.query as Record<string, string>;
   const where: Record<string, unknown> = {};
+  // In-store POS sales have their own screen — keep them out of the online-orders list by default.
+  where.channel = channel || "ONLINE";
   if (status) where.status = status;
   if (fulfillment) where.fulfillment = fulfillment;
   if (search) {

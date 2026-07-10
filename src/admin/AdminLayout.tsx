@@ -36,6 +36,12 @@ export function AdminLayout() {
           <img src="/bean.png" alt="" className="h-7 w-7 brightness-0 invert" />
           <span className="font-display text-xl font-bold">Bean Avenue</span>
         </Link>
+        <Link
+          to="/pos"
+          className="mx-3 mb-3 rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark"
+        >
+          🧾 Open Register
+        </Link>
         <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Admin">
           {links.map((l) => (
             <NavLink
@@ -70,6 +76,7 @@ export function AdminLayout() {
           </button>
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-oat bg-cream px-2 py-2 md:hidden" aria-label="Admin mobile">
+          <Link to="/pos" className="whitespace-nowrap rounded-full bg-terracotta px-3 py-1.5 text-xs font-bold text-cream">🧾 Register</Link>
           {links.map((l) => (
             <NavLink
               key={l.to}

@@ -230,7 +230,8 @@ model Order {
   phone        String
   email        String?
 
-  // ---- Fulfillment ----
+  // ---- Channel & fulfillment ----
+  channel      String      @default("ONLINE") // ONLINE | POS (in-store register sale)
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
 
