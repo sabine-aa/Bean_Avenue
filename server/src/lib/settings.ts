@@ -18,6 +18,11 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   "payment.online.enabled": "true",
   "payment.cashOnDelivery.enabled": "true",
   "payment.cashAtPickup.enabled": "true",
+  // In-store register (POS) card payments. Off by default — the shop is
+  // cash-only until the bank account + terminal are live; flip on then.
+  "pos.card.enabled": "false",
+  "pos.card.requireApprovalCode": "false", // require the terminal's approval code on each card sale
+  "pos.card.provider": "manual", // "manual" = standalone bank terminal; an integrated acquirer plugs in here later
   "tax.rate": "0", // percentage applied to (subtotal - discounts + delivery fee)
   "tax.label": "Tax",
   "currency": "USD",
@@ -114,3 +119,17 @@ export async function storefrontConfig(now = new Date()) {
 }
 
 export type StorefrontConfig = Awaited<ReturnType<typeof storefrontConfig>>;
+
+/** Register (POS) configuration — which tenders the cashier may take in-store. */
+export async function posConfig() {
+  const map = await getSettingsMap();
+  return {
+    card: {
+      enabled: bool(map["pos.card.enabled"]),
+      requireApprovalCode: bool(map["pos.card.requireApprovalCode"]),
+      provider: map["pos.card.provider"] || "manual",
+    },
+  };
+}
+
+export type PosConfig = Awaited<ReturnType<typeof posConfig>>;

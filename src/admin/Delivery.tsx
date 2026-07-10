@@ -154,6 +154,13 @@ export function AdminDelivery() {
           <Toggle k="payment.cashAtPickup.enabled" label="Cash at pickup" />
         </div>
 
+        <h2 className="mt-6 font-display text-xl font-bold text-espresso">In-store register (POS)</h2>
+        <p className="mt-1 text-xs text-charcoal/50">Turn this on once the bank account and card machine are ready — then the cashier can take card payments at the counter.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Toggle k="pos.card.enabled" label="Accept cards at the register" hint="Off = cash only" />
+          {bool("pos.card.enabled") && <Toggle k="pos.card.requireApprovalCode" label="Require terminal approval code" hint="Cashier keys in the code from the bank machine receipt" />}
+        </div>
+
         <h2 className="mt-6 font-display text-xl font-bold text-espresso">Tax</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-semibold text-espresso">Tax rate (%)<input type="number" min={0} step="0.1" value={settings["tax.rate"]} onChange={(e) => set("tax.rate", e.target.value)} className={inp} /></label>

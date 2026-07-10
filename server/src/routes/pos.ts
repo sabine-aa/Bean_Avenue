@@ -5,8 +5,9 @@ import { prisma } from "../db";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { awardOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
+import { terminalProvider } from "../lib/paymentTerminal";
 import { outOrder } from "../lib/serialize";
-import { storefrontConfig } from "../lib/settings";
+import { posConfig, storefrontConfig } from "../lib/settings";
 import { buildLines, type IncomingItem } from "./orders";
 
 export const posRouter = Router();
@@ -41,7 +42,7 @@ posRouter.post("/login", async (req, res) => {
     if (await bcrypt.compare(pin, s.pinHash)) {
       const token = signToken({ staffId: s.id, name: s.name, staffRole: s.role, role: "staff" });
       const shift = await openShift();
-      return res.json({ token, staff: { id: s.id, name: s.name, role: s.role }, shift: shift ? await withTotals(shift) : null });
+      return res.json({ token, staff: { id: s.id, name: s.name, role: s.role }, shift: shift ? await withTotals(shift) : null, config: await posConfig() });
     }
   }
   res.status(401).json({ error: "Wrong PIN." });
@@ -56,6 +57,7 @@ posRouter.get("/session", async (req, res) => {
   res.json({
     staff: { id: req.staffId, name: req.staffName, role: req.staffRole },
     shift: shift ? await withTotals(shift) : null,
+    config: await posConfig(),
   });
 });
 
@@ -111,8 +113,16 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift();
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string };
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
+
+  const method = String(body.paymentMethod ?? "CASH").toUpperCase() === "CARD" ? "CARD" : "CASH";
+  const pos = await posConfig();
+  if (method === "CARD") {
+    if (!pos.card.enabled) return res.status(400).json({ error: "Card payments aren't enabled at the register." });
+    if (pos.card.requireApprovalCode && !String(body.cardApprovalCode ?? "").trim())
+      return res.status(400).json({ error: "Enter the terminal's approval code." });
+  }
 
   // Idempotency: a sale queued offline then re-synced carries a clientRef — if we
   // already recorded it, return the existing order instead of charging twice.
@@ -134,7 +144,10 @@ posRouter.post("/sale", async (req, res) => {
   const taxable = Math.max(0, round2(subtotal - discount));
   const tax = round2(taxable * (config.tax.rate / 100));
   const total = round2(taxable + tax);
-  const method = String(body.paymentMethod ?? "CASH").toUpperCase() === "CARD" ? "CARD" : "CASH";
+
+  // Card sales go through the configured terminal provider (standalone bank
+  // machine today) which normalises the approval code / card reference.
+  const card = method === "CARD" ? await (await terminalProvider()).capture(total, { approvalCode: body.cardApprovalCode, last4: body.cardLast4, brand: body.cardBrand }) : null;
 
   let customer = null;
   const phone = String(body.customerPhone ?? "").trim();
@@ -172,7 +185,18 @@ posRouter.post("/sale", async (req, res) => {
   });
 
   await prisma.payment.create({
-    data: { orderId: order.id, provider: "pos", transactionId: `${genNumber("POSPAY")}-${order.id}`, method, amount: total, status: "PAID", customerId: customer?.id ?? null },
+    data: {
+      orderId: order.id,
+      provider: card ? `pos-${card.provider}` : "pos",
+      transactionId: card?.transactionRef || `${genNumber("POSPAY")}-${order.id}`,
+      method,
+      amount: total,
+      status: "PAID",
+      cardBrand: card?.brand ?? null,
+      cardLast4: card?.last4 ?? null,
+      approvalCode: card?.approvalCode ?? null,
+      customerId: customer?.id ?? null,
+    },
   });
   if (customer) await awardOrderBeans(order.id);
 

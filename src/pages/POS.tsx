@@ -16,7 +16,8 @@ type Shift = {
   id: number; staffName: string; openingFloat: number; cashPayIns: number; cashPayOuts: number; openedAt: string;
   salesCount: number; cashSales: number; cardSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
 };
-type Session = { staff: Staff; shift: Shift | null };
+type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string } };
+type Session = { staff: Staff; shift: Shift | null; config?: PosConfig };
 
 const unitPrice = (l: Line) =>
   Math.round((l.item.price + l.options.reduce((s, o) => s + o.priceDelta, 0) + l.addons.reduce((s, a) => s + a.price * a.quantity, 0)) * 100) / 100;
@@ -70,9 +71,9 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
     setBusy(true);
     setErr("");
     try {
-      const res = await api.post<{ token: string; staff: Staff; shift: Shift | null }>("/api/pos/login", { pin: p });
+      const res = await api.post<{ token: string; staff: Staff; shift: Shift | null; config?: PosConfig }>("/api/pos/login", { pin: p });
       setPosToken(res.token);
-      onLogin({ staff: res.staff, shift: res.shift });
+      onLogin({ staff: res.staff, shift: res.shift, config: res.config });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Wrong PIN.");
       setPin("");
@@ -165,6 +166,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [table, setTable] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
   const [pending, setPending] = useState(getQueue().length);
+  const [cardApproval, setCardApproval] = useState("");
+  const [cardLast4, setCardLast4] = useState("");
+  const cardCfg = session.config?.card;
+  const cardEnabled = cardCfg?.enabled ?? false;
 
   // Load the menu; if we're offline, fall back to the last cached copy.
   useEffect(() => {
@@ -216,7 +221,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable("");
+    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4("");
   }
 
   async function completeSale(method: "CASH" | "CARD") {
@@ -229,6 +234,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       orderType,
       tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
       customerPhone: phone.trim() || undefined,
+      cardApprovalCode: method === "CARD" ? cardApproval.trim() || undefined : undefined,
+      cardLast4: method === "CARD" ? cardLast4.trim() || undefined : undefined,
       items: lines.map((l) => ({
         menuItemId: l.item.id,
         quantity: l.quantity,
@@ -356,16 +363,18 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
               <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />
             </div>
             <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid ${cardEnabled ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
               <button disabled={!lines.length} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 font-bold text-cream disabled:opacity-40">💵 Cash</button>
-              <button disabled={!lines.length} onClick={() => setPay("CARD")} className="btn-3d rounded-xl bg-terracotta py-3 font-bold text-cream disabled:opacity-40">💳 Card</button>
+              {cardEnabled && (
+                <button disabled={!lines.length} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 font-bold text-cream disabled:opacity-40">💳 Card</button>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {editing && <ConfigModal line={editing} onClose={() => setEditing(null)} onSave={(u) => { setLines((ls) => ls.map((l) => (l.id === u.id ? u : l))); setEditing(null); }} />}
-      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} busy={busy} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
+      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
     </div>
@@ -535,11 +544,14 @@ function ConfigModal({ line, onClose, onSave }: { line: Line; onClose: () => voi
 }
 
 // ---- Payment modal ------------------------------------------------------------
-function PayModal({ method, total, tendered, setTendered, busy, onCancel, onConfirm }: {
-  method: "CASH" | "CARD"; total: number; tendered: string; setTendered: (v: string) => void; busy: boolean; onCancel: () => void; onConfirm: () => void;
+function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, onCancel, onConfirm }: {
+  method: "CASH" | "CARD"; total: number; tendered: string; setTendered: (v: string) => void;
+  approval: string; setApproval: (v: string) => void; last4: string; setLast4: (v: string) => void; requireApproval: boolean;
+  busy: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
   const change = Math.round((Number(tendered) - total) * 100) / 100;
   const quick = [total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].filter((v, i, a) => a.indexOf(v) === i);
+  const cardBlocked = method === "CARD" && requireApproval && approval.trim() === "";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
@@ -554,10 +566,20 @@ function PayModal({ method, total, tendered, setTendered, busy, onCancel, onConf
             {tendered !== "" && <p className={`mt-3 text-center text-lg font-bold ${change >= 0 ? "text-sage-dark" : "text-terracotta"}`}>{change >= 0 ? `Change ${money(change)}` : `Short ${money(-change)}`}</p>}
           </>
         )}
-        {method === "CARD" && <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>}
+        {method === "CARD" && (
+          <>
+            <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>
+            <label className="mt-3 block text-sm font-semibold text-espresso">Approval code {requireApproval ? <span className="text-terracotta">*</span> : <span className="font-normal text-charcoal/40">(optional)</span>}
+              <input autoFocus value={approval} onChange={(e) => setApproval(e.target.value)} placeholder="From the terminal receipt" className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5" />
+            </label>
+            <label className="mt-2 block text-sm font-semibold text-espresso">Card last 4 <span className="font-normal text-charcoal/40">(optional)</span>
+              <input value={last4} onChange={(e) => setLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="1234" className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5" />
+            </label>
+          </>
+        )}
         <div className="mt-5 flex gap-2">
           <button onClick={onCancel} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
-          <button onClick={onConfirm} disabled={busy || (method === "CASH" && (tendered === "" || change < 0))} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : "Complete sale"}</button>
+          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0))} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : "Complete sale"}</button>
         </div>
       </div>
     </div>

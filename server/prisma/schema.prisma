@@ -350,6 +350,7 @@ model Payment {
   status         String   @default("PENDING")
   cardBrand      String?
   cardLast4      String?
+  approvalCode   String?  // bank terminal approval/reference code (standalone card machine)
   refundedAmount Float    @default(0)
   failureReason  String?
   customerId     Int?
