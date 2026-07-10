@@ -34,6 +34,7 @@ import { Cart } from "./pages/Cart";
 import { Checkout } from "./pages/Checkout";
 import { Contact } from "./pages/Contact";
 import { Home } from "./pages/Home";
+import { KDS } from "./pages/KDS";
 import { Loyalty } from "./pages/Loyalty";
 import { Menu } from "./pages/Menu";
 import { OrderSuccess } from "./pages/OrderSuccess";
@@ -64,6 +65,7 @@ export default function App() {
       </Route>
 
       <Route path="/pos" element={<POS />} />
+      <Route path="/kds" element={<KDS />} />
 
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminLayout />}>

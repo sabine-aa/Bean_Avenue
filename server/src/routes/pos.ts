@@ -4,6 +4,7 @@ import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { awardOrderBeans } from "../lib/loyalty";
+import { notify } from "../lib/notify";
 import { outOrder } from "../lib/serialize";
 import { storefrontConfig } from "../lib/settings";
 import { buildLines, type IncomingItem } from "./orders";
@@ -110,8 +111,10 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift();
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string };
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
+  const orderType = String(body.orderType ?? "TAKEAWAY").toUpperCase() === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
+  const tableNumber = orderType === "DINE_IN" ? String(body.tableNumber ?? "").trim().slice(0, 20) || null : null;
 
   const result = await buildLines(body.items);
   if ("error" in result) return res.status(400).json({ error: result.error });
@@ -141,13 +144,16 @@ posRouter.post("/sale", async (req, res) => {
       customerName: String(body.customerName ?? "").trim() || "Walk-in",
       phone: phone || "-",
       fulfillment: "PICKUP",
+      orderType,
+      tableNumber,
       subtotal,
       addonsTotal,
       discount,
       tax,
       total,
       paymentMethod: method,
-      status: "COMPLETED",
+      // Paid at the counter, but still a live ticket the kitchen must make.
+      status: "RECEIVED",
       paymentStatus: "PAID",
       paidAt: new Date(),
       beansEarned,
@@ -183,4 +189,39 @@ posRouter.get("/summary", async (req, res) => {
     card: sum(sales.filter((o) => o.paymentMethod === "CARD")),
     sales: sales.map(outOrder),
   });
+});
+
+// ---- Kitchen Display (KDS) ----------------------------------------------------
+const KITCHEN_ACTIVE = ["RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP"];
+
+// GET /api/pos/kds — live tickets the kitchen must make (POS + pickup online).
+posRouter.get("/kds", async (_req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { status: { in: KITCHEN_ACTIVE }, fulfillment: { not: "DELIVERY" } },
+    include: { items: true },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json(orders.map(outOrder));
+});
+
+// PATCH /api/pos/kds/:id/status  { status } — advance a ticket through the kitchen.
+posRouter.patch("/kds/:id/status", async (req, res) => {
+  const id = Number(req.params.id);
+  const status = String(req.body?.status ?? "");
+  if (!["RECEIVED", "PREPARING", "READY_FOR_PICKUP", "COMPLETED"].includes(status)) {
+    return res.status(400).json({ error: "Invalid status." });
+  }
+  const order = await prisma.order.findUnique({ where: { id } });
+  if (!order) return res.status(404).json({ error: "Ticket not found." });
+  const updated = await prisma.order.update({ where: { id }, data: { status }, include: { items: true } });
+
+  if (status === "COMPLETED") await awardOrderBeans(id); // idempotent — mainly for online orders
+  // Keep the online customer informed as their order advances.
+  if (updated.customerId && updated.channel === "ONLINE") {
+    if (status === "READY_FOR_PICKUP")
+      await notify(updated.customerId, { type: "ORDER", title: "Ready for pickup", message: `Order ${updated.number} is ready for pickup.`, link: `/order-success/${updated.number}` });
+    if (status === "COMPLETED")
+      await notify(updated.customerId, { type: "ORDER", title: "Order completed", message: `Order ${updated.number} is complete. Enjoy! ☕`, link: `/order-success/${updated.number}` });
+  }
+  res.json(outOrder(updated));
 });

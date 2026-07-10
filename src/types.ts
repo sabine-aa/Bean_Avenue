@@ -171,6 +171,9 @@ export interface Order {
   email: string | null;
 
   fulfillment: Fulfillment;
+  channel?: string; // ONLINE | POS
+  orderType?: string | null; // POS: TAKEAWAY | DINE_IN
+  tableNumber?: string | null;
   pickupTime: string | null;
 
   subtotal: number;

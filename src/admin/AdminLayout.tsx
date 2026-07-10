@@ -39,9 +39,15 @@ export function AdminLayout() {
         </Link>
         <Link
           to="/pos"
-          className="mx-3 mb-3 rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark"
+          className="mx-3 mb-2 rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark"
         >
           🧾 Open Register
+        </Link>
+        <Link
+          to="/kds"
+          className="mx-3 mb-3 rounded-lg bg-mocha px-3 py-2 text-center text-sm font-bold text-cream transition hover:bg-mocha/80"
+        >
+          🍳 Kitchen Display
         </Link>
         <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Admin">
           {links.map((l) => (

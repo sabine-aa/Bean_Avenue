@@ -158,6 +158,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<Order | null>(null);
   const [shiftPanel, setShiftPanel] = useState(false);
+  const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
+  const [table, setTable] = useState("");
 
   useEffect(() => {
     api.get<MenuItem[]>("/api/menu").then((m) => setItems(m.filter((i) => i.inStock && !i.isHidden))).catch(() => {});
@@ -187,7 +189,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null);
+    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable("");
   }
 
   async function completeSale(method: "CASH" | "CARD") {
@@ -197,6 +199,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       const order = await posApi.post<Order>("/api/pos/sale", {
         paymentMethod: method,
         discount: disc,
+        orderType,
+        tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
         customerPhone: phone.trim() || undefined,
         items: lines.map((l) => ({
           menuItemId: l.item.id,
@@ -224,9 +228,12 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           <span className="font-display text-base font-bold">Bean Avenue POS</span>
           <span className="ml-2 text-sm text-charcoal/50">{session.staff.name}</span>
         </div>
-        <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
-          Shift · expected {money(shift.expectedCash)}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
+          <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
+            Shift · expected {money(shift.expectedCash)}
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -281,6 +288,13 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             )}
           </div>
           <div className="border-t border-oat p-3">
+            <div className="mb-2 grid grid-cols-2 gap-2">
+              <button onClick={() => setOrderType("TAKEAWAY")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "TAKEAWAY" ? "bg-espresso text-cream" : "bg-oat"}`}>🥡 Takeaway</button>
+              <button onClick={() => setOrderType("DINE_IN")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "DINE_IN" ? "bg-espresso text-cream" : "bg-oat"}`}>🍽 Dine-in</button>
+            </div>
+            {orderType === "DINE_IN" && (
+              <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table number" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+            )}
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone (optional — earns beans)" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
             <div className="mb-1 flex items-center justify-between text-sm"><span className="text-charcoal/60">Subtotal</span><span>{money(subtotal)}</span></div>
             <div className="mb-1 flex items-center justify-between text-sm">

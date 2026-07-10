@@ -235,6 +235,8 @@ model Order {
   shiftId      Int?        // POS: the register shift this sale belongs to
   staffId      Int?        // POS: the staff member who rang it
   staffName    String?
+  orderType    String?     // POS: TAKEAWAY | DINE_IN
+  tableNumber  String?     // POS dine-in table label
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
 
