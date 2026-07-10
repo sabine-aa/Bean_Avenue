@@ -11,6 +11,7 @@ export function CustomerAuth() {
   const toast = useToast();
 
   const [step, setStep] = useState<"form" | "code">("form");
+  const [mode, setMode] = useState<"signup" | "login">("signup");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [countryCode, setCountryCode] = useState("+961");
@@ -84,65 +85,78 @@ export function CustomerAuth() {
     <div className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
       {step === "form" && (
         <form onSubmit={send} className="space-y-4">
-          <h2 className="font-display text-xl font-bold text-espresso">Sign in or create your account</h2>
+          <h2 className="font-display text-xl font-bold text-espresso">
+            {mode === "login" ? "Welcome back" : "Create your account"}
+          </h2>
           <p className="text-sm text-charcoal/60">
-            Enter your phone and email — we'll send a one-time code to your{" "}
-            <span className="font-semibold text-espresso">email</span> to verify it. No passwords.
+            {mode === "login" ? (
+              <>Enter your email and we'll send you a one-time code. No passwords.</>
+            ) : (
+              <>
+                Enter your details — we'll send a one-time code to your{" "}
+                <span className="font-semibold text-espresso">email</span> to verify it. No passwords.
+              </>
+            )}
           </p>
-          <div className="flex gap-2">
-            <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
-              First name
-              <input
-                required
-                autoFocus
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Sara"
-                className={inputCls}
-              />
-            </label>
-            <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
-              Last name
-              <input
-                required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Khoury"
-                className={inputCls}
-              />
-            </label>
-          </div>
-          <div className="flex gap-2">
-            <label className="w-32 shrink-0 text-sm font-semibold text-espresso sm:w-36">
-              Country
-              <select
-                value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-oat px-2 py-2.5"
-              >
-                {COUNTRY_CODES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.name} ({c.code})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
-              Phone number
-              <input
-                required
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="03 111 222"
-                className={inputCls}
-              />
-            </label>
-          </div>
+          {mode === "signup" && (
+            <>
+              <div className="flex gap-2">
+                <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
+                  First name
+                  <input
+                    required
+                    autoFocus
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Sara"
+                    className={inputCls}
+                  />
+                </label>
+                <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
+                  Last name
+                  <input
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Khoury"
+                    className={inputCls}
+                  />
+                </label>
+              </div>
+              <div className="flex gap-2">
+                <label className="w-32 shrink-0 text-sm font-semibold text-espresso sm:w-36">
+                  Country
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-oat px-2 py-2.5"
+                  >
+                    {COUNTRY_CODES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="min-w-0 flex-1 text-sm font-semibold text-espresso">
+                  Phone number
+                  <input
+                    required
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="03 111 222"
+                    className={inputCls}
+                  />
+                </label>
+              </div>
+            </>
+          )}
           <label className="block text-sm font-semibold text-espresso">
             Email address
             <input
               required
+              autoFocus={mode === "login"}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -157,6 +171,31 @@ export function CustomerAuth() {
           >
             <MailIcon className="h-5 w-5" /> {busy ? "Sending…" : "Send code to email"}
           </button>
+          <p className="text-center text-sm text-charcoal/60">
+            {mode === "signup" ? (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="font-semibold text-terracotta hover:underline"
+                >
+                  Log in
+                </button>
+              </>
+            ) : (
+              <>
+                New to Bean Avenue?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className="font-semibold text-terracotta hover:underline"
+                >
+                  Create an account
+                </button>
+              </>
+            )}
+          </p>
         </form>
       )}
 
