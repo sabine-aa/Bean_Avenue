@@ -1,4 +1,8 @@
 import "dotenv/config";
+import { setDefaultResultOrder } from "node:dns";
+// Render (and some hosts) have no IPv6 egress; Node otherwise resolves Gmail's
+// IPv6 address first and fails with ENETUNREACH. Prefer IPv4 for all outbound DNS.
+setDefaultResultOrder("ipv4first");
 import cors from "cors";
 import express from "express";
 import { signToken } from "./auth";

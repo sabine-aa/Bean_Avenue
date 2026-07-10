@@ -22,6 +22,7 @@ export async function debugSmtp(port: number, to: string): Promise<{ ok: boolean
     port,
     secure: port === 465,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    family: 4, // force IPv4 (no IPv6 egress on Render)
     connectionTimeout: 12_000,
     greetingTimeout: 12_000,
     socketTimeout: 15_000,
