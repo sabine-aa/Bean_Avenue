@@ -12,37 +12,9 @@ export function generateCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
-/** Diagnostic: attempt an SMTP send on a specific port from THIS host and return
- *  the real result/error (so we can tell a port block from an auth block, etc.). */
-export async function debugSmtp(port: number, to: string): Promise<{ ok: boolean; error?: string }> {
-  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return { ok: false, error: "SMTP not configured" };
-  const t = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    family: 4, // force IPv4 (no IPv6 egress on Render)
-    connectionTimeout: 12_000,
-    greetingTimeout: 12_000,
-    socketTimeout: 15_000,
-  });
-  try {
-    await t.sendMail({
-      from: `Bean Avenue <${process.env.SMTP_FROM || SMTP_USER}>`,
-      to,
-      subject: `Bean Avenue — port ${port} test`,
-      text: `Port ${port} delivered from the server.`,
-    });
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: (e as Error).message };
-  }
-}
-
 /** Whether a real delivery provider is configured for this channel. */
 export function providerConfigured(channel: "PHONE" | "EMAIL"): boolean {
-  if (channel === "EMAIL") return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  if (channel === "EMAIL") return !!(process.env.RESEND_API_KEY || (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS));
   return !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_OTP_TEMPLATE);
 }
 
@@ -76,8 +48,55 @@ export async function sendOtp(channel: "PHONE" | "EMAIL", identifier: string, co
   return false;
 }
 
-// Email delivery via SMTP (works with Gmail app passwords, Brevo, SendGrid, etc.).
-// Returns false (caller falls back to the console/test code) when not configured.
+// Shared code-email content (used by both the HTTP provider and SMTP fallback).
+function otpEmail(code: string) {
+  return {
+    subject: `Your Bean Avenue code: ${code}`,
+    text: `Your Bean Avenue verification code is ${code}. It expires in 5 minutes. If you didn't request this, you can ignore this email.`,
+    html: `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:420px">
+        <h2 style="color:#2f3b2f;margin:0 0 8px">Bean Avenue</h2>
+        <p style="color:#555;margin:0 0 16px">Here's your verification code:</p>
+        <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#2f3b2f;margin:0 0 16px">${code}</p>
+        <p style="color:#888;font-size:13px">It expires in 5 minutes. If you didn't request this, you can ignore this email.</p>
+      </div>`,
+  };
+}
+
+// Email delivery. Prefer an HTTP provider (Resend) — it works on hosts that
+// block outbound SMTP (e.g. Render's free tier). Falls back to SMTP if only
+// that is configured. Returns false when neither delivers (caller logs the code).
+async function sendEmailOtp(to: string, code: string): Promise<boolean> {
+  if (await sendResendOtp(to, code)) return true;
+  return sendSmtpOtp(to, code);
+}
+
+// Resend HTTP API (https://resend.com) — a plain HTTPS POST, no SMTP needed.
+//   Env: RESEND_API_KEY, EMAIL_FROM (e.g. "Bean Avenue <noreply@beanavenue.com>";
+//   until a domain is verified in Resend, use "onboarding@resend.dev", which only
+//   delivers to the Resend account owner's own address).
+async function sendResendOtp(to: string, code: string): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return false;
+  const from = process.env.EMAIL_FROM || "Bean Avenue <onboarding@resend.dev>";
+  const { subject, text, html } = otpEmail(code);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to: [to], subject, text, html }),
+    });
+    if (!res.ok) {
+      console.error("Resend OTP send failed:", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Resend OTP send error:", err);
+    return false;
+  }
+}
+
+// SMTP fallback (Gmail app passwords, Brevo, SendGrid, etc.).
 //   Env: SMTP_HOST, SMTP_PORT (default 587), SMTP_USER, SMTP_PASS, SMTP_FROM (optional)
 let mailer: Transporter | null = null;
 function getMailer(): Transporter | null {
@@ -98,26 +117,16 @@ function getMailer(): Transporter | null {
   return mailer;
 }
 
-async function sendEmailOtp(to: string, code: string): Promise<boolean> {
+async function sendSmtpOtp(to: string, code: string): Promise<boolean> {
   const t = getMailer();
   if (!t) return false;
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
+  const { subject, text, html } = otpEmail(code);
   try {
-    await t.sendMail({
-      from: `Bean Avenue <${from}>`,
-      to,
-      subject: `Your Bean Avenue code: ${code}`,
-      text: `Your Bean Avenue verification code is ${code}. It expires in 5 minutes. If you didn't request this, you can ignore this email.`,
-      html: `<div style="font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:420px">
-        <h2 style="color:#2f3b2f;margin:0 0 8px">Bean Avenue</h2>
-        <p style="color:#555;margin:0 0 16px">Here's your verification code:</p>
-        <p style="font-size:32px;font-weight:800;letter-spacing:8px;color:#2f3b2f;margin:0 0 16px">${code}</p>
-        <p style="color:#888;font-size:13px">It expires in 5 minutes. If you didn't request this, you can ignore this email.</p>
-      </div>`,
-    });
+    await t.sendMail({ from: `Bean Avenue <${from}>`, to, subject, text, html });
     return true;
   } catch (err) {
-    console.error("Email OTP send error:", err);
+    console.error("SMTP OTP send error:", err);
     return false;
   }
 }

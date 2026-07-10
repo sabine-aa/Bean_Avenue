@@ -88,15 +88,6 @@ app.use("/api/uploads", uploadsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// Temporary SMTP diagnostic (gated by the JWT secret). Remove after debugging.
-app.get("/api/_debug/email", async (req, res) => {
-  if (req.query.key !== process.env.JWT_SECRET) return res.status(403).json({ error: "forbidden" });
-  const { debugSmtp } = await import("./lib/otp");
-  const port = Number(req.query.port) || 465;
-  const to = String(req.query.to || process.env.SMTP_USER || "");
-  res.json({ port, to, ...(await debugSmtp(port, to)) });
-});
-
 // Fallback error handler so thrown errors return JSON, not HTML.
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
