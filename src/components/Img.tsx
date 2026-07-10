@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { resolveApiUrl } from "../lib/api";
 
 /**
  * Image with a warm placeholder fallback when the photo fails to load.
@@ -36,7 +37,7 @@ export function Img({
   }
   return (
     <img
-      src={src}
+      src={resolveApiUrl(src)}
       alt={alt}
       loading="lazy"
       onError={() => setFailed(true)}

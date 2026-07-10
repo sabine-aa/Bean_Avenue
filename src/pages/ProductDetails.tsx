@@ -4,7 +4,7 @@ import { Img } from "../components/Img";
 import { MenuItemCard } from "../components/MenuItemCard";
 import { useCart } from "../context/CartContext";
 import { useToast } from "../context/ToastContext";
-import { api, money } from "../lib/api";
+import { api, money, resolveApiUrl } from "../lib/api";
 import type { AddonGroup, MenuItem, SelectedAddon, SelectedOption } from "../types";
 
 export function ProductDetails() {
@@ -399,7 +399,7 @@ export function ProductDetails() {
             ×
           </button>
           <img
-            src={item.photo}
+            src={resolveApiUrl(item.photo)}
             alt={item.name}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[90vh] max-w-full cursor-zoom-out rounded-2xl object-contain shadow-2xl"

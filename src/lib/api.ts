@@ -1,6 +1,17 @@
 const TOKEN_KEY = "bean-avenue-admin-token";
 const CUSTOMER_TOKEN_KEY = "bean-avenue-customer-token";
 
+// In dev the Vite proxy forwards /api to the local backend; in production the
+// frontend (Cloudflare) calls the deployed API directly.
+const API_BASE =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  (import.meta.env.DEV ? "" : "https://beanavenue-api.onrender.com");
+
+/** Resolve a possibly-relative "/api/..." path (e.g. uploaded images) to an
+ *  absolute URL against the API host. Full URLs and non-/api paths pass through. */
+export const resolveApiUrl = (path: string): string =>
+  path && path.startsWith("/api/") ? API_BASE + path : path;
+
 function readToken(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -60,7 +71,7 @@ export class ApiError extends Error {
 function makeRequest(tokenGetter: () => string | null, onUnauthorized?: () => void) {
   return async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const token = tokenGetter();
-    const res = await fetch(path, {
+    const res = await fetch(API_BASE + path, {
       ...options,
       headers: {
         "Content-Type": "application/json",
