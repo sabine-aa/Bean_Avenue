@@ -12,6 +12,33 @@ export function generateCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
+/** Diagnostic: attempt an SMTP send on a specific port from THIS host and return
+ *  the real result/error (so we can tell a port block from an auth block, etc.). */
+export async function debugSmtp(port: number, to: string): Promise<{ ok: boolean; error?: string }> {
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return { ok: false, error: "SMTP not configured" };
+  const t = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure: port === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 12_000,
+    greetingTimeout: 12_000,
+    socketTimeout: 15_000,
+  });
+  try {
+    await t.sendMail({
+      from: `Bean Avenue <${process.env.SMTP_FROM || SMTP_USER}>`,
+      to,
+      subject: `Bean Avenue — port ${port} test`,
+      text: `Port ${port} delivered from the server.`,
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /** Whether a real delivery provider is configured for this channel. */
 export function providerConfigured(channel: "PHONE" | "EMAIL"): boolean {
   if (channel === "EMAIL") return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
