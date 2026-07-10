@@ -3,7 +3,7 @@ import { Router } from "express";
 import { requireCustomer } from "../auth";
 import { prisma } from "../db";
 import { accountResponse, customerToken } from "../lib/account";
-import { devCodesEnabled, generateCode, normalizeEmail, normalizePhone, sendOtp } from "../lib/otp";
+import { devCodesEnabled, generateCode, normalizeEmail, normalizePhone, providerConfigured, sendOtp } from "../lib/otp";
 
 export const customerAuthRouter = Router();
 
@@ -58,15 +58,21 @@ async function createAndSend(channel: Channel, identifier: string, purpose: "LOG
       expiresAt: new Date(Date.now() + CODE_TTL_MS),
     },
   });
-  const delivered = await sendOtp(channel, identifier, code);
+  const configured = providerConfigured(channel);
+  if (configured) {
+    // A real provider is set up — send in the BACKGROUND so a slow SMTP host
+    // never makes the customer wait/hang on "Sending…". The code is already saved.
+    void sendOtp(channel, identifier, code).catch((e) => console.error("OTP send error:", e));
+  } else {
+    // No provider yet — log to the console and reveal the code on-screen (dev/test).
+    await sendOtp(channel, identifier, code);
+  }
   return {
     status: 200,
     ok: true,
     resendInSeconds: RESEND_INTERVAL_S,
     expiresInSeconds: CODE_TTL_MS / 1000,
-    // Only reveal the code on-screen when it wasn't actually delivered (no
-    // provider connected yet) — never once real email/WhatsApp is sending.
-    devCode: !delivered && devCodesEnabled() ? code : undefined,
+    devCode: !configured && devCodesEnabled() ? code : undefined,
   };
 }
 

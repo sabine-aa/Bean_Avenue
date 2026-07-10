@@ -12,6 +12,12 @@ export function generateCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, "0");
 }
 
+/** Whether a real delivery provider is configured for this channel. */
+export function providerConfigured(channel: "PHONE" | "EMAIL"): boolean {
+  if (channel === "EMAIL") return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return !!(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_OTP_TEMPLATE);
+}
+
 /** Normalize a phone to E.164-ish "+<digits>". Returns null if it doesn't look valid. */
 export function normalizePhone(countryCode: string | undefined, raw: string): string | null {
   let cc = String(countryCode || "+961").replace(/[^\d+]/g, "");
@@ -56,6 +62,10 @@ function getMailer(): Transporter | null {
     port,
     secure: port === 465, // 465 = implicit TLS; 587 = STARTTLS
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    // Fail fast instead of hanging the request if the SMTP host is slow/unreachable.
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   });
   return mailer;
 }
