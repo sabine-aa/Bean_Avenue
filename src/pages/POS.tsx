@@ -349,16 +349,17 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       )}
 
       <div className="flex min-h-0 flex-1">
+        {/* Category rail — vertical, down the side */}
+        <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-2 [scrollbar-width:none] sm:w-40 [&::-webkit-scrollbar]:hidden">
+          {["All", ...cats].map((c) => (
+            <button key={c} onClick={() => setCat(c)} className={`w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
+          ))}
+        </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="p-3">
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-2" />
           </div>
-          <div className="flex snap-x gap-2 overflow-x-auto scroll-smooth px-3 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {["All", ...cats].map((c) => (
-              <button key={c} onClick={() => setCat(c)} className={`snap-start whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
-            ))}
-          </div>
-          <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:grid-cols-4">
             {visible.map((item) => (
               <button key={item.id} onClick={() => addItem(item)} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
                 <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-square w-full bg-oat/30" />
