@@ -10,16 +10,39 @@ export const ADDON_GROUPS: {
   categories: string[];
   addons: { name: string; price: number; maxQuantity?: number }[];
 }[] = [
-  // Coffee/drink add-ons, straight off the printed menu board.
+  // Coffee/drink add-ons, split into clean groups. Milk is SINGLE-choice so a
+  // drink can't end up with two milks. Prices are straight off the menu board
+  // (each syrup flavour is the board's single "+0.33" syrup price).
   {
-    name: "Add-ons",
+    name: "Milk",
+    selection: "SINGLE",
+    categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks", "Iced Drinks", "Frappes"],
+    addons: [
+      { name: "Regular", price: 0 },
+      { name: "Lactose Free", price: 0.33 },
+      { name: "Non-Dairy Milk", price: 1.0 },
+    ],
+  },
+  {
+    name: "Syrup Flavor",
     selection: "MULTIPLE",
     categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks", "Iced Drinks", "Frappes"],
     addons: [
-      { name: "Lactose Free", price: 0.33 },
-      { name: "Add Syrup", price: 0.33 },
-      { name: "Non-Dairy Milk", price: 1.0 },
+      { name: "Caramel", price: 0.33 },
+      { name: "Vanilla", price: 0.33 },
+      { name: "Hazelnut", price: 0.33 },
+      { name: "Chocolate", price: 0.33 },
+      { name: "White Mocha", price: 0.33 },
+    ],
+  },
+  {
+    name: "Coffee Options",
+    selection: "MULTIPLE",
+    categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks", "Iced Drinks", "Frappes"],
+    addons: [
       { name: "Decaf", price: 0.75 },
+      { name: "Extra Hot", price: 0 },
+      { name: "Less Ice", price: 0 },
     ],
   },
   // Iced Teas: "ADD-ON BOBA +1.0".
