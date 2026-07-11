@@ -203,6 +203,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [staffPurchase, setStaffPurchase] = useState<{ id: number; name: string } | null>(null);
   const [staffPicker, setStaffPicker] = useState(false);
+  const [tabPin, setTabPin] = useState("");
   useEffect(() => { posApi.get<Staff[]>("/api/pos/staff-list").then(setStaffList).catch(() => {}); }, []);
   const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
   const [onlineNew, setOnlineNew] = useState(0);
@@ -294,7 +295,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null);
+    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin("");
   }
 
   async function completeSale(method: PayMethod) {
@@ -305,6 +306,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       paymentMethod: method,
       discount: staffPurchase ? undefined : disc,
       staffDiscountId: staffPurchase?.id,
+      staffTabPin: method === "SALARY" ? tabPin.trim() || undefined : undefined,
       orderType,
       tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
       customerPhone: phone.trim() || undefined,
@@ -484,7 +486,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       )}
       {showOnline && <OnlineOrdersPanel orders={onlineOrders} onClose={() => setShowOnline(false)} onChanged={loadOnline} />}
       {modal && <ConfigModal line={modal.line} isNew={modal.isNew} onClose={() => setModal(null)} onSave={(u) => saveConfigured(u, modal.isNew)} />}
-      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} staffName={staffPurchase?.name} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
+      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} staffName={staffPurchase?.name} tabPin={tabPin} setTabPin={setTabPin} onCancel={() => { setPay(null); setTabPin(""); }} onConfirm={() => completeSale(pay)} />}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
     </div>
@@ -867,10 +869,10 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
 }
 
 // ---- Payment modal ------------------------------------------------------------
-function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, staffName, onCancel, onConfirm }: {
+function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, staffName, tabPin, setTabPin, onCancel, onConfirm }: {
   method: PayMethod; total: number; tendered: string; setTendered: (v: string) => void;
   approval: string; setApproval: (v: string) => void; last4: string; setLast4: (v: string) => void; requireApproval: boolean;
-  busy: boolean; staffName?: string; onCancel: () => void; onConfirm: () => void;
+  busy: boolean; staffName?: string; tabPin: string; setTabPin: (v: string) => void; onCancel: () => void; onConfirm: () => void;
 }) {
   const change = Math.round((Number(tendered) - total) * 100) / 100;
   const quick = [total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].filter((v, i, a) => a.indexOf(v) === i);
@@ -891,7 +893,14 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
           </>
         )}
         {method === "WHISH" && <p className="mt-4 rounded-xl bg-[#5b3fd6]/10 px-4 py-3 text-sm text-charcoal/70">Collect {money(total)} via Whish, then confirm.</p>}
-        {method === "SALARY" && <p className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-charcoal/70">Nothing collected now — {money(total)} is added to {staffName ? <span className="font-semibold text-sage-dark">{staffName}</span> : "the staff member"}'s tab and deducted from their salary. Confirm to record it.</p>}
+        {method === "SALARY" && (
+          <>
+            <p className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-charcoal/70">Nothing collected now — {money(total)} is added to {staffName ? <span className="font-semibold text-sage-dark">{staffName}</span> : "the staff member"}'s tab and deducted from their salary.</p>
+            <label className="mt-3 block text-sm font-semibold text-espresso">{staffName ? `${staffName.split(" ")[0]}'s PIN` : "Staff PIN"} <span className="font-normal text-charcoal/40">— confirms it's really them</span>
+              <input autoFocus value={tabPin} onChange={(e) => setTabPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" type="password" placeholder="••••" className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-center text-2xl font-bold tracking-widest" />
+            </label>
+          </>
+        )}
         {method === "CARD" && (
           <>
             <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>
@@ -905,7 +914,7 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
         )}
         <div className="mt-5 flex gap-2">
           <button onClick={onCancel} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
-          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0))} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}</button>
+          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0)) || (method === "SALARY" && tabPin.trim().length < 4)} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}</button>
         </div>
       </div>
     </div>
@@ -942,9 +951,11 @@ function printReceipt(order: Order) {
 }
 
 function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
-  // Auto-print the moment the sale completes (offline sales have no server number yet).
+  const isTab = order.paymentMethod === "SALARY";
+  // Auto-print the moment the sale completes (offline sales have no server number
+  // yet; staff "charge to salary" sales don't get a printed customer receipt).
   useEffect(() => {
-    if (order.number !== "SAVED OFFLINE") printReceipt(order);
+    if (order.number !== "SAVED OFFLINE" && !isTab) printReceipt(order);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
@@ -954,8 +965,8 @@ function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
         <p className="font-display text-xl font-bold text-espresso">Sale complete</p>
         <p className="mt-1 text-sm text-charcoal/60">{order.number}</p>
         <p className="mt-3 text-3xl font-bold text-terracotta">{money(order.total)}</p>
-        <p className="text-sm text-charcoal/50">Paid by {order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
-        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">🖨 Printing · 🍳 Sent to kitchen</p>}
+        <p className="text-sm text-charcoal/50">{isTab ? "Charged to staff salary" : `Paid by ${order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}`}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
+        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">{isTab ? "🧾 On staff tab · 🍳 Sent to kitchen" : "🖨 Printing · 🍳 Sent to kitchen"}</p>}
         <div className="mt-5 flex gap-2">
           <button onClick={() => printReceipt(order)} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">🖨 Reprint</button>
           <button onClick={onNew} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">New sale</button>

@@ -70,16 +70,17 @@ staffRouter.delete("/timesheets/:id", async (req, res) => {
 staffRouter.get("/tabs", async (_req, res) => {
   const orders = await prisma.order.findMany({
     where: { paymentMethod: "SALARY", staffPurchaseId: { not: null }, staffTabSettledAt: null },
-    select: { id: true, number: true, total: true, createdAt: true, staffPurchaseId: true, staffPurchaseName: true },
+    select: { id: true, number: true, total: true, createdAt: true, staffPurchaseId: true, staffPurchaseName: true, items: { select: { name: true, quantity: true } } },
     orderBy: { createdAt: "desc" },
   });
-  const byStaff = new Map<number, { staffId: number; staffName: string; total: number; count: number; orders: { id: number; number: string; total: number; createdAt: Date }[] }>();
+  type TabOrder = { id: number; number: string; total: number; createdAt: Date; items: { name: string; quantity: number }[] };
+  const byStaff = new Map<number, { staffId: number; staffName: string; total: number; count: number; orders: TabOrder[] }>();
   for (const o of orders) {
     const id = o.staffPurchaseId as number;
     const cur = byStaff.get(id) ?? { staffId: id, staffName: o.staffPurchaseName ?? "Staff", total: 0, count: 0, orders: [] };
     cur.total = round2(cur.total + o.total);
     cur.count += 1;
-    cur.orders.push({ id: o.id, number: o.number, total: o.total, createdAt: o.createdAt });
+    cur.orders.push({ id: o.id, number: o.number, total: o.total, createdAt: o.createdAt, items: o.items });
     byStaff.set(id, cur);
   }
   res.json([...byStaff.values()].sort((a, b) => b.total - a.total));

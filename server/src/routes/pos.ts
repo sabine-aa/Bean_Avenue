@@ -152,7 +152,7 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift(terminal);
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number };
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number; staffTabPin?: string };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
 
   const rawMethod = String(body.paymentMethod ?? "CASH").toUpperCase();
@@ -189,15 +189,23 @@ posRouter.post("/sale", async (req, res) => {
   // sale as their purchase; otherwise the cashier's manual discount is used.
   let staffPurchaseId: number | null = null;
   let staffPurchaseName: string | null = null;
+  let staffPurchaseUser: { id: number; name: string; pinHash: string } | null = null;
   const staffDiscId = Number(body.staffDiscountId) || 0;
   if (staffDiscId && pos.staffDiscount > 0) {
     const sp = await prisma.staffUser.findUnique({ where: { id: staffDiscId } });
-    if (sp) { staffPurchaseId = sp.id; staffPurchaseName = sp.name; }
+    if (sp) { staffPurchaseId = sp.id; staffPurchaseName = sp.name; staffPurchaseUser = sp; }
   }
-  // "Charge to salary" is only valid on a staff purchase — it goes on that
-  // staff member's tab and is deducted from their salary later.
+  // "Charge to salary" is only valid on a staff purchase — it goes on that staff
+  // member's tab and is deducted from their salary later. The staff member must
+  // enter their OWN PIN to authorize it, so no one can charge to someone else.
   const isTab = method === "SALARY";
-  if (isTab && !staffPurchaseId) return res.status(400).json({ error: "Charge to salary needs a staff member selected." });
+  if (isTab) {
+    if (!staffPurchaseUser) return res.status(400).json({ error: "Charge to salary needs a staff member selected." });
+    const pin = String(body.staffTabPin ?? "").trim();
+    if (!pin) return res.status(400).json({ error: `${staffPurchaseName} must enter their PIN to charge this to their salary.` });
+    const ok = await bcrypt.compare(pin, staffPurchaseUser.pinHash);
+    if (!ok) return res.status(403).json({ error: `Wrong PIN for ${staffPurchaseName} — charge not authorized.` });
+  }
   const discount = staffPurchaseId
     ? round2(Math.min(subtotal, (subtotal * pos.staffDiscount) / 100))
     : round2(Math.min(Math.max(0, Number(body.discount) || 0), subtotal));

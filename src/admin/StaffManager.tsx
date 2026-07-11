@@ -3,7 +3,7 @@ import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
 
 type Staff = { id: number; name: string; role: string; isActive: boolean };
-type StaffTab = { staffId: number; staffName: string; total: number; count: number; orders: { id: number; number: string; total: number; createdAt: string }[] };
+type StaffTab = { staffId: number; staffName: string; total: number; count: number; orders: { id: number; number: string; total: number; createdAt: string; items: { name: string; quantity: number }[] }[] };
 type ShiftReport = {
   id: number; staffName: string; status: string; openingFloat: number; cashPayIns: number; cashPayOuts: number;
   countedCash: number | null; expectedCash: number | null; difference: number | null; openedAt: string; closedAt: string | null;
@@ -171,9 +171,12 @@ export function AdminStaff() {
             {openTab === t.staffId && (
               <div className="mt-2 space-y-1 border-t border-oat pt-2 text-sm">
                 {t.orders.map((o) => (
-                  <div key={o.id} className="flex items-center justify-between text-charcoal/70">
-                    <span>{o.number} · {new Date(o.createdAt).toLocaleString()}</span>
-                    <span className="font-semibold">{money(o.total)}</span>
+                  <div key={o.id} className="text-charcoal/70">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-charcoal/45">{o.number} · {new Date(o.createdAt).toLocaleString()}</span>
+                      <span className="font-semibold">{money(o.total)}</span>
+                    </div>
+                    <p className="text-charcoal/80">{o.items.map((it) => `${it.quantity}× ${it.name}`).join(", ") || "—"}</p>
                   </div>
                 ))}
               </div>
