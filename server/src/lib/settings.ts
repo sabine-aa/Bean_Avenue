@@ -23,6 +23,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   "pos.card.enabled": "false",
   "pos.card.requireApprovalCode": "false", // require the terminal's approval code on each card sale
   "pos.card.provider": "manual", // "manual" = standalone bank terminal; an integrated acquirer plugs in here later
+  "staff.discount.percent": "0", // % off a staff purchase, applied from the register
   "tax.rate": "0", // percentage applied to (subtotal - discounts + delivery fee)
   "tax.label": "Tax",
   "currency": "USD",
@@ -129,6 +130,7 @@ export async function posConfig() {
       requireApprovalCode: bool(map["pos.card.requireApprovalCode"]),
       provider: map["pos.card.provider"] || "manual",
     },
+    staffDiscount: num(map["staff.discount.percent"]),
   };
 }
 

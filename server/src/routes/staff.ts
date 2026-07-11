@@ -36,6 +36,34 @@ staffRouter.get("/shifts", async (_req, res) => {
   res.json(out);
 });
 
+// GET /api/staff/timesheets?from=&to= — attendance entries + per-staff totals.
+staffRouter.get("/timesheets", async (req, res) => {
+  const q = req.query as Record<string, string>;
+  const from = q.from ? new Date(q.from) : new Date(Date.now() - 14 * 86400000);
+  const to = q.to ? new Date(q.to) : new Date();
+  to.setHours(23, 59, 59, 999);
+  const rows = await prisma.timeEntry.findMany({ where: { clockIn: { gte: from, lte: to } }, orderBy: { clockIn: "desc" } });
+  const entries = rows.map((e) => {
+    const end = e.clockOut ? e.clockOut.getTime() : Date.now();
+    return { id: e.id, staffId: e.staffId, staffName: e.staffName, clockIn: e.clockIn, clockOut: e.clockOut, minutes: Math.max(0, Math.round((end - e.clockIn.getTime()) / 60000)), open: !e.clockOut };
+  });
+  const byStaff = new Map<number, { staffId: number; staffName: string; minutes: number; shifts: number; open: boolean }>();
+  for (const e of entries) {
+    const cur = byStaff.get(e.staffId) ?? { staffId: e.staffId, staffName: e.staffName, minutes: 0, shifts: 0, open: false };
+    cur.minutes += e.minutes;
+    cur.shifts += 1;
+    if (e.open) cur.open = true;
+    byStaff.set(e.staffId, cur);
+  }
+  res.json({ entries, summary: [...byStaff.values()].sort((a, b) => b.minutes - a.minutes) });
+});
+
+// DELETE /api/staff/timesheets/:id — remove a mistaken punch.
+staffRouter.delete("/timesheets/:id", async (req, res) => {
+  await prisma.timeEntry.delete({ where: { id: Number(req.params.id) } }).catch(() => {});
+  res.json({ ok: true });
+});
+
 // POST /api/staff  { name, pin, role }
 staffRouter.post("/", async (req, res) => {
   const name = String(req.body?.name ?? "").trim().slice(0, 60);

@@ -58,8 +58,34 @@ posRouter.post("/login", async (req, res) => {
   res.status(401).json({ error: "Wrong PIN." });
 });
 
+// POST /api/pos/punch (public) — clock in, or clock out if already on the clock.
+posRouter.post("/punch", async (req, res) => {
+  const pin = String(req.body?.pin ?? "").trim();
+  if (!pin) return res.status(400).json({ error: "Enter your PIN." });
+  const staff = await prisma.staffUser.findMany({ where: { isActive: true } });
+  for (const s of staff) {
+    if (await bcrypt.compare(pin, s.pinHash)) {
+      const open = await prisma.timeEntry.findFirst({ where: { staffId: s.id, clockOut: null }, orderBy: { clockIn: "desc" } });
+      if (open) {
+        const closed = await prisma.timeEntry.update({ where: { id: open.id }, data: { clockOut: new Date() } });
+        const workedMinutes = Math.round((closed.clockOut!.getTime() - closed.clockIn.getTime()) / 60000);
+        return res.json({ staff: { id: s.id, name: s.name }, action: "OUT", clockIn: closed.clockIn, clockOut: closed.clockOut, workedMinutes });
+      }
+      const entry = await prisma.timeEntry.create({ data: { staffId: s.id, staffName: s.name } });
+      return res.json({ staff: { id: s.id, name: s.name }, action: "IN", clockIn: entry.clockIn });
+    }
+  }
+  res.status(401).json({ error: "Wrong PIN." });
+});
+
 // Everything below requires a signed-in staff member.
 posRouter.use(requireStaff);
+
+// GET /api/pos/staff-list — active staff (for the staff-discount picker).
+posRouter.get("/staff-list", async (_req, res) => {
+  const staff = await prisma.staffUser.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+  res.json(staff);
+});
 
 // GET /api/pos/session — who am I + the current open shift (with totals).
 posRouter.get("/session", async (req, res) => {
@@ -126,7 +152,7 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift(terminal);
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string };
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
 
   const rawMethod = String(body.paymentMethod ?? "CASH").toUpperCase();
@@ -157,7 +183,18 @@ posRouter.post("/sale", async (req, res) => {
   const { built, addonsTotal } = result;
 
   const subtotal = round2(built.reduce((s, l) => s + l.lineTotal, 0));
-  const discount = round2(Math.min(Math.max(0, Number(body.discount) || 0), subtotal));
+  // Staff discount: applies the global % for the chosen staff member and tags the
+  // sale as their purchase; otherwise the cashier's manual discount is used.
+  let staffPurchaseId: number | null = null;
+  let staffPurchaseName: string | null = null;
+  const staffDiscId = Number(body.staffDiscountId) || 0;
+  if (staffDiscId && pos.staffDiscount > 0) {
+    const sp = await prisma.staffUser.findUnique({ where: { id: staffDiscId } });
+    if (sp) { staffPurchaseId = sp.id; staffPurchaseName = sp.name; }
+  }
+  const discount = staffPurchaseId
+    ? round2(Math.min(subtotal, (subtotal * pos.staffDiscount) / 100))
+    : round2(Math.min(Math.max(0, Number(body.discount) || 0), subtotal));
   const config = await storefrontConfig();
   const taxable = Math.max(0, round2(subtotal - discount));
   const tax = round2(taxable * (config.tax.rate / 100));
@@ -180,6 +217,8 @@ posRouter.post("/sale", async (req, res) => {
       terminal,
       staffId: req.staffId,
       staffName: req.staffName ?? "Staff",
+      staffPurchaseId,
+      staffPurchaseName,
       customerId: customer?.id,
       customerName: String(body.customerName ?? "").trim() || "Walk-in",
       phone: phone || "-",

@@ -25,6 +25,7 @@ import { AdminStaff } from "./admin/StaffManager";
 import { AdminStock } from "./admin/StockManager";
 import { AdminSubscribers } from "./admin/Subscribers";
 import { AdminSuggestions } from "./admin/Suggestions";
+import { AdminTimesheets } from "./admin/Timesheets";
 import { Layout } from "./components/Layout";
 import { About } from "./pages/About";
 import { Account } from "./pages/Account";
@@ -96,6 +97,7 @@ export default function App() {
         <Route path="stock" element={<AdminStock />} />
         <Route path="recipes" element={<AdminRecipes />} />
         <Route path="staff" element={<AdminStaff />} />
+        <Route path="timesheets" element={<AdminTimesheets />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

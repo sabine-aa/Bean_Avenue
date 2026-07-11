@@ -259,6 +259,8 @@ model Order {
   orderType    String?     // POS: TAKEAWAY | DINE_IN
   tableNumber  String?     // POS dine-in table label
   terminal     String?     // POS: which register/device rang the sale (multi-terminal)
+  staffPurchaseId   Int?    // set when this sale used the staff discount (for whom)
+  staffPurchaseName String?
   clientRef    String?     @unique // POS offline idempotency key (dedupes re-synced sales)
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
@@ -541,6 +543,19 @@ model StaffUser {
   role      String   @default("CASHIER") // CASHIER | MANAGER
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+}
+
+// Staff attendance — one clock-in, with a clock-out once they leave. Open entry
+// (clockOut null) = currently on the clock.
+model TimeEntry {
+  id        Int       @id @default(autoincrement())
+  staffId   Int
+  staffName String
+  clockIn   DateTime  @default(now())
+  clockOut  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([staffId, clockIn])
 }
 
 // A register shift / cash-drawer session.

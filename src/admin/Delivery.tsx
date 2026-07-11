@@ -160,6 +160,12 @@ export function AdminDelivery() {
           <Toggle k="pos.card.enabled" label="Accept cards at the register" hint="Off = cash only" />
           {bool("pos.card.enabled") && <Toggle k="pos.card.requireApprovalCode" label="Require terminal approval code" hint="Cashier keys in the code from the bank machine receipt" />}
         </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-espresso">
+            Staff discount (%) <span className="font-normal text-charcoal/50">(0 = off)</span>
+            <input type="number" min={0} max={100} step="1" value={settings["staff.discount.percent"]} onChange={(e) => set("staff.discount.percent", e.target.value)} className={inp} />
+          </label>
+        </div>
 
         <h2 className="mt-6 font-display text-xl font-bold text-espresso">Tax</h2>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">

@@ -26,6 +26,7 @@ const links = [
   { to: "/admin/stock", label: "Stock / Ingredients" },
   { to: "/admin/recipes", label: "Recipes" },
   { to: "/admin/staff", label: "Register Staff" },
+  { to: "/admin/timesheets", label: "Timesheets" },
 ];
 
 export function AdminLayout() {

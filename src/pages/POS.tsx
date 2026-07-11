@@ -17,7 +17,7 @@ type Shift = {
   id: number; staffName: string; openingFloat: number; cashPayIns: number; cashPayOuts: number; openedAt: string;
   salesCount: number; cashSales: number; cardSales: number; whishSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
 };
-type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string } };
+type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string }; staffDiscount?: number };
 type Session = { staff: Staff; shift: Shift | null; config?: PosConfig; terminal?: string };
 
 const unitPrice = (l: Line) =>
@@ -62,25 +62,41 @@ export function POS() {
 }
 
 // ---- PIN login ----------------------------------------------------------------
+function fmtDur(mins: number) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
 function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState<"login" | "punch">("login");
   const [terminal, setTerminal] = useState(getPosTerminal());
 
   function renameTerminal() {
     const name = window.prompt("Name this register (each till has its own shift & cash drawer):", terminal);
     if (name && name.trim()) { setPosTerminal(name); setTerminal(getPosTerminal()); }
   }
+  const switchMode = (m: "login" | "punch") => { setMode(m); setPin(""); setErr(""); setMsg(""); };
 
   async function submit(p: string) {
     if (busy) return;
     setBusy(true);
     setErr("");
+    setMsg("");
     try {
-      const res = await api.post<{ token: string; staff: Staff; shift: Shift | null; config?: PosConfig }>("/api/pos/login", { pin: p });
-      setPosToken(res.token);
-      onLogin({ staff: res.staff, shift: res.shift, config: res.config });
+      if (mode === "punch") {
+        const r = await api.post<{ staff: Staff; action: "IN" | "OUT"; workedMinutes?: number }>("/api/pos/punch", { pin: p });
+        setMsg(r.action === "IN" ? `✓ ${r.staff.name} clocked IN` : `✓ ${r.staff.name} clocked OUT — worked ${fmtDur(r.workedMinutes ?? 0)}`);
+        setPin("");
+      } else {
+        const res = await api.post<{ token: string; staff: Staff; shift: Shift | null; config?: PosConfig }>("/api/pos/login", { pin: p });
+        setPosToken(res.token);
+        onLogin({ staff: res.staff, shift: res.shift, config: res.config });
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Wrong PIN.");
       setPin("");
@@ -88,29 +104,32 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
       setBusy(false);
     }
   }
-  const press = (d: string) => {
-    const next = (pin + d).slice(0, 6);
-    setPin(next);
-  };
+  const press = (d: string) => setPin((cur) => (cur + d).slice(0, 6));
 
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-espresso text-cream">
       <Img src="/bean.png" alt="" className="mb-2 h-10 w-10 brightness-0 invert" />
       <p className="font-display text-2xl font-bold">Bean Avenue Register</p>
-      <p className="mt-1 text-cream/60">Enter your PIN</p>
-      <div className="my-5 flex gap-2">
+      {/* Mode toggle: sign in to the register vs. clock in/out */}
+      <div className="mt-3 flex gap-1 rounded-full bg-mocha/40 p-1 text-sm font-semibold">
+        <button onClick={() => switchMode("login")} className={`rounded-full px-4 py-1.5 ${mode === "login" ? "bg-cream text-espresso" : "text-cream/70"}`}>Sign in</button>
+        <button onClick={() => switchMode("punch")} className={`rounded-full px-4 py-1.5 ${mode === "punch" ? "bg-cream text-espresso" : "text-cream/70"}`}>🕐 Punch in/out</button>
+      </div>
+      <p className="mt-3 text-cream/60">{mode === "punch" ? "Enter your PIN to clock in or out" : "Enter your PIN"}</p>
+      <div className="my-4 flex gap-2">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <span key={i} className={`h-3.5 w-3.5 rounded-full ${i < pin.length ? "bg-cream" : "bg-cream/25"}`} />
         ))}
       </div>
       {err && <p className="mb-2 text-sm font-semibold text-terracotta">{err}</p>}
+      {msg && <p className="mb-2 text-sm font-semibold text-sage">{msg}</p>}
       <div className="grid grid-cols-3 gap-3">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
           <button key={d} onClick={() => press(d)} className="h-16 w-16 rounded-full bg-mocha/60 text-2xl font-bold active:scale-95">{d}</button>
         ))}
         <button onClick={() => setPin("")} className="h-16 w-16 rounded-full text-sm font-semibold text-cream/60">Clear</button>
         <button onClick={() => press("0")} className="h-16 w-16 rounded-full bg-mocha/60 text-2xl font-bold active:scale-95">0</button>
-        <button onClick={() => submit(pin)} disabled={pin.length < 4 || busy} className="h-16 w-16 rounded-full bg-terracotta text-lg font-bold disabled:opacity-40">→</button>
+        <button onClick={() => submit(pin)} disabled={pin.length < 4 || busy} className={`h-16 w-16 rounded-full text-lg font-bold disabled:opacity-40 ${mode === "punch" ? "bg-sage-dark" : "bg-terracotta"}`}>{mode === "punch" ? "🕐" : "→"}</button>
       </div>
       <button onClick={renameTerminal} className="mt-6 text-sm text-cream/50 hover:text-cream">🖥 {terminal} · change</button>
       <Link to="/" className="mt-3 text-sm text-cream/50 hover:text-cream">← Back to site</Link>
@@ -180,6 +199,11 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [cardLast4, setCardLast4] = useState("");
   const cardCfg = session.config?.card;
   const cardEnabled = cardCfg?.enabled ?? false;
+  const staffDiscountPct = session.config?.staffDiscount ?? 0;
+  const [staffList, setStaffList] = useState<Staff[]>([]);
+  const [staffPurchase, setStaffPurchase] = useState<{ id: number; name: string } | null>(null);
+  const [staffPicker, setStaffPicker] = useState(false);
+  useEffect(() => { posApi.get<Staff[]>("/api/pos/staff-list").then(setStaffList).catch(() => {}); }, []);
   const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
   const [onlineNew, setOnlineNew] = useState(0);
   const [showOnline, setShowOnline] = useState(false);
@@ -238,7 +262,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   }, [items, cat, q]);
 
   const subtotal = Math.round(lines.reduce((s, l) => s + lineTotal(l), 0) * 100) / 100;
-  const disc = Math.min(Math.max(0, Number(discount) || 0), subtotal);
+  // A staff purchase applies the global staff-discount %; otherwise the manual discount.
+  const disc = staffPurchase
+    ? Math.round(Math.min(subtotal, (subtotal * staffDiscountPct) / 100) * 100) / 100
+    : Math.min(Math.max(0, Number(discount) || 0), subtotal);
   const total = Math.round((subtotal - disc) * 100) / 100;
 
   function addItem(item: MenuItem) {
@@ -267,7 +294,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4("");
+    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null);
   }
 
   async function completeSale(method: PayMethod) {
@@ -276,7 +303,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     const payload = {
       clientRef: makeRef(),
       paymentMethod: method,
-      discount: disc,
+      discount: staffPurchase ? undefined : disc,
+      staffDiscountId: staffPurchase?.id,
       orderType,
       tableNumber: orderType === "DINE_IN" ? table.trim() || undefined : undefined,
       customerPhone: phone.trim() || undefined,
@@ -410,9 +438,19 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             )}
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone (optional — earns beans)" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
             <div className="mb-1 flex items-center justify-between text-sm"><span className="text-charcoal/60">Subtotal</span><span>{money(subtotal)}</span></div>
+            {staffDiscountPct > 0 && (
+              staffPurchase ? (
+                <div className="mb-1 flex items-center justify-between rounded-lg bg-sage/15 px-2 py-1.5 text-sm">
+                  <span className="font-semibold text-sage-dark">👤 {staffPurchase.name} · staff −{staffDiscountPct}%</span>
+                  <button onClick={() => setStaffPurchase(null)} className="text-xs font-semibold text-charcoal/50 hover:text-terracotta">Remove</button>
+                </div>
+              ) : (
+                <button onClick={() => setStaffPicker(true)} className="mb-1 w-full rounded-lg border border-dashed border-oat py-1.5 text-sm font-semibold text-charcoal/60 hover:bg-oat">👤 Staff discount ({staffDiscountPct}%)</button>
+              )
+            )}
             <div className="mb-1 flex items-center justify-between text-sm">
               <span className="text-charcoal/60">Discount ($)</span>
-              <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />
+              {staffPurchase ? <span className="font-semibold text-sage-dark">−{money(disc)}</span> : <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />}
             </div>
             <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
             <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
@@ -426,6 +464,21 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
         </div>
       </div>
 
+      {staffPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStaffPicker(false)}>
+          <div className="w-full max-w-xs rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <p className="font-display text-lg font-bold text-espresso">Staff discount · whose purchase?</p>
+            <p className="mt-1 text-xs text-charcoal/50">{staffDiscountPct}% off this sale, recorded as their staff purchase.</p>
+            <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+              {staffList.length === 0 && <p className="text-sm text-charcoal/40">No staff found.</p>}
+              {staffList.map((s) => (
+                <button key={s.id} onClick={() => { setStaffPurchase({ id: s.id, name: s.name }); setStaffPicker(false); }} className="w-full rounded-xl border border-oat px-4 py-2.5 text-left text-sm font-semibold text-espresso hover:bg-oat">{s.name}</button>
+              ))}
+            </div>
+            <button onClick={() => setStaffPicker(false)} className="mt-3 w-full rounded-full border border-oat py-2 text-sm font-semibold text-charcoal/60">Cancel</button>
+          </div>
+        </div>
+      )}
       {showOnline && <OnlineOrdersPanel orders={onlineOrders} onClose={() => setShowOnline(false)} onChanged={loadOnline} />}
       {modal && <ConfigModal line={modal.line} isNew={modal.isNew} onClose={() => setModal(null)} onSave={(u) => saveConfigured(u, modal.isNew)} />}
       {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
