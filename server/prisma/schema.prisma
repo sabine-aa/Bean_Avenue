@@ -683,6 +683,10 @@ model Restock {
   totalCost     Float         @default(0)
   createdBy     String? // admin/manager who recorded it
   createdAt     DateTime      @default(now())
+  // Voiding reverses the delivery's stock (fully logged) — used to correct mistakes.
+  voidedAt      DateTime?
+  voidedBy      String?
+  voidReason    String?
   lines         RestockLine[]
 }
 

@@ -41,6 +41,39 @@ stockRouter.get("/restocks/:id", async (req, res) => {
   res.json(restock);
 });
 
+// POST /api/stock/restocks/:id/void — reverse a mistaken restock. Subtracts each
+// received quantity back out (capped at current on-hand so stock never goes
+// negative), logs an ADJUST movement per line, and marks the restock voided.
+stockRouter.post("/restocks/:id/void", async (req, res) => {
+  const id = Number(req.params.id);
+  const restock = await prisma.restock.findUnique({ where: { id }, include: { lines: true } });
+  if (!restock) return res.status(404).json({ error: "Restock not found." });
+  if (restock.voidedAt) return res.status(400).json({ error: "This restock is already voided." });
+  const reason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
+
+  await prisma.$transaction(async (tx) => {
+    for (const line of restock.lines) {
+      const item = await tx.inventoryItem.findUnique({ where: { id: line.inventoryItemId } });
+      if (!item) continue;
+      const revert = Math.min(line.quantity, item.quantity); // never below zero
+      if (revert <= 0) continue;
+      const balance = round(item.quantity - revert);
+      await tx.inventoryItem.update({ where: { id: item.id }, data: { quantity: balance } });
+      await tx.inventoryMovement.create({
+        data: {
+          inventoryItemId: item.id, delta: -revert, balance, type: "ADJUST",
+          reason: `Void of restock ${restock.number}${reason ? ` — ${reason}` : ""}`,
+          staffName: "Admin", restockId: restock.id,
+        },
+      });
+    }
+    await tx.restock.update({ where: { id }, data: { voidedAt: new Date(), voidedBy: "Admin", voidReason: reason } });
+  });
+
+  const updated = await prisma.restock.findUnique({ where: { id }, include: { lines: true } });
+  res.json(updated);
+});
+
 // POST /api/stock/restock — record a whole supplier delivery in one transaction.
 //   { supplierId?, supplierName, supplierPhone?, invoiceNo?, invoicePhoto?, deliveryDate?,
 //     receivedBy?, notes?, lines: [{ inventoryItemId? | newItem{...}, quantity, costPerUnit?,

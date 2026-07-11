@@ -8,12 +8,13 @@ type StockItem = { id: number; name: string; unit: string; category: string; cos
 type RestockRow = {
   id: number; number: string; supplierName: string; invoiceNo: string | null;
   deliveryDate: string; receivedBy: string | null; notes: string | null; itemCount: number; totalCost: number;
+  voidedAt: string | null; voidReason: string | null;
 };
 type RestockLine = {
-  id: number; itemName: string; quantity: number; unit: string; costPerUnit: number;
+  id: number; inventoryItemId: number; itemName: string; quantity: number; unit: string; costPerUnit: number;
   totalCost: number; expiryDate: string | null; batchNo: string | null; notes: string | null;
 };
-type RestockDetail = RestockRow & { supplierPhone: string | null; invoicePhoto: string | null; createdBy: string | null; lines: RestockLine[] };
+type RestockDetail = RestockRow & { supplierId: number | null; supplierPhone: string | null; invoicePhoto: string | null; createdBy: string | null; voidedBy: string | null; lines: RestockLine[] };
 
 type Line = {
   key: number;
@@ -130,6 +131,39 @@ export function AdminRestock() {
 
   function openDetail(id: number) {
     api.get<RestockDetail>(`/api/stock/restocks/${id}`).then(setDetail).catch(() => {});
+  }
+
+  function prefillFrom(d: RestockDetail) {
+    const known = d.supplierId && suppliers.some((s) => s.id === d.supplierId);
+    setSupplierId(known ? String(d.supplierId) : "manual");
+    setSupplierName(d.supplierName); setSupplierPhone(d.supplierPhone ?? "");
+    setInvoiceNo(d.invoiceNo ?? ""); setInvoicePhoto(d.invoicePhoto ?? "");
+    setDeliveryDate(d.deliveryDate ? new Date(d.deliveryDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+    setReceivedBy(d.receivedBy ?? ""); setNotes(d.notes ?? "");
+    setLines(d.lines.map((li) => ({
+      key: LINE_KEY++, mode: "existing" as const, inventoryItemId: String(li.inventoryItemId), unit: li.unit,
+      quantity: String(li.quantity), costPerUnit: String(li.costPerUnit),
+      expiryDate: li.expiryDate ? new Date(li.expiryDate).toISOString().slice(0, 10) : "",
+      batchNo: li.batchNo ?? "", notes: li.notes ?? "",
+      newItem: { name: "", category: "", unit: "pcs", minQty: "" },
+    })));
+  }
+
+  async function voidRestock(d: RestockDetail, reEnter: boolean) {
+    const reason = window.prompt(
+      reEnter ? `Correcting ${d.number} — this voids the original (reversing its stock), then re-opens it for editing. Reason:` : `Void ${d.number}? This reverses the stock it added. Reason:`,
+      reEnter ? "Correction" : ""
+    );
+    if (reason === null) return;
+    try {
+      await api.post(`/api/stock/restocks/${d.id}/void`, { reason });
+      toast(`${d.number} voided · stock reversed.`);
+      loadRefs(); loadHistory();
+      if (reEnter) { prefillFrom(d); setTab("new"); }
+      setDetail(null);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't void the restock.", "error");
+    }
   }
 
   const field = "w-full rounded-xl border border-oat px-3 py-2 text-sm font-normal";
@@ -271,12 +305,15 @@ export function AdminRestock() {
           {history.map((r) => (
             <button key={r.id} onClick={() => openDetail(r.id)} className="flex w-full flex-wrap items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm hover:ring-2 hover:ring-oat">
               <div className="flex-1">
-                <p className="font-semibold text-espresso">{r.number} · {r.supplierName}</p>
+                <p className="font-semibold text-espresso">
+                  {r.number} · {r.supplierName}
+                  {r.voidedAt && <span className="ml-2 rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-semibold text-terracotta-dark">VOIDED</span>}
+                </p>
                 <p className="text-xs text-charcoal/55">
                   {new Date(r.deliveryDate).toLocaleDateString()}{r.invoiceNo ? ` · Inv #${r.invoiceNo}` : ""}{r.receivedBy ? ` · by ${r.receivedBy}` : ""} · {r.itemCount} item{r.itemCount === 1 ? "" : "s"}
                 </p>
               </div>
-              <span className="font-bold text-terracotta">{money(r.totalCost)}</span>
+              <span className={`font-bold ${r.voidedAt ? "text-charcoal/40 line-through" : "text-terracotta"}`}>{money(r.totalCost)}</span>
               <span className="text-xs font-semibold text-charcoal/40">View →</span>
             </button>
           ))}
@@ -315,8 +352,21 @@ export function AdminRestock() {
               <span>Total</span><span className="text-terracotta">{money(detail.totalCost)}</span>
             </div>
             {detail.invoicePhoto && (
-              <a href={detail.invoicePhoto} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-terracotta hover:underline">🧾 View invoice photo</a>
+              <a href={detail.invoicePhoto} target="_blank" rel="noreferrer" className="mt-3 block text-sm font-semibold text-terracotta hover:underline">🧾 View invoice photo</a>
             )}
+
+            {detail.voidedAt ? (
+              <div className="mt-4 rounded-xl bg-terracotta/10 px-3 py-2 text-sm text-terracotta-dark">
+                🚫 <span className="font-semibold">Voided</span> {detail.voidedBy ? `by ${detail.voidedBy}` : ""} on {new Date(detail.voidedAt).toLocaleString()}. Stock was reversed.
+                {detail.voidReason && <span className="block text-xs">Reason: {detail.voidReason}</span>}
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-oat pt-3">
+                <button onClick={() => voidRestock(detail, true)} className="rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha">✏️ Correct (void &amp; re-enter)</button>
+                <button onClick={() => voidRestock(detail, false)} className="rounded-full border border-terracotta px-4 py-2 text-sm font-semibold text-terracotta-dark hover:bg-terracotta/10">🗑 Void (reverse stock)</button>
+              </div>
+            )}
+            <p className="mt-2 text-xs text-charcoal/45">Voiding reverses this delivery's stock and is fully logged in the inventory movements — nothing changes silently.</p>
           </div>
         </div>
       )}
