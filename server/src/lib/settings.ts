@@ -18,6 +18,10 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   "payment.online.enabled": "true",
   "payment.cashOnDelivery.enabled": "true",
   "payment.cashAtPickup.enabled": "true",
+  // Whish online payment (redirect/approve). Off by default — turn on only once
+  // real Whish merchant credentials (WHISH_* env vars) are set, so customers
+  // can't "pay" against the mock gateway on the live site.
+  "payment.whish.enabled": "false",
   // In-store register (POS) card payments. Off by default — the shop is
   // cash-only until the bank account + terminal are live; flip on then.
   "pos.card.enabled": "false",
@@ -115,6 +119,7 @@ export async function storefrontConfig(now = new Date()) {
       online: bool(map["payment.online.enabled"]),
       cashOnDelivery: bool(map["payment.cashOnDelivery.enabled"]),
       cashAtPickup: bool(map["payment.cashAtPickup.enabled"]),
+      whish: bool(map["payment.whish.enabled"]),
     },
   };
 }

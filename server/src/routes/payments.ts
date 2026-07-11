@@ -9,6 +9,10 @@ import { notify } from "../lib/notify";
 import { paymentProvider, type PaymentResult } from "../lib/payments";
 import { outOrder } from "../lib/serialize";
 import { storefrontConfig } from "../lib/settings";
+import { approveMockCollection, whishProvider } from "../lib/whish";
+
+// Absolute base URL of the customer web app, used for Whish redirect/callbacks.
+const WEB_BASE = process.env.PUBLIC_WEB_URL || "https://beanavenue.shehayebaneel.workers.dev";
 
 export const paymentsRouter = Router();
 
@@ -126,6 +130,107 @@ paymentsRouter.post("/confirm", optionalCustomer, async (req, res) => {
   }
   await recordFailure(order, result, payment.id);
   return res.status(402).json({ status: "FAILED", error: result.failureReason ?? "Verification failed." });
+});
+
+// ---- Whish online payment (redirect/approve flow) ----
+
+type WhishOrderLookup = { ok: false; error: string; code: number } | { ok: true; order: Order };
+
+/** Common guards + lookup for a Whish order the caller is allowed to pay. */
+async function loadWhishOrder(req: { customerId?: number; body: { orderNumber?: unknown } }): Promise<WhishOrderLookup> {
+  const orderNumber = String(req.body.orderNumber ?? "");
+  const order = await prisma.order.findUnique({ where: { number: orderNumber } });
+  if (!order) return { ok: false, error: "Order not found.", code: 404 };
+  if (order.customerId && order.customerId !== req.customerId) return { ok: false, error: "You can't pay for this order.", code: 403 };
+  if (order.paymentMethod !== "WHISH") return { ok: false, error: "This order isn't a Whish-payment order.", code: 400 };
+  if (order.paymentStatus === "PAID") return { ok: false, error: "This order is already paid.", code: 400 };
+  if (order.status === "CANCELLED") return { ok: false, error: "This order was cancelled.", code: 400 };
+  return { ok: true, order };
+}
+
+// POST /api/payments/whish/create  { orderNumber } — start a Whish collection.
+paymentsRouter.post("/whish/create", optionalCustomer, async (req, res) => {
+  const found = await loadWhishOrder(req);
+  if (!found.ok) return res.status(found.code).json({ error: found.error });
+  const order = found.order;
+
+  const config = await storefrontConfig();
+  if (!config.payment.whish) return res.status(400).json({ error: "Whish payment isn't available right now." });
+
+  const externalId = order.number; // one active collection per order
+  const result = await whishProvider.createCollection({
+    amount: order.total,
+    currency: config.currency,
+    orderNumber: order.number,
+    externalId,
+    successRedirectUrl: `${WEB_BASE}/order-success/${order.number}`,
+    failureRedirectUrl: `${WEB_BASE}/checkout?retry=${order.number}`,
+  });
+
+  // Record (or refresh) the pending Whish attempt — safe fields only.
+  await prisma.payment.upsert({
+    where: { transactionId: result.transactionId },
+    create: {
+      orderId: order.id,
+      provider: whishProvider.name,
+      transactionId: result.transactionId,
+      method: "WHISH",
+      amount: order.total,
+      currency: config.currency,
+      status: "PENDING",
+      customerId: order.customerId ?? undefined,
+    },
+    update: { status: "PENDING" },
+  });
+
+  res.json({ status: "PENDING", redirectUrl: result.redirectUrl, transactionId: result.transactionId, mock: result.mock });
+});
+
+// POST /api/payments/whish/confirm  { orderNumber } — settle after the customer
+// approves (mock: inline; real: polled after redirect back). PROD-SAFE: never
+// settles against the mock provider on the live server.
+paymentsRouter.post("/whish/confirm", optionalCustomer, async (req, res) => {
+  const found = await loadWhishOrder(req);
+  if (!found.ok) return res.status(found.code).json({ error: found.error });
+  const order = found.order;
+  const externalId = order.number;
+
+  if (!whishProvider.isConfigured && process.env.NODE_ENV === "production") {
+    return res.status(503).json({ error: "Whish isn't configured on the server yet." });
+  }
+  // Mock only: approve the pending collection so it reports PAID (dev/testing).
+  approveMockCollection(externalId);
+
+  const payment = await prisma.payment.findFirst({ where: { orderId: order.id, method: "WHISH" }, orderBy: { createdAt: "desc" } });
+  if (!payment) return res.status(404).json({ error: "No Whish payment to confirm." });
+
+  const outcome = await whishProvider.getStatus(externalId);
+  const result: PaymentResult = { provider: whishProvider.name, transactionId: payment.transactionId, outcome: outcome === "PAID" ? "PAID" : "FAILED" };
+  if (outcome === "PAID") {
+    await settlePaidOrder(order, result, payment.id);
+    const fresh = await prisma.order.findUnique({ where: { id: order.id }, include: { items: true } });
+    return res.json({ status: "PAID", order: outOrder(fresh!) });
+  }
+  if (outcome === "PENDING") return res.json({ status: "PENDING" });
+  await recordFailure(order, { ...result, failureReason: "Whish payment wasn't completed." }, payment.id);
+  return res.status(402).json({ status: "FAILED", error: "Whish payment wasn't completed." });
+});
+
+// POST /api/payments/whish/callback — server webhook the REAL Whish calls. We
+// don't trust the body: we re-check the collection status with Whish, then settle.
+paymentsRouter.post("/whish/callback", async (req, res) => {
+  const externalId = String((req.body?.externalId ?? (req.query as Record<string, string>).externalId) ?? "");
+  if (!externalId) return res.status(400).json({ error: "Missing externalId." });
+  const order = await prisma.order.findUnique({ where: { number: externalId } });
+  if (!order) return res.status(404).json({ error: "Order not found." });
+  if (order.paymentStatus === "PAID") return res.json({ ok: true });
+
+  const outcome = await whishProvider.getStatus(externalId);
+  const payment = await prisma.payment.findFirst({ where: { orderId: order.id, method: "WHISH" }, orderBy: { createdAt: "desc" } });
+  if (payment && outcome === "PAID") {
+    await settlePaidOrder(order, { provider: whishProvider.name, transactionId: payment.transactionId, outcome: "PAID" }, payment.id);
+  }
+  res.json({ ok: true });
 });
 
 // ---- Admin payment management ----

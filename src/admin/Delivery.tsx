@@ -150,6 +150,7 @@ export function AdminDelivery() {
         <h2 className="mt-6 font-display text-xl font-bold text-espresso">Payment methods</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <Toggle k="payment.online.enabled" label="Pay online (card)" />
+          <Toggle k="payment.whish.enabled" label="Pay with Whish" hint="Turn on only once real Whish credentials are set on the server (WHISH_* env)" />
           <Toggle k="payment.cashOnDelivery.enabled" label="Cash on delivery" />
           <Toggle k="payment.cashAtPickup.enabled" label="Cash at pickup" />
         </div>

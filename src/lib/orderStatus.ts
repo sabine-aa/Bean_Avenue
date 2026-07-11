@@ -143,6 +143,7 @@ export const paymentStatusMeta = (s: string) =>
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   ONLINE: "Card (online)",
+  WHISH: "Whish",
   CASH_ON_DELIVERY: "Cash on delivery",
   CASH_AT_PICKUP: "Cash at pickup",
 };

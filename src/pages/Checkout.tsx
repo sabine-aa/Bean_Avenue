@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { AddressFields, AddressFormValue, emptyAddress } from "../components/AddressFields";
 import { ItemExtras } from "../components/ItemExtras";
 import { PaymentModal } from "../components/PaymentModal";
+import { WhishPaymentModal } from "../components/WhishPaymentModal";
 import { PhoneInput } from "../components/PhoneInput";
 import { useCart } from "../context/CartContext";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
@@ -14,6 +15,7 @@ import type { DeliveryQuote, Fulfillment, Order, PaymentMethod, SavedAddress, St
 
 const PAYMENT_ICON: Record<string, string> = {
   ONLINE: "💳",
+  WHISH: "📱",
   CASH_ON_DELIVERY: "💵",
   CASH_AT_PICKUP: "💵",
 };
@@ -45,6 +47,7 @@ export function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<keyof AddressFormValue, string>>>({});
   const [payOrder, setPayOrder] = useState<Order | null>(null);
+  const [whishOrder, setWhishOrder] = useState<Order | null>(null);
 
   const savedAddresses: SavedAddress[] = account?.addresses ?? [];
 
@@ -76,6 +79,7 @@ export function Checkout() {
     if (!config) return [];
     const opts: PaymentMethod[] = [];
     if (config.payment.online) opts.push("ONLINE");
+    if (config.payment.whish) opts.push("WHISH");
     if (fulfillment === "DELIVERY" && config.payment.cashOnDelivery) opts.push("CASH_ON_DELIVERY");
     if (fulfillment === "PICKUP" && config.payment.cashAtPickup) opts.push("CASH_AT_PICKUP");
     return opts;
@@ -163,7 +167,9 @@ export function Checkout() {
     customerApi
       .get<Order>(`/api/orders/track/${retry}`)
       .then((o) => {
-        if (o.paymentMethod === "ONLINE" && o.paymentStatus !== "PAID" && o.status !== "CANCELLED") setPayOrder(o);
+        if (o.paymentStatus === "PAID" || o.status === "CANCELLED") return;
+        if (o.paymentMethod === "ONLINE") setPayOrder(o);
+        else if (o.paymentMethod === "WHISH") setWhishOrder(o);
       })
       .catch(() => {});
   }, [searchParams]);
@@ -246,6 +252,8 @@ export function Checkout() {
       if (payment === "ONLINE") {
         // Don't clear the cart until payment succeeds (so a failed payment is recoverable).
         setPayOrder(order);
+      } else if (payment === "WHISH") {
+        setWhishOrder(order);
       } else {
         clear();
         if (account) refresh().catch(() => {});
@@ -263,6 +271,7 @@ export function Checkout() {
     clear();
     if (account) refresh().catch(() => {});
     setPayOrder(null);
+    setWhishOrder(null);
     navigate(`/order-success/${order.number}`, { state: { order } });
   }
 
@@ -299,7 +308,7 @@ export function Checkout() {
       {account ? (
         <div className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-espresso">
           ☕ Logged in as <span className="font-semibold">{account.name}</span> · you'll earn{" "}
-          <span className="font-semibold">{beansToEarn} beans</span> once this order is {payment === "ONLINE" ? "paid" : "completed"}.
+          <span className="font-semibold">{beansToEarn} beans</span> once this order is {payment === "ONLINE" || payment === "WHISH" ? "paid" : "completed"}.
         </div>
       ) : (
         <div className="mt-4 rounded-xl bg-oat/60 px-4 py-3 text-sm text-charcoal/80">
@@ -466,7 +475,7 @@ export function Checkout() {
             disabled={submitting || deliveryBlocked || paymentOptions.length === 0}
             className="btn-3d w-full rounded-full bg-terracotta px-6 py-3.5 text-base font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Placing your order…" : payment === "ONLINE" ? `Pay & place order · ${money(summary.total)}` : `Place order · ${money(summary.total)}`}
+            {submitting ? "Placing your order…" : payment === "ONLINE" || payment === "WHISH" ? `Pay & place order · ${money(summary.total)}` : `Place order · ${money(summary.total)}`}
           </button>
           {deliveryBlocked && fulfillment === "DELIVERY" && (
             <p className="text-center text-xs text-charcoal/50">Enter a deliverable address (or switch to pickup) to continue.</p>
@@ -517,6 +526,19 @@ export function Checkout() {
           onClose={() => {
             const o = payOrder;
             setPayOrder(null);
+            navigate(`/order-success/${o.number}`, { state: { order: o } });
+          }}
+        />
+      )}
+
+      {whishOrder && (
+        <WhishPaymentModal
+          orderNumber={whishOrder.number}
+          amount={whishOrder.total}
+          onPaid={onPaid}
+          onClose={() => {
+            const o = whishOrder;
+            setWhishOrder(null);
             navigate(`/order-success/${o.number}`, { state: { order: o } });
           }}
         />

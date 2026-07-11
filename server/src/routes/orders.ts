@@ -195,6 +195,7 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
   let paymentMethod = String(body.paymentMethod ?? "").toUpperCase();
   const validMethods: string[] = [];
   if (config.payment.online) validMethods.push("ONLINE");
+  if (config.payment.whish) validMethods.push("WHISH");
   if (fulfillment === "DELIVERY" && config.payment.cashOnDelivery) validMethods.push("CASH_ON_DELIVERY");
   if (fulfillment === "PICKUP" && config.payment.cashAtPickup) validMethods.push("CASH_AT_PICKUP");
   if (!validMethods.length) return res.status(400).json({ error: "No payment methods are available right now. Please contact us." });
@@ -212,7 +213,8 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
     : null;
   if (!customer && phone) customer = await getOrCreateCustomer(phone, customerName);
 
-  const isOnline = paymentMethod === "ONLINE";
+  // Both ONLINE (card) and WHISH need the customer to pay before we confirm.
+  const isOnline = paymentMethod === "ONLINE" || paymentMethod === "WHISH";
   const order = await prisma.order.create({
     data: {
       number: genNumber("ORD"),

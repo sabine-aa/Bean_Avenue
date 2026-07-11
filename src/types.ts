@@ -272,7 +272,7 @@ export interface StorefrontConfig {
     hours: { enabled: boolean; start: string; end: string };
   };
   pickup: { enabled: boolean; prepTime: string; scheduleEnabled: boolean; location: string };
-  payment: { online: boolean; cashOnDelivery: boolean; cashAtPickup: boolean };
+  payment: { online: boolean; cashOnDelivery: boolean; cashAtPickup: boolean; whish: boolean };
 }
 
 export interface Room {
