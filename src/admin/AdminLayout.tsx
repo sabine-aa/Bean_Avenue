@@ -24,6 +24,8 @@ const links = [
   { to: "/admin/reports", label: "Sales Reports" },
   { to: "/admin/inventory", label: "Product Stock" },
   { to: "/admin/stock", label: "Stock / Ingredients" },
+  { to: "/admin/restock", label: "Restock / Receive" },
+  { to: "/admin/suppliers", label: "Suppliers" },
   { to: "/admin/recipes", label: "Recipes" },
   { to: "/admin/staff", label: "Register Staff" },
   { to: "/admin/timesheets", label: "Timesheets" },

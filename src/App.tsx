@@ -22,8 +22,10 @@ import { AdminRecipes } from "./admin/RecipeEditor";
 import { AdminRewards } from "./admin/RewardsManager";
 import { AdminRooms } from "./admin/RoomsManagement";
 import { AdminStaff } from "./admin/StaffManager";
+import { AdminRestock } from "./admin/Restock";
 import { AdminStock } from "./admin/StockManager";
 import { AdminSubscribers } from "./admin/Subscribers";
+import { AdminSuppliers } from "./admin/Suppliers";
 import { AdminSuggestions } from "./admin/Suggestions";
 import { AdminTimesheets } from "./admin/Timesheets";
 import { Layout } from "./components/Layout";
@@ -95,6 +97,8 @@ export default function App() {
         <Route path="reports" element={<AdminReports />} />
         <Route path="inventory" element={<AdminInventory />} />
         <Route path="stock" element={<AdminStock />} />
+        <Route path="restock" element={<AdminRestock />} />
+        <Route path="suppliers" element={<AdminSuppliers />} />
         <Route path="recipes" element={<AdminRecipes />} />
         <Route path="staff" element={<AdminStaff />} />
         <Route path="timesheets" element={<AdminTimesheets />} />

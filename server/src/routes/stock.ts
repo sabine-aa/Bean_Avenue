@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { genNumber } from "../lib/helpers";
 
 export const stockRouter = Router();
 stockRouter.use(requireAdmin);
@@ -22,6 +23,127 @@ stockRouter.get("/", async (_req, res) => {
     },
     categories: [...new Set(items.map((i) => i.category).filter(Boolean))].sort(),
   });
+});
+
+// ---- Restock / supplier receiving ----
+
+// GET /api/stock/restocks?limit= — restock history (newest first).
+stockRouter.get("/restocks", async (req, res) => {
+  const limit = Math.min(200, Math.max(1, Number((req.query as Record<string, string>).limit) || 100));
+  const rows = await prisma.restock.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+  res.json(rows);
+});
+
+// GET /api/stock/restocks/:id — one restock with all its received lines.
+stockRouter.get("/restocks/:id", async (req, res) => {
+  const restock = await prisma.restock.findUnique({ where: { id: Number(req.params.id) }, include: { lines: true } });
+  if (!restock) return res.status(404).json({ error: "Restock not found." });
+  res.json(restock);
+});
+
+// POST /api/stock/restock — record a whole supplier delivery in one transaction.
+//   { supplierId?, supplierName, supplierPhone?, invoiceNo?, invoicePhoto?, deliveryDate?,
+//     receivedBy?, notes?, lines: [{ inventoryItemId? | newItem{...}, quantity, costPerUnit?,
+//     expiryDate?, batchNo?, notes? }] }
+// Increases each item's on-hand quantity, logs a RECEIVE movement per line, and can
+// create brand-new inventory items inline. Everything is applied atomically.
+stockRouter.post("/restock", async (req, res) => {
+  const b = req.body ?? {};
+  const rawLines: Record<string, unknown>[] = Array.isArray(b.lines) ? b.lines : [];
+  const supplierName = String(b.supplierName ?? "").trim();
+  if (!supplierName) return res.status(400).json({ error: "Choose or enter a supplier." });
+  if (!rawLines.length) return res.status(400).json({ error: "Add at least one item to the restock." });
+
+  const supplierId = b.supplierId ? Number(b.supplierId) : null;
+  const invoiceNo = String(b.invoiceNo ?? "").trim() || null;
+  const invoicePhoto = String(b.invoicePhoto ?? "").trim() || null;
+  const supplierPhone = String(b.supplierPhone ?? "").trim() || null;
+  const receivedBy = String(b.receivedBy ?? "").trim() || null;
+  const notes = String(b.notes ?? "").trim() || null;
+  const deliveryDate = b.deliveryDate ? new Date(String(b.deliveryDate)) : new Date();
+
+  type Prepared = { itemId: number; itemName: string; unit: string; qty: number; cost: number; lineTotal: number; expiry: Date | null; batchNo: string | null; noteLine: string | null };
+  const prepared: Prepared[] = [];
+  for (const l of rawLines) {
+    const qty = round(Number(l.quantity));
+    if (!(qty > 0)) continue; // skip blank lines
+    const cost = Math.max(0, round(Number(l.costPerUnit)));
+    const itemId = l.inventoryItemId ? Number(l.inventoryItemId) : 0;
+    let item = itemId ? await prisma.inventoryItem.findUnique({ where: { id: itemId } }) : null;
+
+    // Create a brand-new inventory item straight from the restock, if requested.
+    const ni = l.newItem as Record<string, unknown> | undefined;
+    if (!item && ni && String(ni.name ?? "").trim()) {
+      const name = String(ni.name).trim();
+      const existing = await prisma.inventoryItem.findUnique({ where: { name } });
+      item = existing ?? (await prisma.inventoryItem.create({
+        data: {
+          name,
+          category: String(ni.category ?? "").trim(),
+          unit: String(ni.unit ?? l.unit ?? "pcs").trim() || "pcs",
+          quantity: 0,
+          minQty: Math.max(0, round(Number(ni.minQty))),
+          costPerUnit: cost,
+          supplier: supplierName,
+        },
+      }));
+    }
+    if (!item) return res.status(400).json({ error: "Each line needs an existing item or a new item name." });
+
+    prepared.push({
+      itemId: item.id,
+      itemName: item.name,
+      unit: item.unit,
+      qty,
+      cost,
+      lineTotal: round(qty * cost),
+      expiry: l.expiryDate ? new Date(String(l.expiryDate)) : null,
+      batchNo: String(l.batchNo ?? "").trim() || null,
+      noteLine: String(l.notes ?? "").trim() || null,
+    });
+  }
+  if (!prepared.length) return res.status(400).json({ error: "Add at least one item with a quantity." });
+
+  const totalCost = round(prepared.reduce((s, p) => s + p.lineTotal, 0));
+  const number = genNumber("RS");
+
+  const restock = await prisma.$transaction(async (tx) => {
+    const header = await tx.restock.create({
+      data: {
+        number, supplierId, supplierName, supplierPhone, invoiceNo, invoicePhoto,
+        deliveryDate, receivedBy, notes, itemCount: prepared.length, totalCost, createdBy: "Admin",
+      },
+    });
+    for (const p of prepared) {
+      const current = await tx.inventoryItem.findUnique({ where: { id: p.itemId } });
+      const balance = round((current?.quantity ?? 0) + p.qty);
+      await tx.inventoryItem.update({
+        where: { id: p.itemId },
+        data: {
+          quantity: balance,
+          ...(p.cost > 0 ? { costPerUnit: p.cost } : {}),
+          supplier: supplierName,
+          ...(p.expiry ? { expiryDate: p.expiry } : {}),
+        },
+      });
+      await tx.inventoryMovement.create({
+        data: {
+          inventoryItemId: p.itemId, delta: p.qty, balance, type: "RECEIVE",
+          reason: `Restock ${number} from ${supplierName}${invoiceNo ? `, Invoice #${invoiceNo}` : ""}`,
+          staffName: receivedBy || "Admin", invoiceNo, costPerUnit: p.cost || null, restockId: header.id,
+        },
+      });
+      await tx.restockLine.create({
+        data: {
+          restockId: header.id, inventoryItemId: p.itemId, itemName: p.itemName, quantity: p.qty,
+          unit: p.unit, costPerUnit: p.cost, totalCost: p.lineTotal, expiryDate: p.expiry, batchNo: p.batchNo, notes: p.noteLine,
+        },
+      });
+    }
+    return header;
+  });
+
+  res.status(201).json(restock);
 });
 
 // GET /api/stock/movements?limit= — recent stock changes with item names.

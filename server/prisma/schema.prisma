@@ -643,9 +643,65 @@ model InventoryMovement {
   orderId         Int? // set for sale deductions / refund reversals
   invoiceNo       String? // supplier invoice on RECEIVE
   costPerUnit     Float? // captured on RECEIVE
+  restockId       Int? // groups the RECEIVE movements that came from one restock delivery
   createdAt       DateTime      @default(now())
 
   @@index([inventoryItemId, createdAt])
+}
+
+// ---- Suppliers & restocking (supplier receiving) ----------------------------
+// A supplier the shop buys stock from (dairy, coffee, packaging…).
+model Supplier {
+  id            Int       @id @default(autoincrement())
+  name          String
+  contactPerson String?
+  phone         String?
+  whatsapp      String?
+  email         String?
+  address       String?
+  notes         String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// One supplier-receiving transaction: multiple stock items received in one delivery.
+// Saving a restock increases each item's on-hand quantity and writes a RECEIVE
+// movement per line (tagged with this restock's id) for a full audit trail.
+model Restock {
+  id            Int           @id @default(autoincrement())
+  number        String        @unique // RS-XXXX
+  supplierId    Int? // optional link to a managed Supplier
+  supplierName  String // snapshot (free-text or the chosen supplier's name)
+  supplierPhone String?
+  invoiceNo     String?
+  invoicePhoto  String? // uploaded invoice image URL
+  deliveryDate  DateTime      @default(now())
+  receivedBy    String? // who took the delivery
+  notes         String?
+  itemCount     Int           @default(0)
+  totalCost     Float         @default(0)
+  createdBy     String? // admin/manager who recorded it
+  createdAt     DateTime      @default(now())
+  lines         RestockLine[]
+}
+
+// One received item line within a restock.
+model RestockLine {
+  id              Int       @id @default(autoincrement())
+  restockId       Int
+  restock         Restock   @relation(fields: [restockId], references: [id], onDelete: Cascade)
+  inventoryItemId Int
+  itemName        String // snapshot of the item name at receiving time
+  quantity        Float
+  unit            String
+  costPerUnit     Float     @default(0)
+  totalCost       Float     @default(0)
+  expiryDate      DateTime?
+  batchNo         String?
+  notes           String?
+
+  @@index([restockId])
 }
 
 // One line of a menu item's recipe: how much of an inventory item it consumes.
