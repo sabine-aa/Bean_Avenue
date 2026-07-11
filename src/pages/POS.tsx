@@ -855,16 +855,40 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
 }
 
 // ---- Receipt ------------------------------------------------------------------
+function receiptHtml(order: Order) {
+  const rows = order.items
+    .map((i) => {
+      const extras = [...(i.selectedOptions ?? []).map((o) => o.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} x${a.quantity}` : a.name))].filter(Boolean).join(", ");
+      const detail = [extras, i.specialInstructions].filter(Boolean).join(" · ");
+      return `<tr><td>${i.quantity}× ${i.name}${detail ? `<div style="font-size:10px;color:#666">${detail}</div>` : ""}</td><td style="text-align:right;vertical-align:top">${money(i.lineTotal)}</td></tr>`;
+    })
+    .join("");
+  const paid = order.paymentMethod === "CARD" ? "Card" : order.paymentMethod === "WHISH" ? "Whish" : "Cash";
+  return `<html><head><title>${order.number}</title><style>body{font-family:monospace;font-size:12px;padding:8px;width:280px;margin:0}h2{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse}td{padding:2px 0}.tot{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:bold;font-size:14px}.c{text-align:center;color:#555}</style></head><body><h2>Bean Avenue</h2><p class="c">${order.number} · ${new Date(order.createdAt).toLocaleString()}</p><table>${rows}</table><table class="tot"><tr><td>TOTAL</td><td style="text-align:right">${money(order.total)}</td></tr><tr><td>Paid (${paid})</td><td></td></tr></table><p class="c">Thank you! ☕</p></body></html>`;
+}
+
+// Print through a hidden iframe — no popup window, so it isn't popup-blocked and
+// can fire automatically the moment a sale completes.
+function printReceipt(order: Order) {
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow?.document;
+  if (!doc) { iframe.remove(); return; }
+  doc.open(); doc.write(receiptHtml(order)); doc.close();
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+    setTimeout(() => iframe.remove(), 1000);
+  }, 250);
+}
+
 function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
-  function printReceipt() {
-    const w = window.open("", "_blank", "width=320,height=600");
-    if (!w) return;
-    const rows = order.items
-      .map((i) => `<tr><td>${i.quantity}× ${i.name}${i.selectedOptions?.length ? " (" + i.selectedOptions.map((o) => o.choice).join(", ") + ")" : ""}</td><td style="text-align:right">${money(i.lineTotal)}</td></tr>`)
-      .join("");
-    w.document.write(`<html><head><title>${order.number}</title><style>body{font-family:monospace;font-size:12px;padding:8px;width:280px}h2{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse}td{padding:2px 0}.tot{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:bold;font-size:14px}.c{text-align:center;color:#555}</style></head><body><h2>Bean Avenue</h2><p class="c">${order.number} · ${new Date(order.createdAt).toLocaleString()}</p><table>${rows}</table><table class="tot"><tr><td>TOTAL</td><td style="text-align:right">${money(order.total)}</td></tr><tr><td>Paid (${order.paymentMethod})</td><td></td></tr></table><p class="c">Thank you! ☕</p><script>window.onload=function(){window.print();setTimeout(function(){window.close()},300)}</script></body></html>`);
-    w.document.close();
-  }
+  // Auto-print the moment the sale completes (offline sales have no server number yet).
+  useEffect(() => {
+    if (order.number !== "SAVED OFFLINE") printReceipt(order);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
@@ -873,9 +897,9 @@ function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
         <p className="mt-1 text-sm text-charcoal/60">{order.number}</p>
         <p className="mt-3 text-3xl font-bold text-terracotta">{money(order.total)}</p>
         <p className="text-sm text-charcoal/50">Paid by {order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
-        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">🍳 Sent to kitchen</p>}
+        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">🖨 Printing · 🍳 Sent to kitchen</p>}
         <div className="mt-5 flex gap-2">
-          <button onClick={printReceipt} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">🖨 Print receipt</button>
+          <button onClick={() => printReceipt(order)} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">🖨 Reprint</button>
           <button onClick={onNew} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">New sale</button>
         </div>
       </div>
