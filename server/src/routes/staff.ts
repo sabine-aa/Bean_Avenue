@@ -64,6 +64,45 @@ staffRouter.delete("/timesheets/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/staff/tabs — outstanding "charge to salary" purchases, one row per
+// staff member. These are POS sales paid with SALARY that haven't been settled
+// (deducted from salary) yet — a running tab the owner clears at payday.
+staffRouter.get("/tabs", async (_req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { paymentMethod: "SALARY", staffPurchaseId: { not: null }, staffTabSettledAt: null },
+    select: { id: true, number: true, total: true, createdAt: true, staffPurchaseId: true, staffPurchaseName: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const byStaff = new Map<number, { staffId: number; staffName: string; total: number; count: number; orders: { id: number; number: string; total: number; createdAt: Date }[] }>();
+  for (const o of orders) {
+    const id = o.staffPurchaseId as number;
+    const cur = byStaff.get(id) ?? { staffId: id, staffName: o.staffPurchaseName ?? "Staff", total: 0, count: 0, orders: [] };
+    cur.total = round2(cur.total + o.total);
+    cur.count += 1;
+    cur.orders.push({ id: o.id, number: o.number, total: o.total, createdAt: o.createdAt });
+    byStaff.set(id, cur);
+  }
+  res.json([...byStaff.values()].sort((a, b) => b.total - a.total));
+});
+
+// POST /api/staff/:id/settle-tab — clear a staff member's outstanding tab (mark
+// the purchases as deducted from salary). Returns how much was settled.
+staffRouter.post("/:id/settle-tab", async (req, res) => {
+  const staffId = Number(req.params.id);
+  const outstanding = await prisma.order.findMany({
+    where: { paymentMethod: "SALARY", staffPurchaseId: staffId, staffTabSettledAt: null },
+    select: { id: true, total: true },
+  });
+  const amount = round2(outstanding.reduce((a, o) => a + o.total, 0));
+  const ids = outstanding.map((o) => o.id);
+  if (ids.length) {
+    const now = new Date();
+    await prisma.order.updateMany({ where: { id: { in: ids } }, data: { staffTabSettledAt: now, paymentStatus: "PAID", paidAt: now } });
+    await prisma.payment.updateMany({ where: { orderId: { in: ids } }, data: { status: "PAID" } });
+  }
+  res.json({ ok: true, settled: ids.length, amount });
+});
+
 // POST /api/staff  { name, pin, role }
 staffRouter.post("/", async (req, res) => {
   const name = String(req.body?.name ?? "").trim().slice(0, 60);

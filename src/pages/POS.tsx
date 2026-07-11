@@ -10,7 +10,7 @@ const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? cryp
 // ---- Shared models ------------------------------------------------------------
 type Sel = { group: string; choice: string; priceDelta: number };
 type TAddon = { addonId: number; name: string; price: number; quantity: number };
-type PayMethod = "CASH" | "CARD" | "WHISH";
+type PayMethod = "CASH" | "CARD" | "WHISH" | "SALARY";
 type Line = { id: number; item: MenuItem; quantity: number; options: Sel[]; addons: TAddon[]; note: string };
 type Staff = { id: number; name: string; role: string };
 type Shift = {
@@ -460,6 +460,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
                 <button disabled={!lines.length} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
               )}
             </div>
+            {staffPurchase && (
+              <button disabled={!lines.length} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
+            )}
           </div>
         </div>
       </div>
@@ -481,7 +484,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       )}
       {showOnline && <OnlineOrdersPanel orders={onlineOrders} onClose={() => setShowOnline(false)} onChanged={loadOnline} />}
       {modal && <ConfigModal line={modal.line} isNew={modal.isNew} onClose={() => setModal(null)} onSave={(u) => saveConfigured(u, modal.isNew)} />}
-      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
+      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} staffName={staffPurchase?.name} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
     </div>
@@ -864,15 +867,15 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
 }
 
 // ---- Payment modal ------------------------------------------------------------
-function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, onCancel, onConfirm }: {
+function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, staffName, onCancel, onConfirm }: {
   method: PayMethod; total: number; tendered: string; setTendered: (v: string) => void;
   approval: string; setApproval: (v: string) => void; last4: string; setLast4: (v: string) => void; requireApproval: boolean;
-  busy: boolean; onCancel: () => void; onConfirm: () => void;
+  busy: boolean; staffName?: string; onCancel: () => void; onConfirm: () => void;
 }) {
   const change = Math.round((Number(tendered) - total) * 100) / 100;
   const quick = [total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].filter((v, i, a) => a.indexOf(v) === i);
   const cardBlocked = method === "CARD" && requireApproval && approval.trim() === "";
-  const title = method === "CASH" ? "Cash payment" : method === "WHISH" ? "Whish payment" : "Card payment";
+  const title = method === "CASH" ? "Cash payment" : method === "WHISH" ? "Whish payment" : method === "SALARY" ? "Charge to salary" : "Card payment";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
@@ -888,6 +891,7 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
           </>
         )}
         {method === "WHISH" && <p className="mt-4 rounded-xl bg-[#5b3fd6]/10 px-4 py-3 text-sm text-charcoal/70">Collect {money(total)} via Whish, then confirm.</p>}
+        {method === "SALARY" && <p className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-charcoal/70">Nothing collected now — {money(total)} is added to {staffName ? <span className="font-semibold text-sage-dark">{staffName}</span> : "the staff member"}'s tab and deducted from their salary. Confirm to record it.</p>}
         {method === "CARD" && (
           <>
             <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>
@@ -901,7 +905,7 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
         )}
         <div className="mt-5 flex gap-2">
           <button onClick={onCancel} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
-          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0))} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : "Complete sale"}</button>
+          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0))} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}</button>
         </div>
       </div>
     </div>
@@ -917,7 +921,7 @@ function receiptHtml(order: Order) {
       return `<tr><td>${i.quantity}× ${i.name}${detail ? `<div style="font-size:10px;color:#666">${detail}</div>` : ""}</td><td style="text-align:right;vertical-align:top">${money(i.lineTotal)}</td></tr>`;
     })
     .join("");
-  const paid = order.paymentMethod === "CARD" ? "Card" : order.paymentMethod === "WHISH" ? "Whish" : "Cash";
+  const paid = order.paymentMethod === "CARD" ? "Card" : order.paymentMethod === "WHISH" ? "Whish" : order.paymentMethod === "SALARY" ? "Staff tab (salary)" : "Cash";
   return `<html><head><title>${order.number}</title><style>body{font-family:monospace;font-size:12px;padding:8px;width:280px;margin:0}h2{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse}td{padding:2px 0}.tot{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:bold;font-size:14px}.c{text-align:center;color:#555}</style></head><body><h2>Bean Avenue</h2><p class="c">${order.number} · ${new Date(order.createdAt).toLocaleString()}</p><table>${rows}</table><table class="tot"><tr><td>TOTAL</td><td style="text-align:right">${money(order.total)}</td></tr><tr><td>Paid (${paid})</td><td></td></tr></table><p class="c">Thank you! ☕</p></body></html>`;
 }
 

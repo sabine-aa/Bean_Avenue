@@ -156,7 +156,9 @@ posRouter.post("/sale", async (req, res) => {
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
 
   const rawMethod = String(body.paymentMethod ?? "CASH").toUpperCase();
-  const method = rawMethod === "CARD" ? "CARD" : rawMethod === "WHISH" ? "WHISH" : "CASH";
+  // SALARY = "charge to staff tab" — the sale is added to the staff member's tab
+  // and deducted from their salary later; it is NOT paid at the counter.
+  const method = rawMethod === "CARD" ? "CARD" : rawMethod === "WHISH" ? "WHISH" : rawMethod === "SALARY" ? "SALARY" : "CASH";
   const pos = await posConfig();
   if (method === "CARD") {
     if (!pos.card.enabled) return res.status(400).json({ error: "Card payments aren't enabled at the register." });
@@ -192,6 +194,10 @@ posRouter.post("/sale", async (req, res) => {
     const sp = await prisma.staffUser.findUnique({ where: { id: staffDiscId } });
     if (sp) { staffPurchaseId = sp.id; staffPurchaseName = sp.name; }
   }
+  // "Charge to salary" is only valid on a staff purchase — it goes on that
+  // staff member's tab and is deducted from their salary later.
+  const isTab = method === "SALARY";
+  if (isTab && !staffPurchaseId) return res.status(400).json({ error: "Charge to salary needs a staff member selected." });
   const discount = staffPurchaseId
     ? round2(Math.min(subtotal, (subtotal * pos.staffDiscount) / 100))
     : round2(Math.min(Math.max(0, Number(body.discount) || 0), subtotal));
@@ -233,9 +239,10 @@ posRouter.post("/sale", async (req, res) => {
       total,
       paymentMethod: method,
       // Paid at the counter, but still a live ticket the kitchen must make.
+      // A staff-tab sale is UNPAID (owed against salary) until the owner settles it.
       status: "RECEIVED",
-      paymentStatus: "PAID",
-      paidAt: new Date(),
+      paymentStatus: isTab ? "UNPAID" : "PAID",
+      paidAt: isTab ? null : new Date(),
       beansEarned,
       items: { create: built },
     },
@@ -245,11 +252,11 @@ posRouter.post("/sale", async (req, res) => {
   await prisma.payment.create({
     data: {
       orderId: order.id,
-      provider: card ? `pos-${card.provider}` : method === "WHISH" ? "pos-whish" : "pos",
+      provider: isTab ? "pos-staff-tab" : card ? `pos-${card.provider}` : method === "WHISH" ? "pos-whish" : "pos",
       transactionId: card?.transactionRef || `${genNumber("POSPAY")}-${order.id}`,
       method,
       amount: total,
-      status: "PAID",
+      status: isTab ? "UNPAID" : "PAID",
       cardBrand: card?.brand ?? null,
       cardLast4: card?.last4 ?? null,
       approvalCode: card?.approvalCode ?? null,

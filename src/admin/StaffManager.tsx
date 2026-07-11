@@ -3,6 +3,7 @@ import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
 
 type Staff = { id: number; name: string; role: string; isActive: boolean };
+type StaffTab = { staffId: number; staffName: string; total: number; count: number; orders: { id: number; number: string; total: number; createdAt: string }[] };
 type ShiftReport = {
   id: number; staffName: string; status: string; openingFloat: number; cashPayIns: number; cashPayOuts: number;
   countedCash: number | null; expectedCash: number | null; difference: number | null; openedAt: string; closedAt: string | null;
@@ -13,13 +14,29 @@ export function AdminStaff() {
   const toast = useToast();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [shifts, setShifts] = useState<ShiftReport[]>([]);
+  const [tabs, setTabs] = useState<StaffTab[]>([]);
+  const [openTab, setOpenTab] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", pin: "", role: "CASHIER" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", role: "CASHIER" });
 
   const load = () => {
     api.get<Staff[]>("/api/staff").then(setStaff).catch(() => {});
     api.get<ShiftReport[]>("/api/staff/shifts").then(setShifts).catch(() => {});
+    api.get<StaffTab[]>("/api/staff/tabs").then(setTabs).catch(() => {});
   };
   useEffect(load, []);
+
+  async function settleTab(t: StaffTab) {
+    if (!window.confirm(`Clear ${t.staffName}'s tab of ${money(t.total)}? This marks it as deducted from their salary.`)) return;
+    try {
+      await api.post(`/api/staff/${t.staffId}/settle-tab`, {});
+      toast(`Settled ${t.staffName}'s tab.`);
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't settle the tab.", "error");
+    }
+  }
 
   async function add(e: FormEvent) {
     e.preventDefault();
@@ -30,6 +47,25 @@ export function AdminStaff() {
       load();
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't add staff.", "error");
+    }
+  }
+  function startEdit(s: Staff) {
+    setEditingId(s.id);
+    setEditForm({ name: s.name, role: s.role === "MANAGER" ? "MANAGER" : "CASHIER" });
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(s: Staff) {
+    const name = editForm.name.trim();
+    if (!name) return toast("Name is required.", "error");
+    try {
+      await api.patch(`/api/staff/${s.id}`, { name, role: editForm.role });
+      toast("Staff member updated.");
+      setEditingId(null);
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't update staff.", "error");
     }
   }
   async function setPin(s: Staff) {
@@ -55,7 +91,7 @@ export function AdminStaff() {
   return (
     <div>
       <h1 className="font-display text-3xl font-bold text-espresso">Register Staff</h1>
-      <p className="mt-1 text-sm text-charcoal/60">Cashiers sign into the register (/pos) with a PIN. Manage them here and review shift reports.</p>
+      <p className="mt-1 text-sm text-charcoal/60">Baristas sign into the register (/pos) with a PIN. Manage them here and review shift reports.</p>
 
       {/* Add staff */}
       <form onSubmit={add} className="mt-5 flex flex-wrap items-end gap-2 rounded-2xl bg-white p-4 shadow-sm">
@@ -70,8 +106,8 @@ export function AdminStaff() {
         <label className="text-sm font-semibold text-espresso">
           Role
           <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-1 block rounded-xl border border-oat px-3 py-2 font-normal">
-            <option value="CASHIER">Cashier</option>
-            <option value="MANAGER">Manager</option>
+            <option value="CASHIER">Barista</option>
+            <option value="MANAGER">Supervisor</option>
           </select>
         </label>
         <button type="submit" className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark">+ Add</button>
@@ -80,16 +116,71 @@ export function AdminStaff() {
       {/* Staff list */}
       <div className="mt-4 space-y-2">
         {staff.map((s) => (
-          <div key={s.id} className={`flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${s.isActive ? "" : "opacity-50"}`}>
-            <div className="flex-1">
-              <p className="font-semibold text-espresso">{s.name} <span className="ml-1 rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">{s.role === "MANAGER" ? "Manager" : "Cashier"}</span></p>
-            </div>
-            <button onClick={() => setPin(s)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">Set PIN</button>
-            <button onClick={() => toggleActive(s)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">{s.isActive ? "Deactivate" : "Activate"}</button>
-            <button onClick={() => del(s)} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Delete</button>
+          <div key={s.id} className={`flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${s.isActive ? "" : "opacity-50"}`}>
+            {editingId === s.id ? (
+              <>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-40 rounded-xl border border-oat px-3 py-1.5 text-sm font-semibold text-espresso"
+                />
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="rounded-xl border border-oat px-3 py-1.5 text-sm font-normal"
+                >
+                  <option value="CASHIER">Barista</option>
+                  <option value="MANAGER">Supervisor</option>
+                </select>
+                <div className="flex-1" />
+                <button onClick={() => saveEdit(s)} className="rounded-full bg-terracotta px-3 py-1 text-xs font-semibold text-cream hover:bg-terracotta-dark">Save</button>
+                <button onClick={cancelEdit} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">Cancel</button>
+              </>
+            ) : (
+              <>
+                <div className="flex-1">
+                  <p className="font-semibold text-espresso">{s.name} <span className="ml-1 rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">{s.role === "MANAGER" ? "Supervisor" : "Barista"}</span></p>
+                </div>
+                <button onClick={() => startEdit(s)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">Edit</button>
+                <button onClick={() => setPin(s)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">Set PIN</button>
+                <button onClick={() => toggleActive(s)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">{s.isActive ? "Deactivate" : "Activate"}</button>
+                <button onClick={() => del(s)} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Delete</button>
+              </>
+            )}
           </div>
         ))}
         {staff.length === 0 && <p className="rounded-2xl bg-white p-6 text-center text-charcoal/50 shadow-sm">No staff yet — add one above.</p>}
+      </div>
+
+      {/* Staff tabs — charge-to-salary purchases owed */}
+      <div className="mt-8 flex items-baseline justify-between">
+        <h2 className="font-display text-xl font-bold text-espresso">Staff tabs</h2>
+        {tabs.length > 0 && <span className="text-sm font-semibold text-terracotta">{money(tabs.reduce((s, t) => s + t.total, 0))} owed</span>}
+      </div>
+      <p className="mt-1 text-sm text-charcoal/60">Purchases staff charged to their salary. Settle a tab at payday to deduct it and reset the balance.</p>
+      <div className="mt-3 space-y-2">
+        {tabs.map((t) => (
+          <div key={t.staffId} className="rounded-2xl bg-white p-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <button onClick={() => setOpenTab(openTab === t.staffId ? null : t.staffId)} className="flex-1 text-left">
+                <p className="font-semibold text-espresso">{t.staffName} <span className="ml-1 text-xs font-normal text-charcoal/50">{t.count} purchase{t.count === 1 ? "" : "s"} · {openTab === t.staffId ? "hide" : "details"}</span></p>
+              </button>
+              <span className="font-bold text-terracotta">{money(t.total)}</span>
+              <button onClick={() => settleTab(t)} className="rounded-full bg-sage px-3 py-1 text-xs font-semibold text-cream hover:bg-sage-dark">Settle</button>
+            </div>
+            {openTab === t.staffId && (
+              <div className="mt-2 space-y-1 border-t border-oat pt-2 text-sm">
+                {t.orders.map((o) => (
+                  <div key={o.id} className="flex items-center justify-between text-charcoal/70">
+                    <span>{o.number} · {new Date(o.createdAt).toLocaleString()}</span>
+                    <span className="font-semibold">{money(o.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {tabs.length === 0 && <p className="rounded-2xl bg-white p-6 text-center text-charcoal/50 shadow-sm">No open staff tabs.</p>}
       </div>
 
       {/* Shift Z-reports */}

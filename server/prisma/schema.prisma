@@ -261,6 +261,7 @@ model Order {
   terminal     String?     // POS: which register/device rang the sale (multi-terminal)
   staffPurchaseId   Int?    // set when this sale used the staff discount (for whom)
   staffPurchaseName String?
+  staffTabSettledAt DateTime? // charge-to-salary sales: null = still owed on their tab, set = deducted from salary
   clientRef    String?     @unique // POS offline idempotency key (dedupes re-synced sales)
   fulfillment  String      @default("PICKUP") // PICKUP | DELIVERY
   pickupTime   String?     // pickup: "ASAP" or a scheduled time string
