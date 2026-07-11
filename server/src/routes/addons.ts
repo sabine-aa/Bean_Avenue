@@ -24,6 +24,19 @@ addonsRouter.get("/for/:menuItemId", async (req, res) => {
   res.json(groups.filter((g) => g.addons.length > 0));
 });
 
+// GET /api/addons/coverage  (public) — which items/categories have any add-on
+// group, so the register knows when tapping a product should open the customizer.
+addonsRouter.get("/coverage", async (_req, res) => {
+  const assignments = await prisma.addonAssignment.findMany({
+    where: { group: { isAvailable: true, addons: { some: { isAvailable: true } } } },
+    select: { menuItemId: true, category: true },
+  });
+  res.json({
+    itemIds: [...new Set(assignments.map((a) => a.menuItemId).filter((x): x is number => x != null))],
+    categories: [...new Set(assignments.map((a) => a.category).filter((x): x is string => x != null))],
+  });
+});
+
 // ---- Admin ----
 addonsRouter.use(requireAdmin);
 

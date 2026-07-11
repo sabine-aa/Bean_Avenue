@@ -4,14 +4,29 @@ import { isPosTokenValid, posApi } from "../lib/api";
 import type { Order } from "../types";
 
 const COLUMNS = [
-  { key: "NEW", label: "New", statuses: ["RECEIVED", "ACCEPTED"], next: "PREPARING", action: "Start →" },
-  { key: "PREP", label: "Preparing", statuses: ["PREPARING"], next: "READY_FOR_PICKUP", action: "Ready →" },
-  { key: "READY", label: "Ready", statuses: ["READY_FOR_PICKUP"], next: "COMPLETED", action: "Done ✓" },
+  { key: "NEW", label: "New", statuses: ["RECEIVED", "ACCEPTED"] },
+  { key: "PREP", label: "Preparing", statuses: ["PREPARING"] },
+  { key: "READY", label: "Ready", statuses: ["READY_FOR_PICKUP", "READY_FOR_DELIVERY"] },
 ] as const;
 
 function ago(iso: string) {
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m`;
+}
+
+// The kitchen action for a ticket depends on its column + pickup/delivery.
+function ticketAction(colKey: string, o: Order): { label: string; next: string } | null {
+  const del = o.fulfillment === "DELIVERY";
+  if (colKey === "NEW") return { label: "Start →", next: "PREPARING" };
+  if (colKey === "PREP") return del ? { label: "Packed →", next: "READY_FOR_DELIVERY" } : { label: "Ready →", next: "READY_FOR_PICKUP" };
+  // READY column
+  if (o.status === "READY_FOR_DELIVERY") return { label: "Handed to driver ✓", next: "OUT_FOR_DELIVERY" };
+  return { label: "Done ✓", next: "COMPLETED" };
+}
+
+// Compact one-line description of an item's customizations for the line cook.
+function itemExtras(i: Order["items"][number]) {
+  return [...(i.selectedOptions ?? []).map((s) => s.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name))].filter(Boolean).join(", ");
 }
 
 export function KDS() {
@@ -55,29 +70,36 @@ export function KDS() {
                 {col.label} <span className="text-cream/50">({tickets.length})</span>
               </div>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-2">
-                {tickets.map((o) => (
-                  <div key={o.id} className="rounded-lg bg-cream p-3 text-espresso">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold">
-                        {o.tableNumber ? `Table ${o.tableNumber}` : o.orderType === "DINE_IN" ? "Dine-in" : "Takeaway"}
-                      </span>
-                      <span className="text-xs text-charcoal/50">{ago(o.createdAt)} · {o.channel === "ONLINE" ? "Online" : "POS"}</span>
+                {tickets.map((o) => {
+                  const act = ticketAction(col.key, o);
+                  const kind = o.fulfillment === "DELIVERY" ? "🛵 Delivery" : o.tableNumber ? `🍽 Table ${o.tableNumber}` : o.orderType === "DINE_IN" ? "🍽 Dine-in" : "🥡 Takeaway";
+                  return (
+                    <div key={o.id} className="rounded-lg bg-cream p-3 text-espresso">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{kind}</span>
+                        <span className="text-xs text-charcoal/50">{ago(o.createdAt)} · {o.channel === "ONLINE" ? "Online" : "POS"}</span>
+                      </div>
+                      <p className="text-[11px] text-charcoal/40">{o.number}{o.channel === "ONLINE" && o.customerName ? ` · ${o.customerName}` : ""}</p>
+                      <ul className="mt-1.5 space-y-1.5 text-sm">
+                        {o.items.map((i) => {
+                          const extras = itemExtras(i);
+                          return (
+                            <li key={i.id} className="leading-tight">
+                              <span className="font-semibold">{i.quantity}× {i.name}</span>
+                              {extras ? <span className="block text-xs font-medium text-charcoal/60">{extras}</span> : null}
+                              {i.specialInstructions ? <span className="block text-xs font-semibold italic text-terracotta">↳ {i.specialInstructions}</span> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {act && (
+                        <button onClick={() => advance(o, act.next)} className="btn-3d mt-2 w-full rounded-lg bg-espresso py-2 text-sm font-bold text-cream">
+                          {act.label}
+                        </button>
+                      )}
                     </div>
-                    <p className="text-[11px] text-charcoal/40">{o.number}</p>
-                    <ul className="mt-1.5 space-y-1 text-sm">
-                      {o.items.map((i) => (
-                        <li key={i.id}>
-                          <span className="font-semibold">{i.quantity}×</span> {i.name}
-                          {i.selectedOptions?.length ? <span className="text-charcoal/50"> ({i.selectedOptions.map((s) => s.choice).join(", ")})</span> : ""}
-                          {i.specialInstructions ? <span className="block text-xs italic text-terracotta">↳ {i.specialInstructions}</span> : null}
-                        </li>
-                      ))}
-                    </ul>
-                    <button onClick={() => advance(o, col.next)} className="btn-3d mt-2 w-full rounded-lg bg-espresso py-2 text-sm font-bold text-cream">
-                      {col.action}
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
                 {tickets.length === 0 && <p className="p-4 text-center text-sm text-cream/30">—</p>}
               </div>
             </div>

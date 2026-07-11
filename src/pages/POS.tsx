@@ -1,20 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Img } from "../components/Img";
-import { ApiError, api, getPosTerminal, isPosTokenValid, money, posApi, setPosToken, setPosTerminal } from "../lib/api";
+import { ApiError, api, formatTime, getPosTerminal, isPosTokenValid, money, posApi, setPosToken, setPosTerminal } from "../lib/api";
 import { cacheMenu, cachedCats, cachedMenu, flushQueue, getQueue, queueSale } from "../lib/posOffline";
-import type { AddonGroup, MenuItem, Order } from "../types";
+import type { Addon, AddonGroup, MenuItem, Order, OrderItemLine, OrderStatus } from "../types";
 
 const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 // ---- Shared models ------------------------------------------------------------
 type Sel = { group: string; choice: string; priceDelta: number };
 type TAddon = { addonId: number; name: string; price: number; quantity: number };
+type PayMethod = "CASH" | "CARD" | "WHISH";
 type Line = { id: number; item: MenuItem; quantity: number; options: Sel[]; addons: TAddon[]; note: string };
 type Staff = { id: number; name: string; role: string };
 type Shift = {
   id: number; staffName: string; openingFloat: number; cashPayIns: number; cashPayOuts: number; openedAt: string;
-  salesCount: number; cashSales: number; cardSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
+  salesCount: number; cashSales: number; cardSales: number; whishSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
 };
 type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string } };
 type Session = { staff: Staff; shift: Shift | null; config?: PosConfig; terminal?: string };
@@ -161,8 +162,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [q, setQ] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [nextId, setNextId] = useState(1);
-  const [editing, setEditing] = useState<Line | null>(null);
-  const [pay, setPay] = useState<null | "CASH" | "CARD">(null);
+  // The customize popup — for a brand-new line (isNew) or editing one in the ticket.
+  const [modal, setModal] = useState<{ line: Line; isNew: boolean } | null>(null);
+  const [coverage, setCoverage] = useState<{ itemIds: Set<number>; categories: Set<string> }>({ itemIds: new Set(), categories: new Set() });
+  const [pay, setPay] = useState<null | PayMethod>(null);
   const [tendered, setTendered] = useState("");
   const [discount, setDiscount] = useState("");
   const [phone, setPhone] = useState("");
@@ -177,6 +180,23 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [cardLast4, setCardLast4] = useState("");
   const cardCfg = session.config?.card;
   const cardEnabled = cardCfg?.enabled ?? false;
+  const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
+  const [onlineNew, setOnlineNew] = useState(0);
+  const [showOnline, setShowOnline] = useState(false);
+
+  // Website/app orders stream into the register live.
+  const loadOnline = useCallback(async () => {
+    try {
+      const r = await posApi.get<{ newCount: number; orders: Order[] }>("/api/pos/online");
+      setOnlineOrders(r.orders);
+      setOnlineNew(r.newCount);
+    } catch { /* offline — keep the last list */ }
+  }, []);
+  useEffect(() => {
+    loadOnline();
+    const t = setInterval(loadOnline, 12000);
+    return () => clearInterval(t);
+  }, [loadOnline]);
 
   // Load the menu; if we're offline, fall back to the last cached copy.
   useEffect(() => {
@@ -191,7 +211,14 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
         setItems(cachedMenu());
         setCats(cachedCats());
       });
+    // Which items/categories have add-on groups → tapping them opens the customizer.
+    api.get<{ itemIds: number[]; categories: string[] }>("/api/addons/coverage")
+      .then((cv) => setCoverage({ itemIds: new Set(cv.itemIds), categories: new Set(cv.categories) }))
+      .catch(() => {});
   }, []);
+
+  // Does this product need the customize popup (sizes or any add-ons)?
+  const needsConfig = (item: MenuItem) => item.options.length > 0 || coverage.itemIds.has(item.id) || coverage.categories.has(item.category);
 
   // Keep queued offline sales syncing whenever we're online.
   useEffect(() => {
@@ -216,6 +243,12 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
 
   function addItem(item: MenuItem) {
     const options = defaultOptions(item);
+    // Sizes/add-ons → open the customizer for a fresh line. Simple items add instantly.
+    if (needsConfig(item)) {
+      setModal({ line: { id: nextId, item, quantity: 1, options, addons: [], note: "" }, isNew: true });
+      setNextId((n) => n + 1);
+      return;
+    }
     const key = sigOf(item, options, []);
     const existing = lines.find((l) => sigOf(l.item, l.options, l.addons) === key);
     if (existing) setLines((ls) => ls.map((l) => (l.id === existing.id ? { ...l, quantity: l.quantity + 1 } : l)));
@@ -224,6 +257,12 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       setNextId((n) => n + 1);
     }
   }
+
+  // Save from the customize popup — append a new line or update the edited one.
+  function saveConfigured(updated: Line, isNew: boolean) {
+    setLines((ls) => (isNew ? [...ls, updated] : ls.map((l) => (l.id === updated.id ? updated : l))));
+    setModal(null);
+  }
   const setQty = (id: number, delta: number) =>
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
@@ -231,7 +270,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4("");
   }
 
-  async function completeSale(method: "CASH" | "CARD") {
+  async function completeSale(method: PayMethod) {
     if (!lines.length || busy) return;
     setBusy(true);
     const payload = {
@@ -290,6 +329,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           <span className="rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">🖥 {session.terminal ?? getPosTerminal()}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowOnline(true)} className={`relative rounded-full px-3 py-1.5 text-sm font-semibold ${onlineNew > 0 ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}>
+            🌐 Online Orders{onlineOrders.length ? ` · ${onlineOrders.length}` : ""}
+            {onlineNew > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-espresso px-1 text-xs font-bold text-cream">{onlineNew}</span>}
+          </button>
           <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
           <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
             Shift · expected {money(shift.expectedCash)}
@@ -310,9 +353,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           <div className="p-3">
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-2" />
           </div>
-          <div className="flex gap-2 overflow-x-auto px-3 pb-2">
+          <div className="flex snap-x gap-2 overflow-x-auto scroll-smooth px-3 pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {["All", ...cats].map((c) => (
-              <button key={c} onClick={() => setCat(c)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold ${cat === c ? "bg-espresso text-cream" : "bg-white hover:bg-oat"}`}>{c}</button>
+              <button key={c} onClick={() => setCat(c)} className={`snap-start whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
             ))}
           </div>
           <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -340,9 +383,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
               lines.map((l) => (
                 <div key={l.id} className="border-b border-oat/60 px-3 py-2">
                   <div className="flex items-start justify-between gap-2">
-                    <button onClick={() => setEditing(l)} className="min-w-0 flex-1 text-left">
+                    <button onClick={() => setModal({ line: l, isNew: false })} className="min-w-0 flex-1 text-left">
                       <p className="truncate font-semibold">{l.item.name}</p>
-                      <p className="truncate text-xs text-charcoal/50">{[...l.options.map((o) => o.choice), ...l.addons.map((a) => a.name)].join(" · ") || "tap to edit"}</p>
+                      <p className="truncate text-xs text-charcoal/50">{[...l.options.map((o) => o.choice), ...l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)), l.note].filter(Boolean).join(" · ") || "tap to edit"}</p>
                     </button>
                     <span className="whitespace-nowrap font-semibold text-terracotta">{money(lineTotal(l))}</span>
                   </div>
@@ -371,17 +414,19 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
               <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />
             </div>
             <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
-            <div className={`grid ${cardEnabled ? "grid-cols-2" : "grid-cols-1"} gap-2`}>
-              <button disabled={!lines.length} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 font-bold text-cream disabled:opacity-40">💵 Cash</button>
+            <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+              <button disabled={!lines.length} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
+              <button disabled={!lines.length} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
               {cardEnabled && (
-                <button disabled={!lines.length} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 font-bold text-cream disabled:opacity-40">💳 Card</button>
+                <button disabled={!lines.length} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {editing && <ConfigModal line={editing} onClose={() => setEditing(null)} onSave={(u) => { setLines((ls) => ls.map((l) => (l.id === u.id ? u : l))); setEditing(null); }} />}
+      {showOnline && <OnlineOrdersPanel orders={onlineOrders} onClose={() => setShowOnline(false)} onChanged={loadOnline} />}
+      {modal && <ConfigModal line={modal.line} isNew={modal.isNew} onClose={() => setModal(null)} onSave={(u) => saveConfigured(u, modal.isNew)} />}
       {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} onCancel={() => setPay(null)} onConfirm={() => completeSale(pay)} />}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
@@ -426,6 +471,7 @@ function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: 
               <Row label="Sales" value={`${report.salesCount} · ${money(report.salesTotal)}`} />
               <Row label="Cash sales" value={money(report.cashSales)} />
               <Row label="Card sales" value={money(report.cardSales)} />
+              <Row label="Whish sales" value={money(report.whishSales)} />
               <Row label="Opening float" value={money(report.openingFloat)} />
               <Row label="Pay-ins / outs" value={`${money(report.cashPayIns)} / ${money(report.cashPayOuts)}`} />
               <Row label="Expected cash" value={money(report.expectedCash)} bold />
@@ -493,58 +539,270 @@ const Row = ({ label, value, bold }: { label: string; value: string; bold?: bool
   <div className={`flex items-center justify-between ${bold ? "font-bold text-espresso" : "text-charcoal/70"}`}><span>{label}</span><span>{value}</span></div>
 );
 
-// ---- Config modal -------------------------------------------------------------
-function ConfigModal({ line, onClose, onSave }: { line: Line; onClose: () => void; onSave: (l: Line) => void }) {
+// ---- Online orders panel — live website/app orders staff work from the POS ----
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  RECEIVED: { label: "New", cls: "bg-terracotta text-cream" },
+  ACCEPTED: { label: "Accepted", cls: "bg-amber-400/30 text-amber-800" },
+  PREPARING: { label: "Preparing", cls: "bg-amber-400/40 text-amber-900" },
+  READY_FOR_PICKUP: { label: "Ready", cls: "bg-sage/30 text-sage-dark" },
+  READY_FOR_DELIVERY: { label: "Ready", cls: "bg-sage/30 text-sage-dark" },
+  OUT_FOR_DELIVERY: { label: "Out for delivery", cls: "bg-sage/30 text-sage-dark" },
+};
+const PAY_LABEL: Record<string, string> = {
+  ONLINE: "Paid online (card)", CASH_ON_DELIVERY: "Cash on delivery", CASH_AT_PICKUP: "Cash at pickup", CASH: "Cash", CARD: "Card", WHISH: "Whish",
+};
+const PAY_STATUS_LABEL: Record<string, string> = {
+  PAID: "Paid", PENDING: "Awaiting payment", CASH_DUE: "Cash due", CASH_COLLECTED: "Cash collected", FAILED: "Payment failed", REFUNDED: "Refunded",
+};
+
+function nextActions(o: Order): { label: string; status: OrderStatus; danger?: boolean }[] {
+  const del = o.fulfillment === "DELIVERY";
+  switch (o.status) {
+    case "RECEIVED": return [{ label: "✓ Accept", status: "ACCEPTED" }, { label: "Cancel", status: "CANCELLED", danger: true }];
+    case "ACCEPTED": return [{ label: "👨‍🍳 Start preparing", status: "PREPARING" }, { label: "Cancel", status: "CANCELLED", danger: true }];
+    case "PREPARING": return [{ label: del ? "📦 Ready for delivery" : "🔔 Mark ready", status: del ? "READY_FOR_DELIVERY" : "READY_FOR_PICKUP" }, { label: "Cancel", status: "CANCELLED", danger: true }];
+    case "READY_FOR_PICKUP": return [{ label: "✓ Complete (picked up)", status: "COMPLETED" }];
+    case "READY_FOR_DELIVERY": return [{ label: "🛵 Out for delivery", status: "OUT_FOR_DELIVERY" }];
+    case "OUT_FOR_DELIVERY": return [{ label: "✓ Delivered", status: "DELIVERED" }];
+    default: return [];
+  }
+}
+
+const itemLine = (it: OrderItemLine) =>
+  [...it.selectedOptions.map((o) => o.choice), ...it.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name))].filter(Boolean).join(" · ");
+
+function OnlineOrdersPanel({ orders, onClose, onChanged }: { orders: Order[]; onClose: () => void; onChanged: () => void }) {
+  const [busyId, setBusyId] = useState<number | null>(null);
+
+  async function act(o: Order, status: OrderStatus) {
+    let reason: string | undefined;
+    if (status === "CANCELLED") {
+      reason = window.prompt(`Cancel order ${o.number}? Enter a reason:`, "") ?? undefined;
+      if (!reason || !reason.trim()) return;
+    }
+    setBusyId(o.id);
+    try {
+      await posApi.patch(`/api/pos/online/${o.id}/status`, { status, reason });
+      await onChanged();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't update the order.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+      <div className="flex h-full w-full max-w-md flex-col bg-oat/40" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-oat bg-white px-4 py-3">
+          <span className="font-display text-lg font-bold text-espresso">🌐 Online orders {orders.length ? `· ${orders.length}` : ""}</span>
+          <button onClick={onClose} className="text-2xl leading-none text-charcoal/40 hover:text-charcoal">×</button>
+        </div>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          {orders.length === 0 && <p className="p-8 text-center text-charcoal/40">No live online orders right now.</p>}
+          {orders.map((o) => {
+            const pill = STATUS_PILL[o.status] ?? { label: o.status, cls: "bg-oat text-charcoal/60" };
+            const isDelivery = o.fulfillment === "DELIVERY";
+            return (
+              <div key={o.id} className="rounded-2xl bg-white p-4 shadow-sm">
+                {/* header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-espresso">{o.number} <span className="ml-1 rounded-full bg-espresso/10 px-2 py-0.5 text-[11px] font-semibold text-espresso">Online</span></p>
+                    <p className="text-xs text-charcoal/50">{isDelivery ? "🛵 Delivery" : "🥡 Pickup"}{o.pickupTime && !isDelivery ? ` · ${o.pickupTime}` : ""} · {formatTime(o.createdAt)}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${pill.cls}`}>{pill.label}</span>
+                </div>
+
+                {/* customer */}
+                <p className="mt-2 text-sm font-semibold text-espresso">{o.customerName} · <a href={`tel:${o.phone}`} className="text-terracotta">{o.phone}</a></p>
+
+                {/* items */}
+                <div className="mt-2 space-y-1.5 border-y border-oat/60 py-2">
+                  {o.items.map((it) => (
+                    <div key={it.id} className="text-sm">
+                      <div className="flex justify-between gap-2">
+                        <span className="font-semibold text-espresso">{it.quantity}× {it.name}</span>
+                        <span className="text-charcoal/60">{money(it.lineTotal)}</span>
+                      </div>
+                      {itemLine(it) && <p className="text-xs text-charcoal/60">{itemLine(it)}</p>}
+                      {it.specialInstructions && <p className="text-xs font-semibold text-terracotta-dark">📝 {it.specialInstructions}</p>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* delivery address */}
+                {isDelivery && (
+                  <p className="mt-2 text-xs text-charcoal/60">📍 {[o.area, o.addressLine, o.building && `Bldg ${o.building}`, o.floor && `Fl ${o.floor}`].filter(Boolean).join(", ")}{o.deliveryInstructions ? ` — ${o.deliveryInstructions}` : ""}</p>
+                )}
+
+                {/* totals + payment + loyalty */}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-sm">
+                  <span className="font-bold text-espresso">Total {money(o.total)}</span>
+                  <span className="text-xs text-charcoal/60">{PAY_LABEL[o.paymentMethod] ?? o.paymentMethod} · {PAY_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus}</span>
+                </div>
+                {(o.beansEarned > 0 || (o.loyaltyDiscount ?? 0) > 0) && (
+                  <p className="text-xs text-sage-dark">{o.beansEarned > 0 ? `+${o.beansEarned} beans` : ""}{(o.loyaltyDiscount ?? 0) > 0 ? `${o.beansEarned > 0 ? " · " : ""}reward −${money(o.loyaltyDiscount)}` : ""}</p>
+                )}
+
+                {/* actions */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {nextActions(o).map((a) => (
+                    <button key={a.status} disabled={busyId === o.id} onClick={() => act(o, a.status)}
+                      className={`flex-1 rounded-full px-3 py-2.5 text-sm font-bold disabled:opacity-40 ${a.danger ? "border border-terracotta/40 text-terracotta-dark" : "btn-3d bg-espresso text-cream"}`}>
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Config modal — sizes + grouped add-ons, live price, touch-friendly -------
+function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: boolean; onClose: () => void; onSave: (l: Line) => void }) {
   const [options, setOptions] = useState<Sel[]>(line.options);
   const [addons, setAddons] = useState<TAddon[]>(line.addons);
   const [quantity, setQuantity] = useState(line.quantity);
   const [note, setNote] = useState(line.note);
   const [groups, setGroups] = useState<AddonGroup[]>([]);
+  const [err, setErr] = useState("");
   useEffect(() => { api.get<AddonGroup[]>(`/api/addons/for/${line.item.id}`).then(setGroups).catch(() => setGroups([])); }, [line.item.id]);
 
+  const base = line.item.price;
   const pickOption = (g: string, choice: string, priceDelta: number) => setOptions((os) => [...os.filter((o) => o.group !== g), { group: g, choice, priceDelta }]);
-  const toggleAddon = (a: { id: number; name: string; price: number }) =>
-    setAddons((as) => (as.some((x) => x.addonId === a.id) ? as.filter((x) => x.addonId !== a.id) : [...as, { addonId: a.id, name: a.name, price: a.price, quantity: 1 }]));
+
+  const selectedIn = (g: AddonGroup) => addons.filter((a) => g.addons.some((x) => x.id === a.addonId));
+  const isSel = (id: number) => addons.some((a) => a.addonId === id);
+
+  // Pick an add-on, honouring the group's single/multiple + max rules.
+  function chooseAddon(g: AddonGroup, a: Addon) {
+    setErr("");
+    setAddons((cur) => {
+      const selected = cur.some((x) => x.addonId === a.id);
+      if (g.selection === "SINGLE") {
+        const withoutGroup = cur.filter((x) => !g.addons.some((y) => y.id === x.addonId));
+        if (selected && g.minSelect === 0) return withoutGroup; // tap again to clear (optional)
+        return [...withoutGroup, { addonId: a.id, name: a.name, price: a.price, quantity: 1 }];
+      }
+      if (selected) return cur.filter((x) => x.addonId !== a.id);
+      if (g.maxSelect > 0 && selectedIn(g).length >= g.maxSelect) { setErr(`Choose up to ${g.maxSelect} in ${g.name}.`); return cur; }
+      return [...cur, { addonId: a.id, name: a.name, price: a.price, quantity: 1 }];
+    });
+  }
+  const setAddonQty = (a: TAddon, max: number, delta: number) =>
+    setAddons((cur) => cur.map((x) => (x.addonId === a.addonId ? { ...x, quantity: Math.max(1, Math.min(max, x.quantity + delta)) } : x)));
+
   const preview = { ...line, options, addons, quantity };
+  const unit = unitPrice(preview);
+  const addonsSum = Math.round(addons.reduce((s, a) => s + a.price * a.quantity, 0) * 100) / 100;
+  const sizePrice = Math.round((base + options.reduce((s, o) => s + o.priceDelta, 0)) * 100) / 100;
+
+  function save() {
+    for (const g of groups) {
+      if (g.minSelect > 0 && selectedIn(g).length < g.minSelect) {
+        setErr(`Please choose ${g.selection === "SINGLE" ? "an option" : `at least ${g.minSelect}`} for ${g.name}.`);
+        return;
+      }
+    }
+    onSave(preview);
+  }
+
+  const groupHint = (g: AddonGroup) =>
+    g.minSelect > 0 ? "Required" : g.selection === "SINGLE" ? "Choose one" : g.maxSelect > 0 ? `Up to ${g.maxSelect}` : "Optional";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-5 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
-        <p className="font-display text-xl font-bold text-espresso">{line.item.name}</p>
-        {line.item.options.map((g) => (
-          <div key={g.name} className="mt-4">
-            <p className="text-sm font-semibold text-espresso">{g.name}</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {g.choices.map((c) => {
-                const active = options.find((o) => o.group === g.name)?.choice === c.label;
-                return <button key={c.label} onClick={() => pickOption(g.name, c.label, c.priceDelta)} className={`rounded-full border px-4 py-1.5 text-sm font-medium ${active ? "border-espresso bg-espresso text-cream" : "border-oat bg-white"}`}>{c.label}{c.priceDelta ? ` +${money(c.priceDelta)}` : ""}</button>;
-              })}
-            </div>
-          </div>
-        ))}
-        {groups.map((g) => (
-          <div key={g.id} className="mt-4">
-            <p className="text-sm font-semibold text-espresso">{g.name}</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {g.addons.map((a) => {
-                const active = addons.some((x) => x.addonId === a.id);
-                return <button key={a.id} onClick={() => toggleAddon(a)} className={`rounded-full border px-4 py-1.5 text-sm font-medium ${active ? "border-sage-dark bg-sage/20 text-sage-dark" : "border-oat bg-white"}`}>{a.name}{a.price ? ` +${money(a.price)}` : ""}</button>;
-              })}
-            </div>
-          </div>
-        ))}
-        <label className="mt-4 block text-sm font-semibold text-espresso">Note
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. extra hot" className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
-        </label>
-        <div className="mt-4 flex items-center gap-3">
-          <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="h-9 w-9 rounded-full bg-oat text-xl font-bold">–</button>
-          <span className="w-8 text-center text-lg font-bold">{quantity}</span>
-          <button onClick={() => setQuantity((q) => q + 1)} className="h-9 w-9 rounded-full bg-oat text-xl font-bold">+</button>
-          <span className="ml-auto text-lg font-bold text-terracotta">{money(lineTotal(preview))}</span>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-oat px-5 py-3.5">
+          <p className="font-display text-xl font-bold text-espresso">{line.item.name}</p>
+          <button onClick={onClose} className="text-2xl leading-none text-charcoal/40 hover:text-charcoal">×</button>
         </div>
-        <div className="mt-4 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
-          <button onClick={() => onSave(preview)} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">Save</button>
+
+        {/* Scrollable body */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {/* Sizes — show the full price of each size, not a delta */}
+          {line.item.options.map((g) => {
+            const isSize = g.name.toLowerCase() === "size";
+            return (
+              <div key={g.name} className="mb-4">
+                <p className="mb-2 text-sm font-bold text-espresso">{g.name}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {g.choices.map((c) => {
+                    const active = options.find((o) => o.group === g.name)?.choice === c.label;
+                    return (
+                      <button key={c.label} onClick={() => pickOption(g.name, c.label, c.priceDelta)}
+                        className={`rounded-xl border-2 px-2 py-2.5 text-center text-sm font-semibold transition ${active ? "border-espresso bg-espresso text-cream" : "border-oat bg-white text-espresso"}`}>
+                        <span className="block">{c.label}</span>
+                        <span className={`text-xs font-bold ${active ? "text-cream/90" : "text-terracotta"}`}>{isSize ? money(base + c.priceDelta) : c.priceDelta ? `+${money(c.priceDelta)}` : ""}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Add-on groups */}
+          {groups.map((g) => (
+            <div key={g.id} className="mb-4">
+              <div className="mb-2 flex items-baseline justify-between">
+                <p className="text-sm font-bold text-espresso">{g.name}</p>
+                <span className={`text-[11px] font-semibold uppercase tracking-wide ${g.minSelect > 0 ? "text-terracotta" : "text-charcoal/40"}`}>{groupHint(g)}</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {g.addons.map((a) => {
+                  const active = isSel(a.id);
+                  const picked = addons.find((x) => x.addonId === a.id);
+                  return (
+                    <button key={a.id} onClick={() => chooseAddon(g, a)}
+                      className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-2 text-sm font-semibold transition ${active ? "border-sage-dark bg-sage/20 text-sage-dark" : "border-oat bg-white text-espresso"}`}>
+                      <span>{a.name}</span>
+                      {a.price > 0 && <span className={active ? "text-sage-dark" : "text-terracotta"}>+{money(a.price)}</span>}
+                      {active && a.maxQuantity > 1 && picked && (
+                        <span className="ml-1 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <span onClick={() => setAddonQty(picked, a.maxQuantity, -1)} className="grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold text-espresso">–</span>
+                          <span className="w-3 text-center">{picked.quantity}</span>
+                          <span onClick={() => setAddonQty(picked, a.maxQuantity, 1)} className="grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold text-espresso">+</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Note */}
+          <label className="mt-1 block text-sm font-bold text-espresso">Note
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Extra hot, less sugar, no ice…" className="mt-1.5 w-full rounded-xl border border-oat px-3.5 py-2.5 text-sm font-normal" />
+          </label>
+
+          {err && <p className="mt-3 rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-semibold text-terracotta-dark">{err}</p>}
+        </div>
+
+        {/* Footer — quantity, price breakdown, actions */}
+        <div className="border-t border-oat px-5 py-3.5">
+          <div className="mb-3 flex items-center gap-3">
+            <span className="text-sm font-bold text-espresso">Quantity</span>
+            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="h-9 w-9 rounded-full bg-oat text-xl font-bold active:scale-95">–</button>
+            <span className="w-8 text-center text-lg font-bold">{quantity}</span>
+            <button onClick={() => setQuantity((q) => q + 1)} className="h-9 w-9 rounded-full bg-oat text-xl font-bold active:scale-95">+</button>
+          </div>
+          <div className="mb-3 space-y-0.5 text-sm">
+            <div className="flex justify-between text-charcoal/60"><span>Base</span><span>{money(sizePrice)}</span></div>
+            {addonsSum > 0 && <div className="flex justify-between text-charcoal/60"><span>Add-ons</span><span>+{money(addonsSum)}</span></div>}
+            <div className="flex justify-between text-lg font-bold text-espresso"><span>Item total{quantity > 1 ? ` (×${quantity})` : ""}</span><span className="text-terracotta">{money(lineTotal(preview))}</span></div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={onClose} className="rounded-full border border-oat px-5 py-3 font-semibold text-charcoal/60">Cancel</button>
+            <button onClick={save} className="btn-3d flex-1 rounded-full bg-espresso py-3 text-base font-bold text-cream">{isNew ? `Add to order · ${money(lineTotal(preview))}` : "Save changes"}</button>
+          </div>
         </div>
       </div>
     </div>
@@ -553,17 +811,18 @@ function ConfigModal({ line, onClose, onSave }: { line: Line; onClose: () => voi
 
 // ---- Payment modal ------------------------------------------------------------
 function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, onCancel, onConfirm }: {
-  method: "CASH" | "CARD"; total: number; tendered: string; setTendered: (v: string) => void;
+  method: PayMethod; total: number; tendered: string; setTendered: (v: string) => void;
   approval: string; setApproval: (v: string) => void; last4: string; setLast4: (v: string) => void; requireApproval: boolean;
   busy: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
   const change = Math.round((Number(tendered) - total) * 100) / 100;
   const quick = [total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].filter((v, i, a) => a.indexOf(v) === i);
   const cardBlocked = method === "CARD" && requireApproval && approval.trim() === "";
+  const title = method === "CASH" ? "Cash payment" : method === "WHISH" ? "Whish payment" : "Card payment";
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-        <p className="font-display text-xl font-bold text-espresso">{method === "CASH" ? "Cash payment" : "Card payment"}</p>
+        <p className="font-display text-xl font-bold text-espresso">{title}</p>
         <div className="mt-3 flex items-center justify-between text-lg"><span className="text-charcoal/60">Total due</span><span className="font-bold text-terracotta">{money(total)}</span></div>
         {method === "CASH" && (
           <>
@@ -574,6 +833,7 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
             {tendered !== "" && <p className={`mt-3 text-center text-lg font-bold ${change >= 0 ? "text-sage-dark" : "text-terracotta"}`}>{change >= 0 ? `Change ${money(change)}` : `Short ${money(-change)}`}</p>}
           </>
         )}
+        {method === "WHISH" && <p className="mt-4 rounded-xl bg-[#5b3fd6]/10 px-4 py-3 text-sm text-charcoal/70">Collect {money(total)} via Whish, then confirm.</p>}
         {method === "CARD" && (
           <>
             <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>
@@ -612,7 +872,8 @@ function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
         <p className="font-display text-xl font-bold text-espresso">Sale complete</p>
         <p className="mt-1 text-sm text-charcoal/60">{order.number}</p>
         <p className="mt-3 text-3xl font-bold text-terracotta">{money(order.total)}</p>
-        <p className="text-sm text-charcoal/50">Paid by {order.paymentMethod === "CARD" ? "card" : "cash"}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
+        <p className="text-sm text-charcoal/50">Paid by {order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
+        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">🍳 Sent to kitchen</p>}
         <div className="mt-5 flex gap-2">
           <button onClick={printReceipt} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">🖨 Print receipt</button>
           <button onClick={onNew} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">New sale</button>

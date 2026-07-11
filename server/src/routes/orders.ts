@@ -7,27 +7,10 @@ import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/he
 import { recordStockSale, restoreStock, validateStock } from "../lib/inventory";
 import { awardOrderBeans, reverseOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
+import { applyOrderStatus, DONE_STATUSES } from "../lib/orderStatus";
 import { paymentProvider } from "../lib/payments";
 import { outOrder, parseArr, toJson } from "../lib/serialize";
 import { storefrontConfig } from "../lib/settings";
-
-// Customer-friendly notification text per order status (pickup + delivery stages).
-const ORDER_NOTIFICATIONS: Record<string, { title: string; message: (n: string) => string }> = {
-  RECEIVED: { title: "Order received", message: (n) => `We got your order ${n}. We'll keep you posted.` },
-  ACCEPTED: { title: "Order accepted", message: (n) => `Order ${n} has been accepted.` },
-  PREPARING: { title: "Preparing your order", message: (n) => `Your order ${n} is being prepared.` },
-  READY_FOR_PICKUP: { title: "Ready for pickup", message: (n) => `Order ${n} is ready for pickup.` },
-  READY_FOR_DELIVERY: { title: "Ready for delivery", message: (n) => `Order ${n} is packed and ready for delivery.` },
-  OUT_FOR_DELIVERY: { title: "Out for delivery", message: (n) => `Your order ${n} is out for delivery.` },
-  DELIVERED: { title: "Delivered", message: (n) => `Order ${n} has been delivered. Enjoy! ☕` },
-  COMPLETED: { title: "Order completed", message: (n) => `Order ${n} is complete. Enjoy! ☕` },
-  CANCELLED: { title: "Order cancelled", message: (n) => `Order ${n} was cancelled.` },
-};
-
-// Allowed status sets per fulfillment type.
-const PICKUP_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "COMPLETED", "CANCELLED"];
-const DELIVERY_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
-const DONE_STATUSES = ["DELIVERED", "COMPLETED"];
 
 export const ordersRouter = Router();
 
@@ -379,52 +362,11 @@ ordersRouter.get("/", requireAdmin, async (req, res) => {
   res.json(orders.map(outOrder));
 });
 
-// PATCH /api/orders/:id/status  (admin/staff)  { status, reason? }
+// PATCH /api/orders/:id/status  (admin)  { status, reason? }
 ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  const status = String(req.body.status);
-  const order = await prisma.order.findUnique({ where: { id } });
-  if (!order) return res.status(404).json({ error: "Order not found." });
-
-  const allowed = order.fulfillment === "DELIVERY" ? DELIVERY_STATUSES : PICKUP_STATUSES;
-  if (!allowed.includes(status)) {
-    return res.status(400).json({ error: `Invalid status for a ${order.fulfillment.toLowerCase()} order.` });
-  }
-  if (status === "CANCELLED" && !String(req.body.reason ?? "").trim()) {
-    return res.status(400).json({ error: "A reason is required to cancel an order." });
-  }
-  const reason = status === "CANCELLED" ? String(req.body.reason).trim() : null;
-  const actor = actorFrom(req);
-
-  // Cash orders become collected (and confirmed) once completed/delivered.
-  const cashSettled = DONE_STATUSES.includes(status) && order.paymentMethod !== "ONLINE" && order.paymentStatus === "CASH_DUE";
-
-  const updated = await prisma.order.update({
-    where: { id },
-    data: {
-      status,
-      ...(status === "CANCELLED" ? { cancelReason: reason, cancelledBy: actor } : {}),
-      ...(cashSettled ? { paymentStatus: "CASH_COLLECTED" } : {}),
-    },
-    include: { items: true },
-  });
-
-  // Loyalty: award on completion; reverse on cancel. Both idempotent.
-  if (DONE_STATUSES.includes(status)) await awardOrderBeans(id);
-  if (status === "CANCELLED") { await reverseOrderBeans(id); await restoreStock(id); }
-
-  await logActivity(actor, "STATUS_CHANGE", `Order ${order.number} → ${status}${reason ? ` (${reason})` : ""}`, "order", order.number);
-
-  const meta = ORDER_NOTIFICATIONS[status];
-  if (meta && updated.customerId) {
-    await notify(updated.customerId, {
-      type: status.includes("DELIVER") ? "DELIVERY" : "ORDER",
-      title: meta.title,
-      message: status === "CANCELLED" && reason ? `${meta.message(updated.number)} Reason: ${reason}` : meta.message(updated.number),
-      link: `/order-success/${updated.number}`,
-    });
-  }
-  res.json(outOrder(updated));
+  const result = await applyOrderStatus(Number(req.params.id), String(req.body.status), { reason: req.body.reason, actor: actorFrom(req) });
+  if (!result.ok) return res.status(result.code).json({ error: result.error });
+  res.json(result.order);
 });
 
 // PATCH /api/orders/:id/assign  (admin) — assign a delivery to a staff member/driver

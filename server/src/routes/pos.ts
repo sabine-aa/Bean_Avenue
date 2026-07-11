@@ -5,7 +5,7 @@ import { prisma } from "../db";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { recordStockSale, validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
-import { notify } from "../lib/notify";
+import { applyOrderStatus } from "../lib/orderStatus";
 import { terminalProvider } from "../lib/paymentTerminal";
 import { outOrder } from "../lib/serialize";
 import { posConfig, storefrontConfig } from "../lib/settings";
@@ -29,12 +29,15 @@ async function withTotals(shift: NonNullable<Awaited<ReturnType<typeof openShift
   });
   const cashSales = round2(sales.filter((s) => s.paymentMethod === "CASH").reduce((a, s) => a + s.total, 0));
   const cardSales = round2(sales.filter((s) => s.paymentMethod === "CARD").reduce((a, s) => a + s.total, 0));
+  const whishSales = round2(sales.filter((s) => s.paymentMethod === "WHISH").reduce((a, s) => a + s.total, 0));
   return {
     ...shift,
     salesCount: sales.length,
     cashSales,
     cardSales,
-    salesTotal: round2(cashSales + cardSales),
+    whishSales,
+    salesTotal: round2(cashSales + cardSales + whishSales),
+    // Only cash affects the drawer; card/Whish are electronic.
     expectedCash: round2(shift.openingFloat + cashSales + shift.cashPayIns - shift.cashPayOuts),
   };
 }
@@ -125,7 +128,8 @@ posRouter.post("/sale", async (req, res) => {
   const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string };
   if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
 
-  const method = String(body.paymentMethod ?? "CASH").toUpperCase() === "CARD" ? "CARD" : "CASH";
+  const rawMethod = String(body.paymentMethod ?? "CASH").toUpperCase();
+  const method = rawMethod === "CARD" ? "CARD" : rawMethod === "WHISH" ? "WHISH" : "CASH";
   const pos = await posConfig();
   if (method === "CARD") {
     if (!pos.card.enabled) return res.status(400).json({ error: "Card payments aren't enabled at the register." });
@@ -201,7 +205,7 @@ posRouter.post("/sale", async (req, res) => {
   await prisma.payment.create({
     data: {
       orderId: order.id,
-      provider: card ? `pos-${card.provider}` : "pos",
+      provider: card ? `pos-${card.provider}` : method === "WHISH" ? "pos-whish" : "pos",
       transactionId: card?.transactionRef || `${genNumber("POSPAY")}-${order.id}`,
       method,
       amount: total,
@@ -235,41 +239,54 @@ posRouter.get("/summary", async (req, res) => {
     total: sum(sales),
     cash: sum(sales.filter((o) => o.paymentMethod === "CASH")),
     card: sum(sales.filter((o) => o.paymentMethod === "CARD")),
+    whish: sum(sales.filter((o) => o.paymentMethod === "WHISH")),
     sales: sales.map(outOrder),
   });
 });
 
-// ---- Kitchen Display (KDS) ----------------------------------------------------
-const KITCHEN_ACTIVE = ["RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP"];
+// ---- Online orders (website/app) in the register -----------------------------
+// Live customer orders staff work from the POS. NEW = just arrived (RECEIVED).
+const ONLINE_ACTIVE = ["RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY"];
 
-// GET /api/pos/kds — live tickets the kitchen must make (POS + pickup online).
+// GET /api/pos/online — active website/app orders (oldest first = work queue).
+posRouter.get("/online", async (_req, res) => {
+  const orders = await prisma.order.findMany({
+    where: { channel: "ONLINE", status: { in: ONLINE_ACTIVE } },
+    include: { items: true, payments: { orderBy: { createdAt: "desc" } } },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json({ newCount: orders.filter((o) => o.status === "RECEIVED").length, orders: orders.map(outOrder) });
+});
+
+// PATCH /api/pos/online/:id/status — advance a website order (accept → preparing →
+// ready → complete, or cancel). Shares the exact same engine as the admin screen.
+posRouter.patch("/online/:id/status", async (req, res) => {
+  const result = await applyOrderStatus(Number(req.params.id), String(req.body?.status), { reason: req.body?.reason, actor: req.staffName ?? "Register" });
+  if (!result.ok) return res.status(result.code).json({ error: result.error });
+  res.json(result.order);
+});
+
+// ---- Kitchen Display (KDS) ----------------------------------------------------
+// Everything the kitchen still has to make — POS, online pickup AND delivery.
+const KITCHEN_ACTIVE = ["RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "READY_FOR_DELIVERY"];
+
+// GET /api/pos/kds — live tickets the kitchen must make (POS + online pickup + delivery).
 posRouter.get("/kds", async (_req, res) => {
   const orders = await prisma.order.findMany({
-    where: { status: { in: KITCHEN_ACTIVE }, fulfillment: { not: "DELIVERY" } },
+    where: { status: { in: KITCHEN_ACTIVE } },
     include: { items: true },
     orderBy: { createdAt: "asc" },
   });
   res.json(orders.map(outOrder));
 });
 
-// PATCH /api/pos/kds/:id/status  { status } — advance a ticket through the kitchen.
+// PATCH /api/pos/kds/:id/status  { status } — advance a kitchen ticket. Goes
+// through the shared engine, so online customers get notified + loyalty applies.
+const KITCHEN_TRANSITIONS = ["PREPARING", "READY_FOR_PICKUP", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY", "COMPLETED"];
 posRouter.patch("/kds/:id/status", async (req, res) => {
-  const id = Number(req.params.id);
   const status = String(req.body?.status ?? "");
-  if (!["RECEIVED", "PREPARING", "READY_FOR_PICKUP", "COMPLETED"].includes(status)) {
-    return res.status(400).json({ error: "Invalid status." });
-  }
-  const order = await prisma.order.findUnique({ where: { id } });
-  if (!order) return res.status(404).json({ error: "Ticket not found." });
-  const updated = await prisma.order.update({ where: { id }, data: { status }, include: { items: true } });
-
-  if (status === "COMPLETED") await awardOrderBeans(id); // idempotent — mainly for online orders
-  // Keep the online customer informed as their order advances.
-  if (updated.customerId && updated.channel === "ONLINE") {
-    if (status === "READY_FOR_PICKUP")
-      await notify(updated.customerId, { type: "ORDER", title: "Ready for pickup", message: `Order ${updated.number} is ready for pickup.`, link: `/order-success/${updated.number}` });
-    if (status === "COMPLETED")
-      await notify(updated.customerId, { type: "ORDER", title: "Order completed", message: `Order ${updated.number} is complete. Enjoy! ☕`, link: `/order-success/${updated.number}` });
-  }
-  res.json(outOrder(updated));
+  if (!KITCHEN_TRANSITIONS.includes(status)) return res.status(400).json({ error: "Invalid status." });
+  const result = await applyOrderStatus(Number(req.params.id), status, { actor: req.staffName ?? "Kitchen" });
+  if (!result.ok) return res.status(result.code).json({ error: result.error });
+  res.json(result.order);
 });
