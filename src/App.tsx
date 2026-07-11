@@ -21,6 +21,7 @@ import { AdminReports } from "./admin/Reports";
 import { AdminRewards } from "./admin/RewardsManager";
 import { AdminRooms } from "./admin/RoomsManagement";
 import { AdminStaff } from "./admin/StaffManager";
+import { AdminStock } from "./admin/StockManager";
 import { AdminSubscribers } from "./admin/Subscribers";
 import { AdminSuggestions } from "./admin/Suggestions";
 import { Layout } from "./components/Layout";
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="suggestions" element={<AdminSuggestions />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="inventory" element={<AdminInventory />} />
+        <Route path="stock" element={<AdminStock />} />
         <Route path="staff" element={<AdminStaff />} />
       </Route>
 

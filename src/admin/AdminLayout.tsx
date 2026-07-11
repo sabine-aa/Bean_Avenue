@@ -22,7 +22,8 @@ const links = [
   { to: "/admin/subscribers", label: "Offer Sign-ups" },
   { to: "/admin/suggestions", label: "Suggestions" },
   { to: "/admin/reports", label: "Sales Reports" },
-  { to: "/admin/inventory", label: "Inventory" },
+  { to: "/admin/inventory", label: "Product Stock" },
+  { to: "/admin/stock", label: "Stock / Ingredients" },
   { to: "/admin/staff", label: "Register Staff" },
 ];
 

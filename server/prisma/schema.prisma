@@ -593,3 +593,57 @@ model Booking {
   beansEarned   Int       @default(0)
   createdAt     DateTime  @default(now())
 }
+
+// ---- Ingredient / raw-materials inventory (Bill-of-Materials) -----------------
+// A single stock item the shop keeps: raw (milk, beans, cups) OR a simple finished
+// good (croissant, water bottle). Menu items consume these via RecipeComponent.
+model InventoryItem {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  category    String    @default("") // Dairy, Coffee, Packaging, Syrups, Bakery, Powders…
+  unit        String    @default("pcs") // liters, ml, g, kg, pcs…
+  quantity    Float     @default(0) // current on-hand, expressed in `unit`
+  minQty      Float     @default(0) // low-stock threshold
+  costPerUnit Float     @default(0) // for stock valuation + cost reports
+  supplier    String?
+  expiryDate  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  movements   InventoryMovement[]
+  recipe      RecipeComponent[]
+}
+
+// Every change to an inventory item's quantity — the running total is the sum of deltas.
+model InventoryMovement {
+  id              Int           @id @default(autoincrement())
+  inventoryItemId Int
+  item            InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  delta           Float // signed change, in the item's unit
+  balance         Float // resulting on-hand quantity
+  type            String // SALE | RECEIVE | WASTE | EXPIRED | DAMAGED | ADJUST | COUNT | REFUND_REVERSAL
+  reason          String?
+  staffName       String?
+  orderId         Int? // set for sale deductions / refund reversals
+  invoiceNo       String? // supplier invoice on RECEIVE
+  costPerUnit     Float? // captured on RECEIVE
+  createdAt       DateTime      @default(now())
+
+  @@index([inventoryItemId, createdAt])
+}
+
+// One line of a menu item's recipe: how much of an inventory item it consumes.
+// size = null → applies to every size; addonId set → consumed when that add-on is chosen.
+model RecipeComponent {
+  id              Int           @id @default(autoincrement())
+  menuItemId      Int
+  size            String? // null = all sizes, else "Small"/"Medium"/"Large"
+  addonId         Int? // null = base recipe, else tied to a specific add-on
+  inventoryItemId Int
+  item            InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  quantity        Float // amount of `item` consumed, in the item's unit
+  createdAt       DateTime      @default(now())
+
+  @@index([menuItemId])
+  @@index([addonId])
+}
