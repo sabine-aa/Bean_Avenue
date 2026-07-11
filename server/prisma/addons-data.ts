@@ -12,7 +12,7 @@ export const ADDON_GROUPS: {
 }[] = [
   // Coffee/drink add-ons, split into clean groups. Milk is SINGLE-choice so a
   // drink can't end up with two milks. Prices are straight off the menu board
-  // (each syrup flavour is the board's single "+0.33" syrup price).
+  // (each syrup flavour + each non-dairy milk uses the board's price).
   {
     name: "Milk",
     selection: "SINGLE",
@@ -20,7 +20,10 @@ export const ADDON_GROUPS: {
     addons: [
       { name: "Regular", price: 0 },
       { name: "Lactose Free", price: 0.33 },
-      { name: "Non-Dairy Milk", price: 1.0 },
+      { name: "Oat Milk", price: 1.0 },
+      { name: "Almond Milk", price: 1.0 },
+      { name: "Soy Milk", price: 1.0 },
+      { name: "Coconut Milk", price: 1.0 },
     ],
   },
   {
@@ -35,13 +38,25 @@ export const ADDON_GROUPS: {
       { name: "White Mocha", price: 0.33 },
     ],
   },
+  // Hot coffee options — Extra Hot makes sense, no ice option.
   {
     name: "Coffee Options",
     selection: "MULTIPLE",
-    categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks", "Iced Drinks", "Frappes"],
+    categories: ["Espresso Based", "Filtered Coffee", "Hot Drinks"],
     addons: [
       { name: "Decaf", price: 0.75 },
+      { name: "Extra Shot", price: 1.0 },
       { name: "Extra Hot", price: 0 },
+    ],
+  },
+  // Iced coffee options — Less Ice makes sense, no hot option.
+  {
+    name: "Coffee Options",
+    selection: "MULTIPLE",
+    categories: ["Iced Drinks", "Frappes"],
+    addons: [
+      { name: "Decaf", price: 0.75 },
+      { name: "Extra Shot", price: 1.0 },
       { name: "Less Ice", price: 0 },
     ],
   },

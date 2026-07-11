@@ -593,7 +593,7 @@ function OnlineOrdersPanel({ orders, onClose, onChanged }: { orders: Order[]; on
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
-      <div className="flex h-full w-full max-w-md flex-col bg-oat/40" onClick={(e) => e.stopPropagation()}>
+      <div className="flex h-full w-full max-w-md flex-col bg-oat shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-oat bg-white px-4 py-3">
           <span className="font-display text-lg font-bold text-espresso">🌐 Online orders {orders.length ? `· ${orders.length}` : ""}</span>
           <button onClick={onClose} className="text-2xl leading-none text-charcoal/40 hover:text-charcoal">×</button>
