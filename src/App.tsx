@@ -18,6 +18,7 @@ import { AdminMenuManager } from "./admin/MenuManager";
 import { AdminOrders } from "./admin/Orders";
 import { AdminPayments } from "./admin/Payments";
 import { AdminReports } from "./admin/Reports";
+import { AdminRecipes } from "./admin/RecipeEditor";
 import { AdminRewards } from "./admin/RewardsManager";
 import { AdminRooms } from "./admin/RoomsManagement";
 import { AdminStaff } from "./admin/StaffManager";
@@ -93,6 +94,7 @@ export default function App() {
         <Route path="reports" element={<AdminReports />} />
         <Route path="inventory" element={<AdminInventory />} />
         <Route path="stock" element={<AdminStock />} />
+        <Route path="recipes" element={<AdminRecipes />} />
         <Route path="staff" element={<AdminStaff />} />
       </Route>
 

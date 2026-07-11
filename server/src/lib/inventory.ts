@@ -3,7 +3,7 @@
 // StockMovement. Untracked items (made-to-order drinks) are ignored entirely.
 import { prisma } from "../db";
 
-type SaleLine = { menuItemId: number; quantity: number; name?: string };
+export type SaleLine = { menuItemId: number; quantity: number; name?: string };
 
 /** Sum requested quantity per menu item (an item can appear on several lines). */
 function needsByItem(items: SaleLine[]): Map<number, number> {

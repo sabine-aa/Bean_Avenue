@@ -35,6 +35,56 @@ stockRouter.get("/movements", async (req, res) => {
   res.json(moves.map((m) => ({ ...m, name: m.item?.name ?? "—", unit: m.item?.unit ?? "", item: undefined })));
 });
 
+// GET /api/stock/recipes/coverage — menu items that already have a recipe.
+stockRouter.get("/recipes/coverage", async (_req, res) => {
+  const rows = await prisma.recipeComponent.findMany({ select: { menuItemId: true }, distinct: ["menuItemId"] });
+  res.json({ menuItemIds: rows.map((r) => r.menuItemId) });
+});
+
+// GET /api/stock/recipe/:menuItemId — a product's recipe + everything the editor
+// needs (its sizes, applicable add-ons, and the stock-item list for dropdowns).
+stockRouter.get("/recipe/:menuItemId", async (req, res) => {
+  const menuItemId = Number(req.params.menuItemId);
+  const menuItem = await prisma.menuItem.findUnique({ where: { id: menuItemId } });
+  if (!menuItem) return res.status(404).json({ error: "Product not found." });
+
+  let sizes: string[] = [];
+  try {
+    const options = JSON.parse(menuItem.options || "[]") as { name: string; choices: { label: string }[] }[];
+    sizes = options.find((g) => g.name.toLowerCase() === "size")?.choices.map((c) => c.label) ?? [];
+  } catch { /* no options */ }
+
+  const groups = await prisma.addonGroup.findMany({
+    where: { isAvailable: true, assignments: { some: { OR: [{ menuItemId }, { category: menuItem.category }] } } },
+    include: { addons: { where: { isAvailable: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
+  });
+  const addons = groups.flatMap((g) => g.addons.map((a) => ({ id: a.id, name: a.name, group: g.name })));
+  const stockItems = await prisma.inventoryItem.findMany({ where: { isActive: true }, orderBy: [{ category: "asc" }, { name: "asc" }], select: { id: true, name: true, unit: true } });
+  const components = await prisma.recipeComponent.findMany({ where: { menuItemId } });
+  res.json({ menuItem: { id: menuItem.id, name: menuItem.name, category: menuItem.category, sizes }, addons, stockItems, components });
+});
+
+// PUT /api/stock/recipe/:menuItemId — replace a product's whole recipe.
+//   { components: [{ size|null, addonId|null, inventoryItemId, quantity }] }
+stockRouter.put("/recipe/:menuItemId", async (req, res) => {
+  const menuItemId = Number(req.params.menuItemId);
+  const raw = Array.isArray(req.body?.components) ? req.body.components : [];
+  const clean = raw
+    .map((c: Record<string, unknown>) => ({
+      menuItemId,
+      size: c.size ? String(c.size) : null,
+      addonId: c.addonId ? Number(c.addonId) : null,
+      inventoryItemId: Number(c.inventoryItemId),
+      quantity: round(Number(c.quantity)),
+    }))
+    .filter((c: { inventoryItemId: number; quantity: number }) => c.inventoryItemId && c.quantity > 0);
+  await prisma.$transaction([
+    prisma.recipeComponent.deleteMany({ where: { menuItemId } }),
+    prisma.recipeComponent.createMany({ data: clean }),
+  ]);
+  res.json({ ok: true, count: clean.length });
+});
+
 function cleanItem(body: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
   if ("name" in body) data.name = String(body.name ?? "").trim();

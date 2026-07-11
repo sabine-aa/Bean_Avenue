@@ -3,7 +3,8 @@ import { Router } from "express";
 import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
-import { recordStockSale, validateStock } from "../lib/inventory";
+import { consumeForOrder } from "../lib/consumption";
+import { validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
 import { applyOrderStatus } from "../lib/orderStatus";
 import { terminalProvider } from "../lib/paymentTerminal";
@@ -217,7 +218,7 @@ posRouter.post("/sale", async (req, res) => {
     },
   });
   if (customer) await awardOrderBeans(order.id);
-  await recordStockSale(body.items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })), { orderId: order.id, staffName: req.staffName ?? "Staff" });
+  await consumeForOrder(body.items, { orderId: order.id, staffName: req.staffName ?? "Staff" });
 
   res.status(201).json(outOrder(order));
 });

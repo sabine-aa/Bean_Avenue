@@ -4,7 +4,8 @@ import { prisma } from "../db";
 import { actorFrom, logActivity } from "../lib/activity";
 import { quoteDelivery } from "../lib/delivery";
 import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
-import { recordStockSale, restoreStock, validateStock } from "../lib/inventory";
+import { consumeForOrder, reverseForOrder } from "../lib/consumption";
+import { validateStock } from "../lib/inventory";
 import { awardOrderBeans, reverseOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
 import { applyOrderStatus, DONE_STATUSES } from "../lib/orderStatus";
@@ -241,8 +242,8 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
     include: { items: true },
   });
 
-  // Deduct tracked stock for the order (restored if it's later cancelled).
-  await recordStockSale(items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })), { orderId: order.id });
+  // Deduct stock for the order — recipe ingredients + finished goods (restored if cancelled).
+  await consumeForOrder(items, { orderId: order.id });
 
   // Reserve the reward voucher to this order (returned if the order is undone).
   if (loyaltyDiscount > 0 && body.loyaltyRedemptionCode) {
@@ -323,7 +324,7 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
     },
   });
   await reverseOrderBeans(order.id);
-  await restoreStock(order.id);
+  await reverseForOrder(order.id);
 
   await notify(order.customerId, {
     type: "ORDER",

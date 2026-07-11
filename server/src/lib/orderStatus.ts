@@ -4,7 +4,7 @@
 // stock restore, activity log, and customer notification.
 import { prisma } from "../db";
 import { logActivity } from "./activity";
-import { restoreStock } from "./inventory";
+import { reverseForOrder } from "./consumption";
 import { awardOrderBeans, reverseOrderBeans } from "./loyalty";
 import { notify } from "./notify";
 import { outOrder } from "./serialize";
@@ -56,7 +56,7 @@ export async function applyOrderStatus(id: number, status: string, opts: { reaso
 
   // Loyalty: award on completion; reverse on cancel. Stock restored on cancel. All idempotent.
   if (DONE_STATUSES.includes(status)) await awardOrderBeans(id);
-  if (status === "CANCELLED") { await reverseOrderBeans(id); await restoreStock(id); }
+  if (status === "CANCELLED") { await reverseOrderBeans(id); await reverseForOrder(id); }
 
   await logActivity(opts.actor, "STATUS_CHANGE", `Order ${order.number} → ${status}${reason ? ` (${reason})` : ""}`, "order", order.number);
 
