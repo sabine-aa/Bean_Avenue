@@ -199,6 +199,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [preorderProduct, setPreorderProduct] = useState<ShopProd | null>(null);
   const [compact, setCompact] = useState(() => { try { return localStorage.getItem("pos.compact") === "1"; } catch { return false; } });
   const toggleCompact = () => setCompact((c) => { const n = !c; try { localStorage.setItem("pos.compact", n ? "1" : "0"); } catch { /* ignore */ } return n; });
+  const [ticketOpen, setTicketOpen] = useState(false); // slide-out sale panel on tablet/narrow screens
   const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
   useEffect(() => { loadShop(); }, [loadShop]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
@@ -367,7 +368,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setShopLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin("");
+    setLines([]); setShopLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin(""); setTicketOpen(false);
   }
 
   async function completeSale(method: PayMethod) {
@@ -397,6 +398,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       const order = await posApi.post<Order>("/api/pos/sale", payload);
       setReceipt(order);
       setPay(null);
+      setTicketOpen(false);
       reload();
       if (shopLines.length) loadShop(); // refresh retail stock counts
     } catch (e) {
@@ -425,6 +427,98 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       setBusy(false);
     }
   }
+
+  const ticketCount = lines.reduce((s, l) => s + l.quantity, 0) + shopLines.reduce((s, l) => s + l.quantity, 0);
+
+  // The Current Sale ticket — shared between the fixed desktop panel and the
+  // slide-out drawer on tablet/narrow screens.
+  const ticketBody = (
+    <>
+      <div className="flex items-center justify-between border-b border-oat px-4 py-2.5">
+        <span className="font-display text-lg font-bold">Current sale</span>
+        <div className="flex items-center gap-3">
+          {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
+          <button onClick={() => setTicketOpen(false)} aria-label="Close" className="text-2xl leading-none text-charcoal/40 hover:text-charcoal lg:hidden">×</button>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
+        {cartEmpty && <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>}
+        {shopLines.map((l) => (
+          <div key={`shop-${l.id}`} className="rounded-xl bg-oat/25 p-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold leading-tight text-espresso">{l.product.name}</p>
+                <p className="mt-0.5 text-[11px] font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)} each</p>
+              </div>
+              <span className="whitespace-nowrap font-bold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
+              <span className="w-6 text-center font-semibold">{l.quantity}</span>
+              <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
+              <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+            </div>
+          </div>
+        ))}
+        {lines.map((l) => (
+          <div key={l.id} className="rounded-xl bg-oat/25 p-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 flex-1 font-semibold leading-tight text-espresso">{l.item.name}</p>
+              <span className="whitespace-nowrap font-bold text-terracotta">{money(lineTotal(l))}</span>
+            </div>
+            {l.options.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60">{l.options.map((o) => o.choice).join(" · ")}</p>}
+            {l.addons.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Add-ons:</span> {l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)).join(", ")}</p>}
+            {l.note && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Note:</span> {l.note}</p>}
+            <div className="mt-2 flex items-center gap-2">
+              <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
+              <span className="w-6 text-center font-semibold">{l.quantity}</span>
+              <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button onClick={() => setModal({ line: l, isNew: false })} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-espresso shadow-sm hover:bg-espresso hover:text-cream">Edit</button>
+                <button onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-oat p-3">
+        <div className="mb-2 grid grid-cols-2 gap-2">
+          <button onClick={() => setOrderType("TAKEAWAY")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "TAKEAWAY" ? "bg-espresso text-cream" : "bg-oat"}`}>🥡 Takeaway</button>
+          <button onClick={() => setOrderType("DINE_IN")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "DINE_IN" ? "bg-espresso text-cream" : "bg-oat"}`}>🍽 Dine-in</button>
+        </div>
+        {orderType === "DINE_IN" && (
+          <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table number" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+        )}
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone (optional — earns beans)" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+        <div className="mb-1 flex items-center justify-between text-sm"><span className="text-charcoal/60">Subtotal</span><span>{money(subtotal)}</span></div>
+        {staffDiscountPct > 0 && (
+          staffPurchase ? (
+            <div className="mb-1 flex items-center justify-between rounded-lg bg-sage/15 px-2 py-1.5 text-sm">
+              <span className="font-semibold text-sage-dark">👤 {staffPurchase.name} · staff −{staffDiscountPct}%</span>
+              <button onClick={() => setStaffPurchase(null)} className="text-xs font-semibold text-charcoal/50 hover:text-terracotta">Remove</button>
+            </div>
+          ) : (
+            <button onClick={() => setStaffPicker(true)} className="mb-1 w-full rounded-lg border border-dashed border-oat py-1.5 text-sm font-semibold text-charcoal/60 hover:bg-oat">👤 Staff discount ({staffDiscountPct}%)</button>
+          )
+        )}
+        <div className="mb-1 flex items-center justify-between text-sm">
+          <span className="text-charcoal/60">Discount ($)</span>
+          {staffPurchase ? <span className="font-semibold text-sage-dark">−{money(disc)}</span> : <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />}
+        </div>
+        <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
+        <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+          <button disabled={cartEmpty} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
+          <button disabled={cartEmpty} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
+          {cardEnabled && (
+            <button disabled={cartEmpty} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
+          )}
+        </div>
+        {staffPurchase && (
+          <button disabled={cartEmpty} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div className="flex h-screen flex-col bg-oat/30 text-espresso">
@@ -487,89 +581,21 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           </div>
         </div>
 
-        <div className="flex w-80 shrink-0 flex-col border-l border-oat bg-white sm:w-96 lg:w-[400px]">
-          <div className="flex items-center justify-between border-b border-oat px-4 py-2.5">
-            <span className="font-display text-lg font-bold">Current sale</span>
-            {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
-          </div>
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-            {cartEmpty && <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>}
-            {shopLines.map((l) => (
-              <div key={`shop-${l.id}`} className="rounded-xl bg-oat/25 p-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold leading-tight text-espresso">{l.product.name}</p>
-                    <p className="mt-0.5 text-[11px] font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)} each</p>
-                  </div>
-                  <span className="whitespace-nowrap font-bold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
-                  <span className="w-6 text-center font-semibold">{l.quantity}</span>
-                  <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
-                  <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
-                </div>
-              </div>
-            ))}
-            {lines.map((l) => (
-              <div key={l.id} className="rounded-xl bg-oat/25 p-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 font-semibold leading-tight text-espresso">{l.item.name}</p>
-                  <span className="whitespace-nowrap font-bold text-terracotta">{money(lineTotal(l))}</span>
-                </div>
-                {l.options.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60">{l.options.map((o) => o.choice).join(" · ")}</p>}
-                {l.addons.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Add-ons:</span> {l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)).join(", ")}</p>}
-                {l.note && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Note:</span> {l.note}</p>}
-                <div className="mt-2 flex items-center gap-2">
-                  <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
-                  <span className="w-6 text-center font-semibold">{l.quantity}</span>
-                  <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <button onClick={() => setModal({ line: l, isNew: false })} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-espresso shadow-sm hover:bg-espresso hover:text-cream">Edit</button>
-                    <button onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-oat p-3">
-            <div className="mb-2 grid grid-cols-2 gap-2">
-              <button onClick={() => setOrderType("TAKEAWAY")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "TAKEAWAY" ? "bg-espresso text-cream" : "bg-oat"}`}>🥡 Takeaway</button>
-              <button onClick={() => setOrderType("DINE_IN")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "DINE_IN" ? "bg-espresso text-cream" : "bg-oat"}`}>🍽 Dine-in</button>
-            </div>
-            {orderType === "DINE_IN" && (
-              <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table number" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
-            )}
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone (optional — earns beans)" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
-            <div className="mb-1 flex items-center justify-between text-sm"><span className="text-charcoal/60">Subtotal</span><span>{money(subtotal)}</span></div>
-            {staffDiscountPct > 0 && (
-              staffPurchase ? (
-                <div className="mb-1 flex items-center justify-between rounded-lg bg-sage/15 px-2 py-1.5 text-sm">
-                  <span className="font-semibold text-sage-dark">👤 {staffPurchase.name} · staff −{staffDiscountPct}%</span>
-                  <button onClick={() => setStaffPurchase(null)} className="text-xs font-semibold text-charcoal/50 hover:text-terracotta">Remove</button>
-                </div>
-              ) : (
-                <button onClick={() => setStaffPicker(true)} className="mb-1 w-full rounded-lg border border-dashed border-oat py-1.5 text-sm font-semibold text-charcoal/60 hover:bg-oat">👤 Staff discount ({staffDiscountPct}%)</button>
-              )
-            )}
-            <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="text-charcoal/60">Discount ($)</span>
-              {staffPurchase ? <span className="font-semibold text-sage-dark">−{money(disc)}</span> : <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />}
-            </div>
-            <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
-            <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
-              <button disabled={cartEmpty} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
-              <button disabled={cartEmpty} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
-              {cardEnabled && (
-                <button disabled={cartEmpty} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
-              )}
-            </div>
-            {staffPurchase && (
-              <button disabled={cartEmpty} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
-            )}
-          </div>
-        </div>
+        {/* Desktop: fixed sale panel */}
+        <aside className="hidden w-[400px] shrink-0 flex-col border-l border-oat bg-white lg:flex">{ticketBody}</aside>
       </div>
+
+      {/* Tablet/narrow: floating ticket button + slide-out drawer */}
+      {!ticketOpen && (
+        <button onClick={() => setTicketOpen(true)} className="btn-3d fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-espresso px-6 py-3 text-sm font-bold text-cream shadow-lg lg:hidden">
+          🧾 Ticket{ticketCount > 0 ? ` · ${ticketCount} item${ticketCount === 1 ? "" : "s"} · ${money(total)}` : ""}
+        </button>
+      )}
+      {ticketOpen && (
+        <div className="fixed inset-0 z-40 flex bg-black/40 lg:hidden" onClick={() => setTicketOpen(false)}>
+          <div className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>{ticketBody}</div>
+        </div>
+      )}
 
       {staffPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStaffPicker(false)}>
