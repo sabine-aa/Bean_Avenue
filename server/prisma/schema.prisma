@@ -650,6 +650,58 @@ model InventoryMovement {
   @@index([inventoryItemId, createdAt])
 }
 
+// ---- Retail shop (physical products: Illy capsules, machines, beans…) --------
+// Deliberately separate from café MenuItem: these are physical goods sold as-is
+// (simple quantity deduction, no recipe), online and/or in the POS, with an
+// optional preorder path for items not kept in stock.
+model ShopCategory {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isHidden  Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ShopProduct {
+  id              Int      @id @default(autoincrement())
+  name            String
+  category        String   @default("")
+  brand           String? // e.g. "Illy"
+  description     String   @default("")
+  images          String   @default("[]") // JSON-encoded string[] (first = primary)
+  price           Float
+  costPrice       Float    @default(0) // for margin reports
+  sku             String?
+  quantity        Float    @default(0) // on-hand; simple deduction on sale
+  minQty          Float    @default(0) // low-stock threshold
+  availableOnline Boolean  @default(true) // show on the public /shop page
+  availablePos    Boolean  @default(true) // sellable at the register
+  allowPreorder   Boolean  @default(false) // orderable even when out of stock
+  preorderEta     String? // e.g. "3–7 days"
+  featured        Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  isHidden        Boolean  @default(false) // hidden everywhere (kept for history)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  movements       ShopStockMovement[]
+}
+
+// Every change to a shop product's on-hand quantity (audit trail).
+model ShopStockMovement {
+  id        Int         @id @default(autoincrement())
+  productId Int
+  product   ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  delta     Float // signed
+  balance   Float // resulting on-hand
+  type      String // RECEIVE | SALE | ADJUST | COUNT
+  reason    String?
+  staffName String?
+  orderId   Int? // set when a POS/online sale deducted it
+  createdAt DateTime    @default(now())
+
+  @@index([productId, createdAt])
+}
+
 // ---- Suppliers & restocking (supplier receiving) ----------------------------
 // A supplier the shop buys stock from (dairy, coffee, packaging…).
 model Supplier {
