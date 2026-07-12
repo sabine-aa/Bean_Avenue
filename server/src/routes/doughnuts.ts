@@ -119,6 +119,59 @@ doughnutsRouter.post("/production/reopen", requireAdmin, async (req, res) => {
   res.json({ ok: true, date });
 });
 
+// GET /api/doughnuts/reports?from=&to=  (admin) — Hanson performance over a range.
+doughnutsRouter.get("/reports", requireAdmin, async (req, res) => {
+  const q = req.query as Record<string, string>;
+  const to = (q.to || "").trim() || hansonToday();
+  const from = (q.from || "").trim() || hansonToday(new Date(Date.now() - 6 * 86400000));
+  const prod = await prisma.hansonProduction.findMany({ where: { date: { gte: from, lte: to } } });
+  const items = await prisma.menuItem.findMany({ where: { category: DOUGHNUT_CATEGORY }, select: { id: true, name: true, subcategory: true, price: true } });
+  const imap = new Map(items.map((i) => [i.id, i]));
+
+  // Per-doughnut aggregate over the range.
+  const agg = new Map<number, { made: number; sold: number; wasteQty: number }>();
+  for (const p of prod) {
+    const a = agg.get(p.menuItemId) ?? { made: 0, sold: 0, wasteQty: 0 };
+    a.made += p.made; a.sold += p.sold;
+    if (p.leftoverAction === "WASTED") a.wasteQty += p.wasted;
+    agg.set(p.menuItemId, a);
+  }
+
+  const byDoughnut = [...agg.entries()].map(([id, a]) => {
+    const it = imap.get(id);
+    const price = it?.price ?? 0;
+    const leftover = Math.max(0, a.made - a.sold);
+    return {
+      menuItemId: id, name: it?.name ?? "—", subcategory: it?.subcategory || "Other", price,
+      made: a.made, sold: a.sold, leftover, wasteQty: a.wasteQty,
+      revenue: round2(a.sold * price), wasteValue: round2(a.wasteQty * price),
+      sellThrough: a.made > 0 ? Math.round((a.sold / a.made) * 100) : null,
+    };
+  }).sort((x, y) => y.sold - x.sold);
+
+  const byCategory = [...byDoughnut.reduce((m, r) => {
+    const c = m.get(r.subcategory) ?? { subcategory: r.subcategory, made: 0, sold: 0, revenue: 0, wasteQty: 0, wasteValue: 0 };
+    c.made += r.made; c.sold += r.sold; c.revenue = round2(c.revenue + r.revenue); c.wasteQty += r.wasteQty; c.wasteValue = round2(c.wasteValue + r.wasteValue);
+    return m.set(r.subcategory, c);
+  }, new Map<string, { subcategory: string; made: number; sold: number; revenue: number; wasteQty: number; wasteValue: number }>()).values()];
+
+  const totMade = byDoughnut.reduce((s, r) => s + r.made, 0);
+  const totSold = byDoughnut.reduce((s, r) => s + r.sold, 0);
+  const totals = {
+    made: totMade, sold: totSold, leftover: byDoughnut.reduce((s, r) => s + r.leftover, 0),
+    revenue: round2(byDoughnut.reduce((s, r) => s + r.revenue, 0)),
+    wasteQty: byDoughnut.reduce((s, r) => s + r.wasteQty, 0),
+    wasteValue: round2(byDoughnut.reduce((s, r) => s + r.wasteValue, 0)),
+    sellThrough: totMade > 0 ? Math.round((totSold / totMade) * 100) : null,
+    days: new Set(prod.map((p) => p.date)).size,
+  };
+  const rated = byDoughnut.filter((r) => r.made > 0);
+  const bestSellers = [...rated].sort((a, b) => b.sold - a.sold).slice(0, 6);
+  const slowSellers = [...rated].sort((a, b) => (a.sellThrough ?? 0) - (b.sellThrough ?? 0)).slice(0, 6);
+
+  res.json({ from, to, totals, byDoughnut, byCategory, bestSellers, slowSellers });
+});
+
 // POST /api/doughnuts/production  (admin) — set today's "made" per doughnut.
 //   { date?, entries: [{ menuItemId, made }], createdBy? }
 doughnutsRouter.post("/production", requireAdmin, async (req, res) => {

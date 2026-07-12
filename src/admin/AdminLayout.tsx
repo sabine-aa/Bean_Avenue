@@ -12,6 +12,7 @@ const links = [
   { to: "/admin/addons", label: "Add-ons" },
   { to: "/admin/doughnuts", label: "Hanson Doughnuts" },
   { to: "/admin/hanson-production", label: "Hanson Production" },
+  { to: "/admin/hanson-reports", label: "Hanson Reports" },
   { to: "/admin/featured", label: "Homepage Featured" },
   { to: "/admin/bookings", label: "Room Bookings" },
   { to: "/admin/rooms", label: "Rooms" },
