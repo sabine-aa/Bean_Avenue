@@ -197,6 +197,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [shopProducts, setShopProducts] = useState<ShopProd[]>([]);
   const [shopLines, setShopLines] = useState<{ id: number; product: ShopProd; quantity: number }[]>([]);
   const [preorderProduct, setPreorderProduct] = useState<ShopProd | null>(null);
+  const [compact, setCompact] = useState(() => { try { return localStorage.getItem("pos.compact") === "1"; } catch { return false; } });
+  const toggleCompact = () => setCompact((c) => { const n = !c; try { localStorage.setItem("pos.compact", n ? "1" : "0"); } catch { /* ignore */ } return n; });
   const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
   useEffect(() => { loadShop(); }, [loadShop]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
@@ -440,6 +442,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           </button>
           <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
           <button onClick={() => setShowBooking(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">📅 Book Room</button>
+          <button onClick={toggleCompact} title="Toggle compact grid" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">{compact ? "🖼 Images" : "🔲 Compact"}</button>
           <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
             Shift · expected {money(shift.expectedCash)}
           </button>
@@ -465,44 +468,26 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
 
       <div className="flex min-h-0 flex-1">
         {/* Category rail — vertical, down the side */}
-        <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-2 [scrollbar-width:none] sm:w-40 [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-1.5 [scrollbar-width:none] sm:w-36 [&::-webkit-scrollbar]:hidden">
           {["All", ...cats, ...(shopProducts.length ? [RETAIL_CAT] : [])].map((c) => (
-            <button key={c} onClick={() => setCat(c)} className={`w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
+            <button key={c} onClick={() => setCat(c)} className={`w-full truncate rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
           ))}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="p-3">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-2" />
+          <div className="px-3 py-2">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-1.5 text-sm" />
           </div>
-          <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className={`grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto px-3 pb-3 ${compact ? "grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}>
             {cat === RETAIL_CAT
               ? visibleShop.map((p) => {
-                  const out = p.quantity <= 0;
-                  const canPreorder = out && p.allowPreorder;
-                  return (
-                    <button key={p.id} onClick={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))} disabled={out && !p.allowPreorder} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
-                      <Img src={p.images[0] ?? ""} alt={p.name} className="aspect-square w-full bg-oat/30" />
-                      <div className="p-2">
-                        <p className="line-clamp-2 text-sm font-semibold leading-tight">{p.name}</p>
-                        <p className="text-sm font-bold text-terracotta">{money(p.price)}</p>
-                        <p className={`text-xs font-semibold ${out ? "text-terracotta-dark" : p.quantity <= 5 ? "text-amber-600" : "text-charcoal/45"}`}>{out ? (p.allowPreorder ? "Preorder" : "Out of stock") : `${p.quantity} in stock`}</p>
-                      </div>
-                    </button>
-                  );
+                  const canPreorder = p.quantity <= 0 && p.allowPreorder;
+                  return <PosShopTile key={p.id} p={p} compact={compact} disabled={p.quantity <= 0 && !p.allowPreorder} onTap={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))} />;
                 })
-              : visible.map((item) => (
-                  <button key={item.id} onClick={() => addItem(item)} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
-                    <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-square w-full bg-oat/30" />
-                    <div className="p-2">
-                      <p className="line-clamp-2 text-sm font-semibold leading-tight">{item.name}</p>
-                      <p className="text-sm font-bold text-terracotta">{item.options.length ? `From ${money(item.price)}` : money(item.price)}</p>
-                    </div>
-                  </button>
-                ))}
+              : visible.map((item) => <PosMenuTile key={item.id} item={item} compact={compact} onAdd={() => addItem(item)} />)}
           </div>
         </div>
 
-        <div className="flex w-80 shrink-0 flex-col border-l border-oat bg-white sm:w-96">
+        <div className="flex w-80 shrink-0 flex-col border-l border-oat bg-white sm:w-96 lg:w-[400px]">
           <div className="flex items-center justify-between border-b border-oat px-4 py-2.5">
             <span className="font-display text-lg font-bold">Current sale</span>
             {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
@@ -1198,6 +1183,56 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
         )}
       </div>
     </div>
+  );
+}
+
+// ---- Product tiles (image mode vs compact mode) -------------------------------
+function PosMenuTile({ item, compact, onAdd }: { item: MenuItem; compact: boolean; onAdd: () => void }) {
+  const price = item.options.length ? `From ${money(item.price)}` : money(item.price);
+  if (compact) {
+    return (
+      <button onClick={onAdd} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{item.name}</p>
+        <p className="mt-1 text-sm font-bold text-terracotta">{price}</p>
+      </button>
+    );
+  }
+  return (
+    <button onClick={onAdd} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
+      {item.photo
+        ? <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-[4/3] w-full bg-oat/30" />
+        : <div className="flex aspect-[5/2] w-full items-center justify-center bg-oat/40 text-lg font-bold text-espresso/25">{item.name.slice(0, 1)}</div>}
+      <div className="p-1.5">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight">{item.name}</p>
+        <p className="text-sm font-bold text-terracotta">{price}</p>
+      </div>
+    </button>
+  );
+}
+
+function PosShopTile({ p, compact, disabled, onTap }: { p: ShopProd; compact: boolean; disabled: boolean; onTap: () => void }) {
+  const out = p.quantity <= 0;
+  const cls = out ? (p.allowPreorder ? "text-[#5b3fd6]" : "text-terracotta-dark") : p.quantity <= 5 ? "text-amber-600" : "text-charcoal/45";
+  if (compact) {
+    return (
+      <button onClick={onTap} disabled={disabled} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{p.name}</p>
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-terracotta">{money(p.price)}</span>
+          <span className={`text-[10px] font-semibold ${cls}`}>{out ? (p.allowPreorder ? "Pre" : "Out") : p.quantity}</span>
+        </div>
+      </button>
+    );
+  }
+  return (
+    <button onClick={onTap} disabled={disabled} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+      <Img src={p.images[0] ?? ""} alt={p.name} fit="contain" className="aspect-[4/3] w-full bg-oat/30" />
+      <div className="p-1.5">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight">{p.name}</p>
+        <p className="text-sm font-bold text-terracotta">{money(p.price)}</p>
+        <p className={`text-[10px] font-semibold ${cls}`}>{out ? (p.allowPreorder ? "Preorder" : "Out of stock") : `${p.quantity} in stock`}</p>
+      </div>
+    </button>
   );
 }
 
