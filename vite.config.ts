@@ -16,13 +16,13 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,png,svg,jpg,jpeg,webp,woff,woff2}"],
         // Shop product photos are many and load on demand — keep them out of the
         // precache so the service worker install stays small.
-        globIgnores: ["**/photos/shop/**"],
+        globIgnores: ["**/photos/shop/**", "**/photos/doughnuts/**"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith("/photos/shop/"),
+            urlPattern: ({ url }) => url.pathname.startsWith("/photos/shop/") || url.pathname.startsWith("/photos/doughnuts/"),
             handler: "CacheFirst",
-            options: { cacheName: "shop-photos", expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 } },
+            options: { cacheName: "product-photos", expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 } },
           },
         ],
       },
