@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AdminLayout } from "./admin/AdminLayout";
 import { AdminAddons } from "./admin/AddonsManager";
 import { AdminBanners } from "./admin/BannerManager";
@@ -52,9 +53,34 @@ import { POS } from "./pages/POS";
 import { ProductDetails } from "./pages/ProductDetails";
 import { Rooms } from "./pages/Rooms";
 
+// Swap the PWA manifest (and iOS icon/title) by route: the /pos screens install
+// as the "Bean Avenue POS" app; every other page installs the customer app.
+function ManifestSwitcher() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const isPos = pathname.startsWith("/pos");
+    const setLink = (rel: string, href: string) => {
+      let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+      if (!el) { el = document.createElement("link"); el.rel = rel; document.head.appendChild(el); }
+      el.href = href;
+    };
+    const setMeta = (name: string, content: string) => {
+      let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+      if (!el) { el = document.createElement("meta"); el.name = name; document.head.appendChild(el); }
+      el.content = content;
+    };
+    setLink("manifest", isPos ? "/pos.webmanifest" : "/manifest.webmanifest");
+    setLink("apple-touch-icon", isPos ? "/pos-icon.png" : "/bean.png");
+    setMeta("apple-mobile-web-app-title", isPos ? "Bean Avenue POS" : "Bean Avenue");
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
-    <Routes>
+    <>
+      <ManifestSwitcher />
+      <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
         <Route path="/menu" element={<Menu />} />
@@ -113,6 +139,7 @@ export default function App() {
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

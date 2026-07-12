@@ -12,6 +12,12 @@
       rel="stylesheet"
     />
     <link rel="icon" type="image/png" href="/bean.png" />
+    <!-- iOS "Add to Home Screen": icon + title are swapped per route (customer vs POS) at runtime. -->
+    <link rel="apple-touch-icon" href="/bean.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bean Avenue" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   </head>
   <body>
     <div id="root"></div>

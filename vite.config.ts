@@ -26,14 +26,19 @@ export default defineConfig({
           },
         ],
       },
+      // DEFAULT manifest = the public CUSTOMER app. Installing from the website
+      // (/, /menu, /shop…) installs "Bean Avenue" and opens at home. The POS has
+      // its own manifest (public/pos.webmanifest) swapped in on the /pos route.
       manifest: {
-        name: "Bean Avenue Register",
-        short_name: "Bean Register",
-        description: "Bean Avenue point of sale",
+        id: "/",
+        name: "Bean Avenue",
+        short_name: "Bean Avenue",
+        description: "Order coffee, food, sweets & shop products from Bean Avenue.",
         theme_color: "#2f3b2f",
         background_color: "#faf3e8",
         display: "standalone",
-        start_url: "/pos",
+        start_url: "/",
+        scope: "/",
         icons: [
           { src: "/bean.png", sizes: "512x512", type: "image/png", purpose: "any" },
           { src: "/bean.png", sizes: "512x512", type: "image/png", purpose: "maskable" },

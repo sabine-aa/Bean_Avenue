@@ -1,0 +1,16 @@
+{
+  "id": "/pos",
+  "name": "Bean Avenue POS",
+  "short_name": "BA POS",
+  "description": "Bean Avenue in-store register.",
+  "start_url": "/pos",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#2f3b2f",
+  "background_color": "#2f3b2f",
+  "icons": [
+    { "src": "/pos-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pos-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
