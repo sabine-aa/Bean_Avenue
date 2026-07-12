@@ -30,6 +30,11 @@ export function Shop() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [placing, setPlacing] = useState(false);
+  const [preorder, setPreorder] = useState<ShopProduct | null>(null);
+  const [poQty, setPoQty] = useState(1);
+  const [poNotes, setPoNotes] = useState("");
+  const [poBusy, setPoBusy] = useState(false);
+  const [poDone, setPoDone] = useState<{ number: string } | null>(null);
 
   useEffect(() => {
     customerApi.get<{ products: ShopProduct[]; categories: ShopCategory[] }>("/api/shop")
@@ -52,6 +57,26 @@ export function Shop() {
     toast(`Added ${p.name.split(" - ")[0]} to cart.`);
   }
   const setQty = (id: number, delta: number) => setCart((c) => c.flatMap((l) => (l.productId === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
+
+  function openPreorder(p: ShopProduct) { setPreorder(p); setPoQty(1); setPoNotes(""); setPoDone(null); setDetail(null); }
+  const productAction = (p: ShopProduct) => (p.status === "PREORDER" || (p.status === "OUT" && p.allowPreorder) ? openPreorder(p) : addToCart(p));
+
+  async function submitPreorder() {
+    if (!preorder || poBusy) return;
+    if (!name.trim()) return toast("Please enter your name.", "error");
+    if (!phone.trim()) return toast("Please enter your phone number.", "error");
+    setPoBusy(true);
+    try {
+      const r = await customerApi.post<{ number: string }>("/api/shop/preorder", {
+        productId: preorder.id, quantity: poQty, customerName: name.trim(), phone: phone.trim(), notes: poNotes.trim() || undefined,
+      });
+      setPoDone({ number: r.number });
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't place your preorder.", "error");
+    } finally {
+      setPoBusy(false);
+    }
+  }
 
   async function placeOrder() {
     if (placing) return;
@@ -105,11 +130,11 @@ export function Shop() {
                 <StatusBadge status={p.status} qty={p.quantity} />
               </div>
               <button
-                onClick={() => addToCart(p)}
-                disabled={p.status === "OUT"}
+                onClick={() => productAction(p)}
+                disabled={p.status === "OUT" && !p.allowPreorder}
                 className="btn-3d mt-2 w-full rounded-full bg-espresso py-2 text-xs font-bold text-cream disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {p.status === "PREORDER" ? "Preorder" : p.status === "OUT" ? "Out of stock" : "Add to Cart"}
+                {p.status === "PREORDER" || (p.status === "OUT" && p.allowPreorder) ? "Preorder" : p.status === "OUT" ? "Out of stock" : "Add to Cart"}
               </button>
             </div>
           </div>
@@ -138,9 +163,60 @@ export function Shop() {
               <StatusBadge status={detail.status} qty={detail.quantity} />
             </div>
             {detail.status === "PREORDER" && detail.preorderEta && <p className="mt-1 text-sm text-[#5b3fd6]">Available for preorder · est. {detail.preorderEta}</p>}
-            <button onClick={() => { addToCart(detail); setDetail(null); }} disabled={detail.status === "OUT"} className="btn-3d mt-4 w-full rounded-full bg-espresso py-3 font-bold text-cream disabled:opacity-40">
-              {detail.status === "PREORDER" ? "Preorder" : detail.status === "OUT" ? "Out of stock" : "Add to Cart"}
+            <button onClick={() => productAction(detail)} disabled={detail.status === "OUT" && !detail.allowPreorder} className="btn-3d mt-4 w-full rounded-full bg-espresso py-3 font-bold text-cream disabled:opacity-40">
+              {detail.status === "PREORDER" || (detail.status === "OUT" && detail.allowPreorder) ? "Preorder" : detail.status === "OUT" ? "Out of stock" : "Add to Cart"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Preorder modal */}
+      {preorder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPreorder(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            {poDone ? (
+              <div className="text-center">
+                <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-[#5b3fd6]/15 text-3xl">📦</div>
+                <p className="font-display text-xl font-bold text-espresso">Preorder received!</p>
+                <p className="mt-1 text-sm text-charcoal/60">Preorder number</p>
+                <p className="text-2xl font-bold text-[#5b3fd6]">{poDone.number}</p>
+                <p className="mt-3 text-sm text-charcoal/70">{preorder.name}</p>
+                <p className="mt-2 rounded-xl bg-oat/50 px-3 py-2 text-sm text-charcoal/70">We'll contact you on <span className="font-semibold">{phone}</span> when it arrives{preorder.preorderEta ? ` (est. ${preorder.preorderEta})` : ""}.</p>
+                <button onClick={() => setPreorder(null)} className="btn-3d mt-4 w-full rounded-full bg-espresso py-3 font-bold text-cream">Done</button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#5b3fd6]">Preorder</p>
+                    <h2 className="font-display text-lg font-bold text-espresso">{preorder.name}</h2>
+                  </div>
+                  <button onClick={() => setPreorder(null)} className="text-charcoal/40 hover:text-charcoal">✕</button>
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <Img src={preorder.images[0] ?? ""} alt="" fit="contain" className="h-20 w-20 rounded-xl bg-[#efe7dc]" />
+                  <div>
+                    <p className="font-bold text-terracotta">{money(preorder.price)}</p>
+                    {preorder.preorderEta && <p className="text-xs text-charcoal/55">Est. availability: {preorder.preorderEta}</p>}
+                    <p className="text-xs text-charcoal/45">No payment now — the manager will contact you.</p>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-espresso">Qty</span>
+                    <button onClick={() => setPoQty((q) => Math.max(1, q - 1))} className="h-8 w-8 rounded-full bg-oat font-bold">–</button>
+                    <span className="w-6 text-center font-semibold">{poQty}</span>
+                    <button onClick={() => setPoQty((q) => q + 1)} className="h-8 w-8 rounded-full bg-oat font-bold">+</button>
+                  </div>
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+                  <PhoneInput value={phone} onChange={setPhone} />
+                  <input value={poNotes} onChange={(e) => setPoNotes(e.target.value)} placeholder="Notes (colour, model…) — optional" className="w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+                </div>
+                <button onClick={submitPreorder} disabled={poBusy} className="btn-3d mt-4 w-full rounded-full bg-[#5b3fd6] py-3 font-bold text-cream disabled:opacity-60">
+                  {poBusy ? "Submitting…" : `Place preorder · ${money(preorder.price * poQty)}`}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

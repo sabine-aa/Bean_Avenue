@@ -98,6 +98,63 @@ shopRouter.post("/order", async (req, res) => {
   res.status(201).json({ number: order.number, total: subtotal });
 });
 
+// ---- Preorders ----
+const PREORDER_STATUSES = ["NEW", "CONFIRMED", "ORDERED", "ARRIVED", "READY", "COMPLETED", "CANCELLED"];
+
+// POST /api/shop/preorder — public (also used by POS): request a preorder.
+shopRouter.post("/preorder", async (req, res) => {
+  const b = req.body ?? {};
+  const customerName = String(b.customerName ?? "").trim().slice(0, 80);
+  const phone = String(b.phone ?? "").trim().slice(0, 30);
+  const quantity = Math.max(1, Math.round(Number(b.quantity) || 1));
+  if (!customerName || !phone) return res.status(400).json({ error: "Your name and phone are required." });
+
+  const product = b.productId ? await prisma.shopProduct.findUnique({ where: { id: Number(b.productId) } }) : null;
+  if (!product) return res.status(400).json({ error: "Choose a product to preorder." });
+  const unitPrice = product.price;
+  const total = round(unitPrice * quantity);
+  const customer = await getOrCreateCustomer(phone, customerName).catch(() => null);
+
+  const pre = await prisma.preorder.create({
+    data: {
+      number: genNumber("PO"), productId: product.id, productName: product.name, quantity,
+      unitPrice, total, customerName, phone, customerId: customer?.id ?? null,
+      notes: String(b.notes ?? "").trim() || null, status: "NEW", paymentStatus: "UNPAID",
+      estimatedArrival: product.preorderEta || null, createdBy: String(b.createdBy ?? "Online").trim() || "Online",
+    },
+  });
+  res.status(201).json({ number: pre.number, total, productName: product.name });
+});
+
+// GET /api/shop/preorders — admin: all preorders (optional ?status=).
+shopRouter.get("/preorders", requireAdmin, async (req, res) => {
+  const status = String((req.query as Record<string, string>).status ?? "").toUpperCase();
+  const preorders = await prisma.preorder.findMany({
+    where: status && PREORDER_STATUSES.includes(status) ? { status } : {},
+    orderBy: { createdAt: "desc" },
+    take: 300,
+  });
+  res.json(preorders);
+});
+
+// PATCH /api/shop/preorders/:id — admin: update status / ETA / notes / payment.
+shopRouter.patch("/preorders/:id", requireAdmin, async (req, res) => {
+  const data: Record<string, unknown> = {};
+  if ("status" in req.body) {
+    const s = String(req.body.status).toUpperCase();
+    if (!PREORDER_STATUSES.includes(s)) return res.status(400).json({ error: "Invalid status." });
+    data.status = s;
+  }
+  if ("estimatedArrival" in req.body) data.estimatedArrival = String(req.body.estimatedArrival ?? "").trim() || null;
+  if ("notes" in req.body) data.notes = String(req.body.notes ?? "").trim() || null;
+  if ("paymentStatus" in req.body) {
+    const p = String(req.body.paymentStatus).toUpperCase();
+    if (["UNPAID", "DEPOSIT", "PAID"].includes(p)) data.paymentStatus = p;
+  }
+  const pre = await prisma.preorder.update({ where: { id: Number(req.params.id) }, data });
+  res.json(pre);
+});
+
 // ---- POS ----
 
 // GET /api/shop/pos — products sellable at the register (staff-authenticated).

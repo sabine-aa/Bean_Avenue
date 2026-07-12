@@ -702,6 +702,29 @@ model ShopStockMovement {
   @@index([productId, createdAt])
 }
 
+// A customer preorder for a shop product not kept in stock (machines, special
+// items). Does NOT deduct stock — the manager fulfils it through the status
+// pipeline and contacts the customer.
+model Preorder {
+  id               Int      @id @default(autoincrement())
+  number           String   @unique // PO-XXXX
+  productId        Int?
+  productName      String
+  quantity         Int      @default(1)
+  unitPrice        Float    @default(0)
+  total            Float    @default(0)
+  customerName     String
+  phone            String
+  customerId       Int?
+  notes            String?
+  status           String   @default("NEW") // NEW | CONFIRMED | ORDERED | ARRIVED | READY | COMPLETED | CANCELLED
+  estimatedArrival String?
+  paymentStatus    String   @default("UNPAID") // UNPAID | DEPOSIT | PAID
+  createdBy        String? // "Online" or the POS staff who took it
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
 // ---- Suppliers & restocking (supplier receiving) ----------------------------
 // A supplier the shop buys stock from (dairy, coffee, packaging…).
 model Supplier {

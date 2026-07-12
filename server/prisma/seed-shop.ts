@@ -15,6 +15,30 @@ const CATEGORIES = [
   "Ready-to-Drink Cold Brew",
   "Arabica Selection Coffee",
   "Instant",
+  "Iperespresso Capsule Machines",
+  "illy Easy Compatible Capsule Machines",
+  "ESE Pod Machines",
+  "Coffee Makers",
+];
+
+// Machines & makers — sold by preorder (not kept in stock).
+type M = { slug: string; name: string; category: string; brand: string; price: number; featured?: boolean };
+const MACHINES: M[] = [
+  { slug: "m-y33-iperespresso-black", name: "Y3.3 IperEspresso Machine - Black", category: "Iperespresso Capsule Machines", brand: "illy", price: 169.0 },
+  { slug: "m-x71-iperespresso-white", name: "X7.1 IperEspresso Machine - White", category: "Iperespresso Capsule Machines", brand: "illy", price: 429.0, featured: true },
+  { slug: "m-x71-iperespresso-pink", name: "X7.1 IperEspresso Machine - Deep Pink", category: "Iperespresso Capsule Machines", brand: "illy", price: 429.0 },
+  { slug: "m-x1-anniversary-1935-black", name: "X1 Anniversary 1935 IperEspresso Machine - Black", category: "Iperespresso Capsule Machines", brand: "illy", price: 599.0, featured: true },
+  { slug: "m-illy-easy-compatible", name: "illy Easy Compatible Capsules Machine", category: "illy Easy Compatible Capsule Machines", brand: "illy", price: 279.0 },
+  { slug: "m-illy-easy-espresso-red", name: "illy Easy Espresso Machine - Red", category: "illy Easy Compatible Capsule Machines", brand: "illy", price: 249.0 },
+  { slug: "m-x1-anniversary-ese-black", name: "X1 Anniversary E.S.E. Pod & Ground Espresso Machine - Black", category: "ESE Pod Machines", brand: "illy", price: 1035.0 },
+  { slug: "m-bodum-chambord-french-press", name: "Bodum® Chambord French Press - 4 Cups", category: "Coffee Makers", brand: "Bodum", price: 30.0 },
+  { slug: "m-french-press-espro-18oz", name: "French Press Espro® - 18 oz", category: "Coffee Makers", brand: "Espro", price: 119.95 },
+  { slug: "m-frieling-ultimo-36oz", name: "Frieling® Ultimo - 36oz", category: "Coffee Makers", brand: "Frieling", price: 69.99 },
+  { slug: "m-bialetti-express-moka", name: "Bialetti® Express 1 Cup Moka Pot", category: "Coffee Makers", brand: "Bialetti", price: 29.99 },
+  { slug: "m-moka-alessi-pulcino-red", name: "Moka Pot Alessi Pulcino - 1 Cup - Red", category: "Coffee Makers", brand: "Alessi", price: 97.85 },
+  { slug: "m-alessi-pulcina-3cup-red", name: "Alessi Pulcina 3 Cup Moka Pot - Red", category: "Coffee Makers", brand: "Alessi", price: 108.15 },
+  { slug: "m-bodum-brazil-french-press", name: "Bodum® Brazil Red French Press", category: "Coffee Makers", brand: "Bodum", price: 25.0 },
+  { slug: "m-coldbrew-maker-toddy", name: "Cold Brew Coffee Maker - Toddy Cold Brew System", category: "Coffee Makers", brand: "Toddy", price: 40.0 },
 ];
 
 type P = { slug: string; name: string; category: string; price: number; roast: string; intensity: number; notes?: string; featured?: boolean };
@@ -144,7 +168,23 @@ async function main() {
       added++;
     }
   }
-  console.log(`Shop seed done. Categories ${CATEGORIES.length}. Products added ${added}, updated ${updated}.`);
+  // Machines & makers — preorder, no stock kept.
+  let mAdded = 0, mUpdated = 0;
+  for (let i = 0; i < MACHINES.length; i++) {
+    const m = MACHINES[i];
+    const base = {
+      name: m.name, category: m.category, brand: m.brand,
+      description: `${m.brand} · ${m.category} · available by preorder`,
+      images: JSON.stringify([`/photos/shop/${m.slug}.png`]), price: m.price, minQty: 0,
+      availableOnline: true, availablePos: true, allowPreorder: true, preorderEta: "1–2 weeks",
+      featured: !!m.featured, sortOrder: 100 + i, isHidden: false,
+    };
+    const existing = await prisma.shopProduct.findFirst({ where: { name: m.name } });
+    if (existing) { await prisma.shopProduct.update({ where: { id: existing.id }, data: base }); mUpdated++; }
+    else { await prisma.shopProduct.create({ data: { ...base, quantity: 0 } }); mAdded++; }
+  }
+
+  console.log(`Shop seed done. Categories ${CATEGORIES.length}. Coffee added ${added}, updated ${updated}. Machines added ${mAdded}, updated ${mUpdated}.`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

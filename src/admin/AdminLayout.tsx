@@ -8,6 +8,7 @@ const links = [
   { to: "/admin/payments", label: "Payments" },
   { to: "/admin/menu", label: "Menu Manager" },
   { to: "/admin/shop-products", label: "Shop Products" },
+  { to: "/admin/preorders", label: "Preorders" },
   { to: "/admin/addons", label: "Add-ons" },
   { to: "/admin/doughnuts", label: "Hanson Doughnuts" },
   { to: "/admin/featured", label: "Homepage Featured" },
