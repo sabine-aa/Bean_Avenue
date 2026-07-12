@@ -4,7 +4,7 @@ import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
 import { earnBeans, genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { notify } from "../lib/notify";
-import { consumeForOrder } from "../lib/consumption";
+import { consumeForOrder, consumeShopForOrder } from "../lib/consumption";
 import { validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
 import { applyOrderStatus } from "../lib/orderStatus";
@@ -153,8 +153,9 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift(terminal);
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number; staffTabPin?: string };
-  if (!body.items?.length) return res.status(400).json({ error: "No items in the sale." });
+  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number; staffTabPin?: string; shopItems?: { shopProductId: number; quantity: number }[] };
+  const shopItemsRaw = Array.isArray(body.shopItems) ? body.shopItems : [];
+  if (!body.items?.length && !shopItemsRaw.length) return res.status(400).json({ error: "No items in the sale." });
 
   const rawMethod = String(body.paymentMethod ?? "CASH").toUpperCase();
   // SALARY = "charge to staff tab" — the sale is added to the staff member's tab
@@ -178,14 +179,28 @@ posRouter.post("/sale", async (req, res) => {
   const tableNumber = orderType === "DINE_IN" ? String(body.tableNumber ?? "").trim().slice(0, 20) || null : null;
 
   // Block overselling any stock-tracked item before we take payment.
-  const stockError = await validateStock(body.items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
+  const stockError = await validateStock((body.items ?? []).map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
   if (stockError) return res.status(409).json({ error: stockError });
 
-  const result = await buildLines(body.items);
+  const result = await buildLines(body.items ?? []);
   if ("error" in result) return res.status(400).json({ error: result.error });
   const { built, addonsTotal } = result;
 
-  const subtotal = round2(built.reduce((s, l) => s + l.lineTotal, 0));
+  // Retail (shop) products: simple physical goods sold as-is. Validate stock,
+  // build order-item lines (no recipe/options), and deduct after the sale saves.
+  const shopBuilt: { menuItemId: null; name: string; unitPrice: number; quantity: number; selectedOptions: string; addons: string; specialInstructions: null; lineTotal: number }[] = [];
+  const shopConsume: { shopProductId: number; quantity: number }[] = [];
+  for (const s of shopItemsRaw) {
+    const qty = Math.max(1, Math.round(Number(s.quantity) || 1));
+    const p = await prisma.shopProduct.findUnique({ where: { id: Number(s.shopProductId) } });
+    if (!p || p.isHidden || !p.availablePos) return res.status(400).json({ error: "A retail product in the sale is no longer available." });
+    if (p.quantity < qty) return res.status(409).json({ error: `Only ${p.quantity} of ${p.name} left in stock.` });
+    const lineTotal = round2(p.price * qty);
+    shopBuilt.push({ menuItemId: null, name: p.name, unitPrice: p.price, quantity: qty, selectedOptions: "[]", addons: "[]", specialInstructions: null, lineTotal });
+    shopConsume.push({ shopProductId: p.id, quantity: qty });
+  }
+
+  const subtotal = round2(built.reduce((s, l) => s + l.lineTotal, 0) + shopBuilt.reduce((s, l) => s + l.lineTotal, 0));
   // Staff discount: applies the global % for the chosen staff member and tags the
   // sale as their purchase; otherwise the cashier's manual discount is used.
   let staffPurchaseId: number | null = null;
@@ -253,7 +268,7 @@ posRouter.post("/sale", async (req, res) => {
       paymentStatus: isTab ? "UNPAID" : "PAID",
       paidAt: isTab ? null : new Date(),
       beansEarned,
-      items: { create: built },
+      items: { create: [...built, ...shopBuilt] },
     },
     include: { items: true },
   });
@@ -273,7 +288,8 @@ posRouter.post("/sale", async (req, res) => {
     },
   });
   if (customer) await awardOrderBeans(order.id);
-  await consumeForOrder(body.items, { orderId: order.id, staffName: req.staffName ?? "Staff" });
+  await consumeForOrder(body.items ?? [], { orderId: order.id, staffName: req.staffName ?? "Staff" });
+  if (shopConsume.length) await consumeShopForOrder(shopConsume, { orderId: order.id, staffName: req.staffName ?? "Staff" });
 
   res.status(201).json(outOrder(order));
 });

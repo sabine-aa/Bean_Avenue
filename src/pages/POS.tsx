@@ -6,6 +6,8 @@ import { cacheMenu, cachedCats, cachedMenu, flushQueue, getQueue, queueSale } fr
 import type { Addon, AddonGroup, MenuItem, Order, OrderItemLine, OrderStatus } from "../types";
 
 const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+const RETAIL_CAT = "🛍 Retail";
+type ShopProd = { id: number; name: string; category: string; price: number; quantity: number; images: string[]; status: string; availablePos: boolean; allowPreorder: boolean };
 
 // ---- Shared models ------------------------------------------------------------
 type Sel = { group: string; choice: string; priceDelta: number };
@@ -192,6 +194,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [receipt, setReceipt] = useState<Order | null>(null);
   const [shiftPanel, setShiftPanel] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [shopProducts, setShopProducts] = useState<ShopProd[]>([]);
+  const [shopLines, setShopLines] = useState<{ id: number; product: ShopProd; quantity: number }[]>([]);
+  const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
+  useEffect(() => { loadShop(); }, [loadShop]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
   const [table, setTable] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
@@ -306,7 +312,26 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     return items.filter((i) => (cat === "All" || i.category === cat) && (s === "" || i.name.toLowerCase().includes(s) || i.category.toLowerCase().includes(s)));
   }, [items, cat, q]);
 
-  const subtotal = Math.round(lines.reduce((s, l) => s + lineTotal(l), 0) * 100) / 100;
+  const shopSubtotal = Math.round(shopLines.reduce((s, l) => s + l.product.price * l.quantity, 0) * 100) / 100;
+  const subtotal = Math.round((lines.reduce((s, l) => s + lineTotal(l), 0) + shopSubtotal) * 100) / 100;
+  const cartEmpty = lines.length === 0 && shopLines.length === 0;
+
+  const visibleShop = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return shopProducts.filter((p) => s === "" || p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s));
+  }, [shopProducts, q]);
+
+  function addShopLine(p: ShopProd) {
+    if (p.quantity <= 0) return; // out of stock — preorder-from-POS comes in the preorder slice
+    setShopLines((ls) => {
+      const ex = ls.find((l) => l.product.id === p.id);
+      if (ex) return ls.map((l) => (l.product.id === p.id ? { ...l, quantity: Math.min(l.quantity + 1, p.quantity) } : l));
+      return [...ls, { id: nextId, product: p, quantity: 1 }];
+    });
+    setNextId((n) => n + 1);
+  }
+  const setShopQty = (id: number, delta: number) =>
+    setShopLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: Math.min(l.quantity + delta, l.product.quantity) }]) : [l])));
   // A staff purchase applies the global staff-discount %; otherwise the manual discount.
   const disc = staffPurchase
     ? Math.round(Math.min(subtotal, (subtotal * staffDiscountPct) / 100) * 100) / 100
@@ -339,11 +364,11 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
 
   function newSale() {
-    setLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin("");
+    setLines([]); setShopLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin("");
   }
 
   async function completeSale(method: PayMethod) {
-    if (!lines.length || busy) return;
+    if (cartEmpty || busy) return;
     setBusy(true);
     const payload = {
       clientRef: makeRef(),
@@ -363,12 +388,14 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
         addons: l.addons.map((a) => ({ addonId: a.addonId, quantity: a.quantity })),
         specialInstructions: l.note || undefined,
       })),
+      shopItems: shopLines.map((l) => ({ shopProductId: l.product.id, quantity: l.quantity })),
     };
     try {
       const order = await posApi.post<Order>("/api/pos/sale", payload);
       setReceipt(order);
       setPay(null);
       reload();
+      if (shopLines.length) loadShop(); // refresh retail stock counts
     } catch (e) {
       // A real server rejection → show it. A network failure (offline) → save the
       // sale locally and sync it automatically when the connection returns.
@@ -384,7 +411,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           paymentMethod: method,
           createdAt: new Date().toISOString(),
           beansEarned: 0,
-          items: lines.map((l) => ({ id: l.id, menuItemId: l.item.id, name: l.item.name, unitPrice: unitPrice(l), quantity: l.quantity, selectedOptions: l.options, addons: [], specialInstructions: l.note || null, lineTotal: lineTotal(l) })),
+          items: [
+            ...lines.map((l) => ({ id: l.id, menuItemId: l.item.id, name: l.item.name, unitPrice: unitPrice(l), quantity: l.quantity, selectedOptions: l.options, addons: [], specialInstructions: l.note || null, lineTotal: lineTotal(l) })),
+            ...shopLines.map((l) => ({ id: 100000 + l.id, menuItemId: null, name: l.product.name, unitPrice: l.product.price, quantity: l.quantity, selectedOptions: [], addons: [], specialInstructions: null, lineTotal: Math.round(l.product.price * l.quantity * 100) / 100 })),
+          ],
         } as unknown as Order);
         setPay(null);
       }
@@ -435,7 +465,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       <div className="flex min-h-0 flex-1">
         {/* Category rail — vertical, down the side */}
         <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-2 [scrollbar-width:none] sm:w-40 [&::-webkit-scrollbar]:hidden">
-          {["All", ...cats].map((c) => (
+          {["All", ...cats, ...(shopProducts.length ? [RETAIL_CAT] : [])].map((c) => (
             <button key={c} onClick={() => setCat(c)} className={`w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
           ))}
         </div>
@@ -444,27 +474,57 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-2" />
           </div>
           <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto p-3 sm:grid-cols-3 lg:grid-cols-4">
-            {visible.map((item) => (
-              <button key={item.id} onClick={() => addItem(item)} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
-                <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-square w-full bg-oat/30" />
-                <div className="p-2">
-                  <p className="line-clamp-2 text-sm font-semibold leading-tight">{item.name}</p>
-                  <p className="text-sm font-bold text-terracotta">{item.options.length ? `From ${money(item.price)}` : money(item.price)}</p>
-                </div>
-              </button>
-            ))}
+            {cat === RETAIL_CAT
+              ? visibleShop.map((p) => {
+                  const out = p.quantity <= 0;
+                  return (
+                    <button key={p.id} onClick={() => addShopLine(p)} disabled={out} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+                      <Img src={p.images[0] ?? ""} alt={p.name} className="aspect-square w-full bg-oat/30" />
+                      <div className="p-2">
+                        <p className="line-clamp-2 text-sm font-semibold leading-tight">{p.name}</p>
+                        <p className="text-sm font-bold text-terracotta">{money(p.price)}</p>
+                        <p className={`text-xs font-semibold ${out ? "text-terracotta-dark" : p.quantity <= 5 ? "text-amber-600" : "text-charcoal/45"}`}>{out ? (p.allowPreorder ? "Preorder" : "Out of stock") : `${p.quantity} in stock`}</p>
+                      </div>
+                    </button>
+                  );
+                })
+              : visible.map((item) => (
+                  <button key={item.id} onClick={() => addItem(item)} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
+                    <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-square w-full bg-oat/30" />
+                    <div className="p-2">
+                      <p className="line-clamp-2 text-sm font-semibold leading-tight">{item.name}</p>
+                      <p className="text-sm font-bold text-terracotta">{item.options.length ? `From ${money(item.price)}` : money(item.price)}</p>
+                    </div>
+                  </button>
+                ))}
           </div>
         </div>
 
         <div className="flex w-80 shrink-0 flex-col border-l border-oat bg-white sm:w-96">
           <div className="flex items-center justify-between border-b border-oat px-4 py-2.5">
             <span className="font-display text-lg font-bold">Current sale</span>
-            {lines.length > 0 && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
+            {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {lines.length === 0 ? (
-              <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>
-            ) : (
+            {cartEmpty && <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>}
+            {shopLines.map((l) => (
+              <div key={`shop-${l.id}`} className="border-b border-oat/60 px-3 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{l.product.name}</p>
+                    <p className="truncate text-xs font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)}</p>
+                  </div>
+                  <span className="whitespace-nowrap font-semibold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">–</button>
+                  <span className="w-6 text-center font-semibold">{l.quantity}</span>
+                  <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">+</button>
+                  <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+                </div>
+              </div>
+            ))}
+            {lines.length === 0 ? null : (
               lines.map((l) => (
                 <div key={l.id} className="border-b border-oat/60 px-3 py-2">
                   <div className="flex items-start justify-between gap-2">
@@ -510,14 +570,14 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             </div>
             <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
             <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
-              <button disabled={!lines.length} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
-              <button disabled={!lines.length} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
+              <button disabled={cartEmpty} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
+              <button disabled={cartEmpty} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
               {cardEnabled && (
-                <button disabled={!lines.length} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
+                <button disabled={cartEmpty} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
               )}
             </div>
             {staffPurchase && (
-              <button disabled={!lines.length} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
+              <button disabled={cartEmpty} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
             )}
           </div>
         </div>
