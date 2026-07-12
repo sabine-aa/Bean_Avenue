@@ -184,22 +184,6 @@ export function Home() {
         </section>
       )}
 
-      {/* Shop — compact horizontal carousel (one product per shop category) */}
-      {shopHighlights.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 py-10">
-          <div className="mb-5 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">Take Bean Avenue Home.</h2>
-              <p className="mt-1 text-sm text-charcoal/55">illy capsules, machines, beans & more — for pickup or preorder.</p>
-            </div>
-            <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
-          </div>
-          <ScrollRow>
-            {shopHighlights.map((p) => <CompactShopCard key={p.id} product={p} />)}
-          </ScrollRow>
-        </section>
-      )}
-
       {/* Today's Hanson Doughnuts promo — black Hanson identity, orange accent */}
       {doughnutPromo?.visible && (
         <section className="mx-auto max-w-6xl px-4 pb-4">
@@ -280,6 +264,22 @@ export function Home() {
           </div>
         </div>
       </section>
+
+      {/* Shop — compact horizontal carousel (one product per shop category) */}
+      {shopHighlights.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-10">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">Take Bean Avenue Home.</h2>
+              <p className="mt-1 text-sm text-charcoal/55">illy capsules, machines, beans & more — for pickup or preorder.</p>
+            </div>
+            <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
+          </div>
+          <ScrollRow>
+            {shopHighlights.map((p) => <CompactShopCard key={p.id} product={p} />)}
+          </ScrollRow>
+        </section>
+      )}
 
       {/* Why Bean Avenue */}
       <section className="mx-auto max-w-6xl px-4 py-16 text-center">
