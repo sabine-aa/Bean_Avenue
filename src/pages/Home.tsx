@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { HomeBanner } from "../components/HomeBanner";
+import { CompactMenuCard, CompactShopCard, ScrollRow, type HomeShopProduct } from "../components/HomeScroll";
 import { HOURS, isOpenNow, MAPS_EMBED, WHATSAPP_URL } from "../components/Layout";
 import { Img } from "../components/Img";
-import { MenuItemCard } from "../components/MenuItemCard";
 import { OffersSignup } from "../components/OffersSignup";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { api } from "../lib/api";
@@ -32,13 +32,25 @@ export function Home() {
   });
   const [doughnutPromo, setDoughnutPromo] = useState<DoughnutPromo | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [shop, setShop] = useState<{ products: HomeShopProduct[]; categories: { id: number; name: string }[] }>({ products: [], categories: [] });
   const open = isOpenNow();
 
   useEffect(() => {
     api.get<FeaturedSection>("/api/featured").then(setFeatured).catch(() => {});
     api.get<DoughnutPromo>("/api/doughnuts/promo").then(setDoughnutPromo).catch(() => {});
     api.get<Room[]>("/api/rooms").then(setRooms).catch(() => {});
+    api.get<{ products: HomeShopProduct[]; categories: { id: number; name: string }[] }>("/api/shop").then(setShop).catch(() => {});
   }, []);
+
+  // One shop product per category (prefer a featured one), in category order.
+  const shopHighlights = useMemo(() => {
+    const byCat = new Map<string, HomeShopProduct & { featured?: boolean }>();
+    for (const p of shop.products as (HomeShopProduct & { featured?: boolean })[]) {
+      const cur = byCat.get(p.category);
+      if (!cur || (p.featured && !cur.featured)) byCat.set(p.category, p);
+    }
+    return shop.categories.map((c) => byCat.get(c.name)).filter(Boolean) as HomeShopProduct[];
+  }, [shop]);
 
   const studyRoom = rooms.find((r) => r.type === "STUDY");
   const confRoom = rooms.find((r) => r.type === "CONFERENCE");
@@ -159,20 +171,32 @@ export function Home() {
         </div>
       </section>
 
-      {/* Featured items — manager-curated, resolved live from the menu */}
+      {/* Featured menu — compact horizontal carousel (manager-curated) */}
       {featured.visible && featured.items.length > 0 && (
-        <section className="mx-auto max-w-6xl px-4 py-16">
-          <div className="flex items-end justify-between">
-            <h2 className="font-display text-3xl font-bold text-espresso">{featured.title}</h2>
-            <Link to="/menu" className="text-sm font-semibold text-terracotta hover:underline">
-              Full menu →
-            </Link>
+        <section className="mx-auto max-w-6xl px-4 py-10">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">{featured.title}</h2>
+            <Link to="/menu" className="btn-3d shrink-0 rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha">View Full Menu →</Link>
           </div>
-          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.items.map((item) => (
-              <MenuItemCard key={item.id} item={item} />
-            ))}
+          <ScrollRow>
+            {featured.items.map((item) => <CompactMenuCard key={item.id} item={item} />)}
+          </ScrollRow>
+        </section>
+      )}
+
+      {/* Shop — compact horizontal carousel (one product per shop category) */}
+      {shopHighlights.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 py-10">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">Take Bean Avenue Home.</h2>
+              <p className="mt-1 text-sm text-charcoal/55">illy capsules, machines, beans & more — for pickup or preorder.</p>
+            </div>
+            <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
           </div>
+          <ScrollRow>
+            {shopHighlights.map((p) => <CompactShopCard key={p.id} product={p} />)}
+          </ScrollRow>
         </section>
       )}
 
