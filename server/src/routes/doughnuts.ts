@@ -58,7 +58,11 @@ doughnutsRouter.get("/admin", requireAdmin, async (_req, res) => {
   res.json(items.map(outMenuItem));
 });
 
-// GET /api/doughnuts/production?date=YYYY-MM-DD  (admin) — Hanson daily stock.
+const LEFTOVER_ACTIONS = ["WASTED", "STAFF", "DISCOUNTED", "CARRIED"];
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+// GET /api/doughnuts/production?date=YYYY-MM-DD  (admin) — Hanson daily stock +
+// end-of-day figures (made/sold/leftover/wasted/revenue, closed state).
 doughnutsRouter.get("/production", requireAdmin, async (req, res) => {
   const date = String((req.query as Record<string, string>).date || "").trim() || hansonToday();
   const items = await prisma.menuItem.findMany({
@@ -66,18 +70,53 @@ doughnutsRouter.get("/production", requireAdmin, async (req, res) => {
     orderBy: [{ sortOrder: "asc" }],
     select: { id: true, name: true, subcategory: true, price: true, availableToday: true },
   });
-  const map = await hansonMap(date);
+  const prod = await prisma.hansonProduction.findMany({ where: { date } });
+  const pmap = new Map(prod.map((p) => [p.menuItemId, p]));
   const rows = items.map((i) => {
-    const a = map.get(i.id);
-    return { menuItemId: i.id, name: i.name, subcategory: i.subcategory || "Other", price: i.price, availableToday: i.availableToday, made: a?.made ?? 0, sold: a?.sold ?? 0, remaining: a ? a.remaining : 0, tracked: !!a };
+    const p = pmap.get(i.id);
+    const made = p?.made ?? 0, sold = p?.sold ?? 0;
+    const leftover = Math.max(0, made - sold);
+    return {
+      menuItemId: i.id, name: i.name, subcategory: i.subcategory || "Other", price: i.price, availableToday: i.availableToday,
+      made, sold, remaining: leftover, leftover, wasted: p?.wasted ?? 0, leftoverAction: p?.leftoverAction ?? null,
+      closed: p?.closed ?? false, revenue: round2(sold * i.price), tracked: !!p,
+    };
   });
+  const tracked = rows.filter((r) => r.tracked);
   const summary = {
     made: rows.reduce((s, r) => s + r.made, 0),
     sold: rows.reduce((s, r) => s + r.sold, 0),
     remaining: rows.reduce((s, r) => s + r.remaining, 0),
-    revenue: Math.round(rows.reduce((s, r) => s + r.sold * r.price, 0) * 100) / 100,
+    leftover: rows.reduce((s, r) => s + r.leftover, 0),
+    revenue: round2(rows.reduce((s, r) => s + r.sold * r.price, 0)),
+    leftoverValue: round2(rows.reduce((s, r) => s + r.leftover * r.price, 0)),
+    wasteValue: round2(rows.filter((r) => r.leftoverAction === "WASTED").reduce((s, r) => s + r.wasted * r.price, 0)),
   };
-  res.json({ date, today: hansonToday(), rows, summary });
+  const dayClosed = tracked.length > 0 && tracked.every((r) => r.closed);
+  res.json({ date, today: hansonToday(), rows, summary, dayClosed });
+});
+
+// POST /api/doughnuts/production/close  (admin) — close the day: record each
+// doughnut's leftover + how it was handled.  { date, entries:[{menuItemId, leftoverAction}] }
+doughnutsRouter.post("/production/close", requireAdmin, async (req, res) => {
+  const date = String(req.body?.date || "").trim() || hansonToday();
+  const entries: { menuItemId: number; leftoverAction?: string }[] = Array.isArray(req.body?.entries) ? req.body.entries : [];
+  const actionOf = new Map(entries.map((e) => [Number(e.menuItemId), String(e.leftoverAction ?? "WASTED").toUpperCase()]));
+  const prod = await prisma.hansonProduction.findMany({ where: { date } });
+  for (const p of prod) {
+    const leftover = Math.max(0, p.made - p.sold);
+    let action = actionOf.get(p.menuItemId) ?? "WASTED";
+    if (!LEFTOVER_ACTIONS.includes(action)) action = "WASTED";
+    await prisma.hansonProduction.update({ where: { id: p.id }, data: { wasted: leftover, leftoverAction: action, closed: true } });
+  }
+  res.json({ ok: true, date, closed: prod.length });
+});
+
+// POST /api/doughnuts/production/reopen  (admin) — undo an end-of-day close.
+doughnutsRouter.post("/production/reopen", requireAdmin, async (req, res) => {
+  const date = String(req.body?.date || "").trim() || hansonToday();
+  await prisma.hansonProduction.updateMany({ where: { date }, data: { closed: false, wasted: 0, leftoverAction: null } });
+  res.json({ ok: true, date });
 });
 
 // POST /api/doughnuts/production  (admin) — set today's "made" per doughnut.
