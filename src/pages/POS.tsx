@@ -492,44 +492,45 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             <span className="font-display text-lg font-bold">Current sale</span>
             {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
             {cartEmpty && <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>}
             {shopLines.map((l) => (
-              <div key={`shop-${l.id}`} className="border-b border-oat/60 px-3 py-2">
+              <div key={`shop-${l.id}`} className="rounded-xl bg-oat/25 p-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{l.product.name}</p>
-                    <p className="truncate text-xs font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)}</p>
+                    <p className="font-semibold leading-tight text-espresso">{l.product.name}</p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)} each</p>
                   </div>
-                  <span className="whitespace-nowrap font-semibold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
+                  <span className="whitespace-nowrap font-bold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
                 </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">–</button>
+                <div className="mt-2 flex items-center gap-2">
+                  <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
                   <span className="w-6 text-center font-semibold">{l.quantity}</span>
-                  <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">+</button>
-                  <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+                  <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
+                  <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
                 </div>
               </div>
             ))}
-            {lines.length === 0 ? null : (
-              lines.map((l) => (
-                <div key={l.id} className="border-b border-oat/60 px-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <button onClick={() => setModal({ line: l, isNew: false })} className="min-w-0 flex-1 text-left">
-                      <p className="truncate font-semibold">{l.item.name}</p>
-                      <p className="truncate text-xs text-charcoal/50">{[...l.options.map((o) => o.choice), ...l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)), l.note].filter(Boolean).join(" · ") || "tap to edit"}</p>
-                    </button>
-                    <span className="whitespace-nowrap font-semibold text-terracotta">{money(lineTotal(l))}</span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">–</button>
-                    <span className="w-6 text-center font-semibold">{l.quantity}</span>
-                    <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-oat text-lg font-bold leading-none">+</button>
-                    <button onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+            {lines.map((l) => (
+              <div key={l.id} className="rounded-xl bg-oat/25 p-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 flex-1 font-semibold leading-tight text-espresso">{l.item.name}</p>
+                  <span className="whitespace-nowrap font-bold text-terracotta">{money(lineTotal(l))}</span>
+                </div>
+                {l.options.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60">{l.options.map((o) => o.choice).join(" · ")}</p>}
+                {l.addons.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Add-ons:</span> {l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)).join(", ")}</p>}
+                {l.note && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Note:</span> {l.note}</p>}
+                <div className="mt-2 flex items-center gap-2">
+                  <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
+                  <span className="w-6 text-center font-semibold">{l.quantity}</span>
+                  <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <button onClick={() => setModal({ line: l, isNew: false })} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-espresso shadow-sm hover:bg-espresso hover:text-cream">Edit</button>
+                    <button onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
           <div className="border-t border-oat p-3">
             <div className="mb-2 grid grid-cols-2 gap-2">
