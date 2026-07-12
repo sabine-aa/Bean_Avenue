@@ -14,7 +14,17 @@ export default defineConfig({
       workbox: {
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,png,svg,jpg,jpeg,webp,woff,woff2}"],
+        // Shop product photos are many and load on demand — keep them out of the
+        // precache so the service worker install stays small.
+        globIgnores: ["**/photos/shop/**"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith("/photos/shop/"),
+            handler: "CacheFirst",
+            options: { cacheName: "shop-photos", expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 } },
+          },
+        ],
       },
       manifest: {
         name: "Bean Avenue Register",
