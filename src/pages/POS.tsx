@@ -196,6 +196,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [showBooking, setShowBooking] = useState(false);
   const [shopProducts, setShopProducts] = useState<ShopProd[]>([]);
   const [shopLines, setShopLines] = useState<{ id: number; product: ShopProd; quantity: number }[]>([]);
+  const [preorderProduct, setPreorderProduct] = useState<ShopProd | null>(null);
   const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
   useEffect(() => { loadShop(); }, [loadShop]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
@@ -477,8 +478,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             {cat === RETAIL_CAT
               ? visibleShop.map((p) => {
                   const out = p.quantity <= 0;
+                  const canPreorder = out && p.allowPreorder;
                   return (
-                    <button key={p.id} onClick={() => addShopLine(p)} disabled={out} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+                    <button key={p.id} onClick={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))} disabled={out && !p.allowPreorder} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
                       <Img src={p.images[0] ?? ""} alt={p.name} className="aspect-square w-full bg-oat/30" />
                       <div className="p-2">
                         <p className="line-clamp-2 text-sm font-semibold leading-tight">{p.name}</p>
@@ -604,6 +606,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
       {showBooking && <RoomBookingModal onClose={() => setShowBooking(false)} />}
+      {preorderProduct && <PosPreorderModal product={preorderProduct} staffName={session.staff.name} onClose={() => setPreorderProduct(null)} />}
     </div>
   );
 }
@@ -1191,6 +1194,78 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
                 </button>
               </div>
             )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- Retail preorder (walk-in, for out-of-stock/preorder products) ------------
+function PosPreorderModal({ product, staffName, onClose }: { product: ShopProd; staffName: string; onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [qty, setQty] = useState(1);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState<{ number: string } | null>(null);
+
+  async function submit() {
+    if (busy) return;
+    if (!name.trim()) return setError("Enter the customer's name.");
+    if (!phone.trim()) return setError("Enter the customer's phone.");
+    setBusy(true); setError("");
+    try {
+      const r = await posApi.post<{ number: string }>("/api/shop/preorder", {
+        productId: product.id, quantity: qty, customerName: name.trim(), phone: phone.trim(),
+        notes: notes.trim() || undefined, createdBy: staffName,
+      });
+      setDone({ number: r.number });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't create the preorder.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const field = "mt-1 w-full rounded-xl border border-oat px-3 py-2 text-sm";
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        {done ? (
+          <div className="text-center">
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-[#5b3fd6]/15 text-3xl">📦</div>
+            <p className="font-display text-xl font-bold text-espresso">Preorder created</p>
+            <p className="mt-1 text-sm text-charcoal/60">{done.number} · {product.name}</p>
+            <p className="mt-2 rounded-xl bg-oat/50 px-3 py-2 text-sm text-charcoal/70">Tell the customer we'll call them when it arrives. It's in Admin → Preorders.</p>
+            <button onClick={onClose} className="btn-3d mt-4 w-full rounded-full bg-espresso py-2.5 font-semibold text-cream">Done</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#5b3fd6]">Preorder · walk-in</p>
+                <h2 className="font-display text-lg font-bold text-espresso">{product.name}</h2>
+              </div>
+              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">✕</button>
+            </div>
+            <p className="mt-1 text-sm text-charcoal/55">{money(product.price)} · no payment now · manager will contact the customer.</p>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-espresso">Qty</span>
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="h-8 w-8 rounded-full bg-oat font-bold">–</button>
+                <span className="w-6 text-center font-semibold">{qty}</span>
+                <button onClick={() => setQty((q) => q + 1)} className="h-8 w-8 rounded-full bg-oat font-bold">+</button>
+              </div>
+              <label className="block text-xs font-semibold text-espresso">Customer name<input value={name} onChange={(e) => setName(e.target.value)} className={field} /></label>
+              <label className="block text-xs font-semibold text-espresso">Phone<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" className={field} /></label>
+              <label className="block text-xs font-semibold text-espresso">Notes (colour, model…)<input value={notes} onChange={(e) => setNotes(e.target.value)} className={field} /></label>
+              {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
+            </div>
+            <button onClick={submit} disabled={busy} className="btn-3d mt-4 w-full rounded-full bg-[#5b3fd6] py-3 font-bold text-cream disabled:opacity-60">
+              {busy ? "Creating…" : "Create preorder"}
+            </button>
           </>
         )}
       </div>
