@@ -68,11 +68,16 @@ model StockMovement {
 
 // Manager-curated homepage products ("The usual suspects"). References menu
 // items live, so any Menu Manager edit shows up automatically — no copies.
+// One homepage-featured menu item PER category (category-locked picker), so the
+// carousel always shows variety. Admin picks one product per category, reorders,
+// and can hide a category from the homepage.
 model FeaturedProduct {
   id         Int      @id @default(autoincrement())
+  category   String   @unique
   menuItemId Int      @unique
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   sortOrder  Int      @default(0)
+  isHidden   Boolean  @default(false)
 }
 
 // Simple key/value store for site settings (e.g. homepage section title/visibility).

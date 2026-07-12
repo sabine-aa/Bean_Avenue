@@ -1,182 +1,127 @@
 import { useEffect, useState } from "react";
 import { Img } from "../components/Img";
 import { useToast } from "../context/ToastContext";
-import { api, money } from "../lib/api";
+import { api } from "../lib/api";
 import type { MenuItem } from "../types";
 
-interface FeaturedItem {
-  id: number;
-  sortOrder: number;
-  menuItem: MenuItem;
-}
-interface Settings {
-  title: string;
-  visible: boolean;
-  limit: number;
-}
+type PickItem = { id: number; name: string; price: number; inStock: boolean };
+type Row = { category: string; menuItemId: number; sortOrder: number; isHidden: boolean; menuItem: MenuItem };
+type AdminData = {
+  settings: { title: string; visible: boolean; limit: number };
+  categories: string[];
+  menuByCategory: Record<string, PickItem[]>;
+  rows: Row[];
+};
 
 export function AdminFeatured() {
   const toast = useToast();
-  const [items, setItems] = useState<FeaturedItem[]>([]);
-  const [settings, setSettings] = useState<Settings>({ title: "", visible: true, limit: 6 });
-  const [menu, setMenu] = useState<MenuItem[]>([]);
-  const [pick, setPick] = useState("");
+  const [data, setData] = useState<AdminData | null>(null);
+  const [title, setTitle] = useState("");
+  const [visible, setVisible] = useState(true);
+  const [addCat, setAddCat] = useState("");
 
-  function load() {
-    return api.get<{ settings: Settings; items: FeaturedItem[] }>("/api/featured/admin").then((r) => {
-      setItems(r.items);
-      setSettings(r.settings);
-    });
-  }
-  useEffect(() => {
-    load();
-    api.get<MenuItem[]>("/api/menu?all=1").then(setMenu).catch(() => {});
-  }, []);
+  const load = () =>
+    api.get<AdminData>("/api/featured/admin").then((d) => {
+      setData(d);
+      setTitle(d.settings.title);
+      setVisible(d.settings.visible);
+    }).catch(() => {});
+  useEffect(() => { load(); }, []);
 
-  async function saveSettings(patch: Partial<Settings>) {
-    const next = { ...settings, ...patch };
-    setSettings(next);
-    try {
-      await api.post("/api/featured/settings", patch);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Couldn't save.", "error");
-    }
-  }
-
-  async function addItem(menuItemId: number) {
-    if (!menuItemId) return;
-    await api.post("/api/featured/items", { menuItemId });
-    setPick("");
+  async function setProduct(category: string, menuItemId: number) {
+    await api.post("/api/featured/set", { category, menuItemId });
     load();
   }
-  async function removeItem(menuItemId: number) {
-    await api.delete(`/api/featured/items/${menuItemId}`);
+  async function toggleHide(category: string, isHidden: boolean) {
+    await api.patch("/api/featured/hide", { category, isHidden });
+    load();
+  }
+  async function remove(category: string) {
+    await api.post("/api/featured/set", { category, menuItemId: 0 });
+    toast(`${category} removed from the homepage.`);
     load();
   }
   async function move(index: number, dir: -1 | 1) {
-    const next = [...items];
-    const target = index + dir;
-    if (target < 0 || target >= next.length) return;
-    [next[index], next[target]] = [next[target], next[index]];
-    setItems(next);
-    await api.patch("/api/featured/order", { ids: next.map((i) => i.menuItem.id) });
+    if (!data) return;
+    const rows = [...data.rows];
+    const t = index + dir;
+    if (t < 0 || t >= rows.length) return;
+    [rows[index], rows[t]] = [rows[t], rows[index]];
+    setData({ ...data, rows });
+    await api.patch("/api/featured/order", { categories: rows.map((r) => r.category) });
+  }
+  async function addCategory() {
+    if (!addCat || !data) return;
+    const first = data.menuByCategory[addCat]?.[0];
+    if (!first) return toast("That category has no products.", "error");
+    await api.post("/api/featured/set", { category: addCat, menuItemId: first.id });
+    setAddCat("");
+    load();
+  }
+  async function saveSettings() {
+    await api.post("/api/featured/settings", { title, visible });
+    toast("Homepage section saved.");
+    load();
   }
 
-  const featuredIds = new Set(items.map((i) => i.menuItem.id));
-  const available = menu.filter((m) => !featuredIds.has(m.id) && !m.isHidden);
-  const shown = settings.limit > 0 ? Math.min(items.length, settings.limit) : items.length;
+  if (!data) return <p className="text-charcoal/50">Loading…</p>;
+  const featuredCats = new Set(data.rows.map((r) => r.category));
+  const available = data.categories.filter((c) => !featuredCats.has(c));
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-espresso">Homepage Featured Products</h1>
-      <p className="mt-1 text-sm text-charcoal/60">
-        Choose which products show in the homepage section. They pull live from the Menu Manager — edit
-        a product there and it updates here automatically.
-      </p>
+      <h1 className="font-display text-3xl font-bold text-espresso">Homepage Featured Menu Items</h1>
+      <p className="mt-1 text-sm text-charcoal/60">Pick <span className="font-semibold">one product per category</span> for the “{title}” carousel — so it always shows variety.</p>
 
       {/* Section settings */}
-      <div className="mt-5 grid gap-4 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-3">
-        <label className="text-xs font-semibold text-espresso sm:col-span-1">
-          Section title
-          <input
-            value={settings.title}
-            onChange={(e) => setSettings({ ...settings, title: e.target.value })}
-            onBlur={(e) => saveSettings({ title: e.target.value })}
-            className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal"
-          />
+      <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <label className="text-sm font-semibold text-espresso">Section title
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 block w-56 rounded-xl border border-oat px-3 py-2 font-normal" />
         </label>
-        <label className="text-xs font-semibold text-espresso">
-          How many to show <span className="font-normal text-charcoal/40">(0 = all)</span>
-          <input
-            type="number"
-            min={0}
-            value={settings.limit}
-            onChange={(e) => setSettings({ ...settings, limit: Number(e.target.value) })}
-            onBlur={(e) => saveSettings({ limit: Number(e.target.value) })}
-            className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal"
-          />
+        <label className="flex items-center gap-2 text-sm font-semibold text-espresso">
+          <input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} className="h-4 w-4" /> Show on homepage
         </label>
-        <label className="flex items-end gap-2 text-sm font-semibold text-espresso">
-          <input
-            type="checkbox"
-            checked={settings.visible}
-            onChange={(e) => saveSettings({ visible: e.target.checked })}
-            className="mb-2.5 h-4 w-4"
-          />
-          <span className="mb-2">Show section on homepage</span>
-        </label>
+        <button onClick={saveSettings} className="rounded-full bg-espresso px-5 py-2 text-sm font-semibold text-cream hover:bg-mocha">Save</button>
       </div>
 
-      {/* Add a product */}
-      <div className="mt-5 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm">
-        <label className="text-xs font-semibold text-espresso">
-          Add a product
-          <select
-            value={pick}
-            onChange={(e) => setPick(e.target.value)}
-            className="mt-1 block w-72 max-w-full rounded-lg border border-oat px-3 py-2 font-normal"
-          >
-            <option value="">Choose from the menu…</option>
-            {available.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} — {m.category}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          onClick={() => addItem(Number(pick))}
-          disabled={!pick}
-          className="rounded-full bg-espresso px-5 py-2 text-sm font-semibold text-cream hover:bg-mocha disabled:opacity-50"
-        >
-          + Add to homepage
-        </button>
-      </div>
-
-      {/* Current featured list */}
-      <div className="mt-5 space-y-2">
-        {items.length === 0 && (
-          <p className="rounded-2xl bg-white p-8 text-center text-charcoal/60 shadow-sm">
-            No featured products yet — add some above.
-          </p>
-        )}
-        {items.map((f, idx) => {
-          const beyondLimit = settings.limit > 0 && idx >= settings.limit;
+      {/* Category → product table */}
+      <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="hidden grid-cols-[1.4fr,2fr,auto] gap-3 border-b border-oat px-4 py-2 text-xs font-bold uppercase tracking-wide text-charcoal/45 sm:grid">
+          <span>Category</span><span>Featured item</span><span>Order · show · remove</span>
+        </div>
+        {data.rows.map((r, i) => {
+          const opts = data.menuByCategory[r.category] ?? [];
           return (
-            <div
-              key={f.id}
-              className={`flex items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${beyondLimit ? "opacity-50" : ""}`}
-            >
-              <div className="flex flex-col">
-                <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Move up" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▲</button>
-                <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1} aria-label="Move down" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▼</button>
+            <div key={r.category} className={`grid grid-cols-1 items-center gap-3 border-b border-oat/60 px-4 py-3 sm:grid-cols-[1.4fr,2fr,auto] ${r.isHidden ? "opacity-50" : ""}`}>
+              <span className="font-semibold text-espresso">{r.category}</span>
+              <div className="flex items-center gap-2">
+                <Img src={r.menuItem.photo} alt="" className="h-10 w-10 shrink-0 rounded-lg bg-oat/30" />
+                <select value={r.menuItemId} onChange={(e) => setProduct(r.category, Number(e.target.value))} className="min-w-0 flex-1 rounded-xl border border-oat px-3 py-2 text-sm">
+                  {opts.map((o) => <option key={o.id} value={o.id}>{o.name}{!o.inStock ? " (sold out)" : ""}</option>)}
+                </select>
               </div>
-              <span className="w-6 text-center text-xs font-bold text-charcoal/40">{idx + 1}</span>
-              <Img src={f.menuItem.photo} alt={f.menuItem.name} className="h-14 w-14 rounded-xl" />
-              <div className="flex-1">
-                <p className="font-semibold text-espresso">
-                  {f.menuItem.name}
-                  <span className="ml-2 text-xs font-normal text-charcoal/50">{f.menuItem.category}</span>
-                  {!f.menuItem.inStock && <span className="ml-2 text-xs text-terracotta-dark">sold out</span>}
-                  {beyondLimit && <span className="ml-2 text-xs text-charcoal/40">hidden by limit</span>}
-                </p>
-                <p className="text-sm text-terracotta">{money(f.menuItem.price)}</p>
+              <div className="flex items-center gap-1 justify-self-start sm:justify-self-end">
+                <button onClick={() => move(i, -1)} disabled={i === 0} className="rounded-full bg-oat px-2 py-1 text-xs font-bold disabled:opacity-30">↑</button>
+                <button onClick={() => move(i, 1)} disabled={i === data.rows.length - 1} className="rounded-full bg-oat px-2 py-1 text-xs font-bold disabled:opacity-30">↓</button>
+                <button onClick={() => toggleHide(r.category, !r.isHidden)} className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">{r.isHidden ? "Show" : "Hide"}</button>
+                <button onClick={() => remove(r.category)} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">✕</button>
               </div>
-              <button
-                onClick={() => removeItem(f.menuItem.id)}
-                className="rounded-full bg-terracotta/15 px-3 py-1 text-xs font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream"
-              >
-                Remove
-              </button>
             </div>
           );
         })}
-        {items.length > 0 && (
-          <p className="pt-1 text-xs text-charcoal/50">
-            Showing {shown} of {items.length} on the homepage.
-          </p>
-        )}
+        {data.rows.length === 0 && <p className="p-6 text-center text-charcoal/50">No categories featured yet — add one below.</p>}
       </div>
+
+      {/* Add a category */}
+      {available.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select value={addCat} onChange={(e) => setAddCat(e.target.value)} className="rounded-xl border border-oat px-3 py-2 text-sm">
+            <option value="">+ Add a category…</option>
+            {available.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button onClick={addCategory} disabled={!addCat} className="rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark disabled:opacity-40">Add</button>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,12 +5,10 @@ import { outMenuItem } from "../lib/serialize";
 
 export const featuredRouter = Router();
 
-const DEFAULTS = { title: "The usual suspects.", visible: true, limit: 6 };
+const DEFAULTS = { title: "The usual suspects.", visible: true, limit: 0 };
 
 async function getSettings() {
-  const rows = await prisma.setting.findMany({
-    where: { key: { in: ["featured.title", "featured.visible", "featured.limit"] } },
-  });
+  const rows = await prisma.setting.findMany({ where: { key: { in: ["featured.title", "featured.visible", "featured.limit"] } } });
   const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
   return {
     title: map["featured.title"] ?? DEFAULTS.title,
@@ -18,19 +16,14 @@ async function getSettings() {
     limit: map["featured.limit"] ? Number(map["featured.limit"]) : DEFAULTS.limit,
   };
 }
-
 async function setSetting(key: string, value: string) {
   await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
 }
 
-// GET /api/featured  (public) — the resolved homepage section
+// GET /api/featured  (public) — one product per category, hidden ones dropped.
 featuredRouter.get("/", async (_req, res) => {
   const settings = await getSettings();
-  const featured = await prisma.featuredProduct.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: { menuItem: true },
-  });
-  // Resolve live from the menu; drop hidden items; apply the display limit.
+  const featured = await prisma.featuredProduct.findMany({ where: { isHidden: false }, orderBy: { sortOrder: "asc" }, include: { menuItem: true } });
   let items = featured.filter((f) => f.menuItem && !f.menuItem.isHidden).map((f) => f.menuItem);
   if (settings.limit > 0) items = items.slice(0, settings.limit);
   res.json({ title: settings.title, visible: settings.visible, items: items.map(outMenuItem) });
@@ -39,16 +32,23 @@ featuredRouter.get("/", async (_req, res) => {
 // ---- Admin ----
 featuredRouter.use(requireAdmin);
 
-// GET /api/featured/admin — settings + the chosen products (with full menu info)
+// GET /api/featured/admin — settings + the category→product table + pickers.
 featuredRouter.get("/admin", async (_req, res) => {
   const settings = await getSettings();
-  const featured = await prisma.featuredProduct.findMany({
-    orderBy: { sortOrder: "asc" },
-    include: { menuItem: true },
-  });
+  const rows = await prisma.featuredProduct.findMany({ orderBy: { sortOrder: "asc" }, include: { menuItem: true } });
+  // Categories + products per category, in menu display order.
+  const items = await prisma.menuItem.findMany({ where: { isHidden: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, category: true, price: true, inStock: true } });
+  const catOrder: string[] = [];
+  const menuByCategory: Record<string, { id: number; name: string; price: number; inStock: boolean }[]> = {};
+  for (const it of items) {
+    if (!menuByCategory[it.category]) { menuByCategory[it.category] = []; catOrder.push(it.category); }
+    menuByCategory[it.category].push({ id: it.id, name: it.name, price: it.price, inStock: it.inStock });
+  }
   res.json({
     settings,
-    items: featured.map((f) => ({ id: f.id, sortOrder: f.sortOrder, menuItem: outMenuItem(f.menuItem) })),
+    categories: catOrder,
+    menuByCategory,
+    rows: rows.map((f) => ({ category: f.category, menuItemId: f.menuItemId, sortOrder: f.sortOrder, isHidden: f.isHidden, menuItem: outMenuItem(f.menuItem) })),
   });
 });
 
@@ -60,32 +60,41 @@ featuredRouter.post("/settings", async (req, res) => {
   res.json(await getSettings());
 });
 
-// POST /api/featured/items  { menuItemId } — add a product to the homepage
-featuredRouter.post("/items", async (req, res) => {
-  const menuItemId = Number(req.body.menuItemId);
-  if (!menuItemId) return res.status(400).json({ error: "Pick a product." });
-  const exists = await prisma.featuredProduct.findUnique({ where: { menuItemId } });
-  if (exists) return res.json(exists);
+// POST /api/featured/set  { category, menuItemId } — set/change/clear the featured
+// product for a category. menuItemId 0/empty clears that category.
+featuredRouter.post("/set", async (req, res) => {
+  const category = String(req.body.category ?? "").trim();
+  if (!category) return res.status(400).json({ error: "Category is required." });
+  const menuItemId = Number(req.body.menuItemId) || 0;
+
+  if (!menuItemId) {
+    await prisma.featuredProduct.deleteMany({ where: { category } });
+    return res.json({ ok: true, cleared: true });
+  }
+  const item = await prisma.menuItem.findUnique({ where: { id: menuItemId } });
+  if (!item) return res.status(400).json({ error: "Product not found." });
+  // A product can only be featured once (menuItemId is unique) — release it elsewhere first.
+  await prisma.featuredProduct.deleteMany({ where: { menuItemId, category: { not: category } } });
+  const existing = await prisma.featuredProduct.findUnique({ where: { category } });
+  if (existing) {
+    const row = await prisma.featuredProduct.update({ where: { category }, data: { menuItemId } });
+    return res.json(row);
+  }
   const max = await prisma.featuredProduct.aggregate({ _max: { sortOrder: true } });
-  const created = await prisma.featuredProduct.create({
-    data: { menuItemId, sortOrder: (max._max.sortOrder ?? -1) + 1 },
-  });
-  res.status(201).json(created);
+  const row = await prisma.featuredProduct.create({ data: { category, menuItemId, sortOrder: (max._max.sortOrder ?? -1) + 1 } });
+  res.status(201).json(row);
 });
 
-// DELETE /api/featured/items/:menuItemId
-featuredRouter.delete("/items/:menuItemId", async (req, res) => {
-  await prisma.featuredProduct.deleteMany({ where: { menuItemId: Number(req.params.menuItemId) } });
+// PATCH /api/featured/hide  { category, isHidden }
+featuredRouter.patch("/hide", async (req, res) => {
+  const category = String(req.body.category ?? "").trim();
+  await prisma.featuredProduct.updateMany({ where: { category }, data: { isHidden: !!req.body.isHidden } });
   res.json({ ok: true });
 });
 
-// PATCH /api/featured/order  { ids: number[] } — menuItemIds in display order
+// PATCH /api/featured/order  { categories: string[] } — carousel order by category.
 featuredRouter.patch("/order", async (req, res) => {
-  const ids: number[] = Array.isArray(req.body.ids) ? req.body.ids : [];
-  await prisma.$transaction(
-    ids.map((menuItemId, index) =>
-      prisma.featuredProduct.updateMany({ where: { menuItemId }, data: { sortOrder: index } })
-    )
-  );
+  const cats: string[] = Array.isArray(req.body.categories) ? req.body.categories : [];
+  await prisma.$transaction(cats.map((category, index) => prisma.featuredProduct.updateMany({ where: { category }, data: { sortOrder: index } })));
   res.json({ ok: true });
 });
