@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
 
-type Row = { menuItemId: number; name: string; subcategory: string; price: number; availableToday: boolean; made: number; sold: number; remaining: number; leftover: number; wasted: number; leftoverAction: string | null; closed: boolean; revenue: number; tracked: boolean };
+type Row = { menuItemId: number; name: string; subcategory: string; price: number; availableToday: boolean; made: number; sold: number; remaining: number; leftover: number; wasted: number; leftoverAction: string | null; closed: boolean; revenue: number; tracked: boolean; suggested: number };
 type Data = { date: string; today: string; dayClosed: boolean; rows: Row[]; summary: { made: number; sold: number; remaining: number; leftover: number; revenue: number; leftoverValue: number; wasteValue: number } };
 
 const SUB_ORDER = ["Regular", "Advanced", "Special", "Creation", "Other"];
@@ -79,7 +79,12 @@ export function AdminHansonProduction() {
         <div className="flex items-center gap-2">
           <input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} className="rounded-xl border border-oat px-3 py-2 text-sm" />
           {tab === "production" ? (
-            <button onClick={save} disabled={saving} className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark disabled:opacity-60">{saving ? "Saving…" : "Save production"}</button>
+            <>
+              {data?.rows.some((r) => r.suggested > 0) && (
+                <button onClick={() => data && setMade(Object.fromEntries(data.rows.map((r) => [r.menuItemId, r.suggested > 0 ? String(r.suggested) : (made[r.menuItemId] ?? "")])))} className="rounded-full bg-oat px-4 py-2 text-sm font-semibold hover:bg-espresso hover:text-cream">✨ Fill suggested</button>
+              )}
+              <button onClick={save} disabled={saving} className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark disabled:opacity-60">{saving ? "Saving…" : "Save production"}</button>
+            </>
           ) : data?.dayClosed ? (
             <button onClick={reopenDay} className="rounded-full border border-oat px-5 py-2 font-semibold text-espresso hover:bg-oat">Reopen day</button>
           ) : (
@@ -159,7 +164,10 @@ export function AdminHansonProduction() {
                       {r.name}
                       {soldOut && <span className="ml-2 rounded-full bg-terracotta/15 px-2 py-0.5 text-[10px] font-semibold text-terracotta-dark">SOLD OUT</span>}
                     </span>
-                    <input value={made[r.menuItemId] ?? ""} onChange={(e) => setMade({ ...made, [r.menuItemId]: e.target.value.replace(/[^0-9]/g, "") })} inputMode="numeric" className="w-16 rounded-lg border border-oat px-2 py-1 text-center text-sm" placeholder="0" />
+                    <div className="flex flex-col items-center">
+                      <input value={made[r.menuItemId] ?? ""} onChange={(e) => setMade({ ...made, [r.menuItemId]: e.target.value.replace(/[^0-9]/g, "") })} inputMode="numeric" className="w-16 rounded-lg border border-oat px-2 py-1 text-center text-sm" placeholder="0" />
+                      {r.suggested > 0 && <button onClick={() => setMade({ ...made, [r.menuItemId]: String(r.suggested) })} className="mt-0.5 text-[10px] font-semibold text-sage-dark hover:underline" title="Use suggested">sug {r.suggested}</button>}
+                    </div>
                     <span className="w-12 text-center text-sm text-charcoal/60">{r.sold}</span>
                     <span className={`w-12 text-center text-sm font-semibold ${soldOut ? "text-terracotta-dark" : remaining <= 3 && madeVal > 0 ? "text-amber-600" : "text-sage-dark"}`}>{madeVal > 0 ? remaining : "—"}</span>
                     <span className="text-right text-sm text-terracotta">{money(r.price)}</span>

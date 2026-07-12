@@ -30,6 +30,7 @@ model MenuItem {
   subcategory String           @default("") // e.g. Hanson: Regular | Advanced | Special | Creation
   description String           @default("")
   price       Float            @default(0)
+  costPrice   Float            @default(0) // cost to make (mainly Hanson doughnuts) — for profit reports
   options     String           @default("[]") // JSON-encoded OptionGroup[]
   tags        String           @default("[]") // JSON-encoded string[]
   photo         String?

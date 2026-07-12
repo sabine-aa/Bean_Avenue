@@ -72,6 +72,24 @@ doughnutsRouter.get("/production", requireAdmin, async (req, res) => {
   });
   const prod = await prisma.hansonProduction.findMany({ where: { date } });
   const pmap = new Map(prod.map((p) => [p.menuItemId, p]));
+
+  // Suggested quantities from the prior 14 days' sales (avg sold, nudged by
+  // sell-through: often-sold-out → make more; often-leftover → make fewer).
+  const target = new Date(date + "T12:00:00Z");
+  const from14 = new Date(target.getTime() - 14 * 86400000).toISOString().slice(0, 10);
+  const yesterday = new Date(target.getTime() - 86400000).toISOString().slice(0, 10);
+  const hist = await prisma.hansonProduction.findMany({ where: { date: { gte: from14, lte: yesterday } } });
+  const hmap = new Map<number, { sold: number; made: number; days: number }>();
+  for (const p of hist) { const a = hmap.get(p.menuItemId) ?? { sold: 0, made: 0, days: 0 }; a.sold += p.sold; a.made += p.made; a.days++; hmap.set(p.menuItemId, a); }
+  const suggest = (id: number): number => {
+    const a = hmap.get(id);
+    if (!a || a.days === 0) return 0;
+    const avgSold = a.sold / a.days;
+    const st = a.made > 0 ? a.sold / a.made : 0;
+    const factor = st >= 0.9 ? 1.2 : st <= 0.4 ? 0.85 : 1;
+    return Math.max(0, Math.round(avgSold * factor));
+  };
+
   const rows = items.map((i) => {
     const p = pmap.get(i.id);
     const made = p?.made ?? 0, sold = p?.sold ?? 0;
@@ -79,7 +97,7 @@ doughnutsRouter.get("/production", requireAdmin, async (req, res) => {
     return {
       menuItemId: i.id, name: i.name, subcategory: i.subcategory || "Other", price: i.price, availableToday: i.availableToday,
       made, sold, remaining: leftover, leftover, wasted: p?.wasted ?? 0, leftoverAction: p?.leftoverAction ?? null,
-      closed: p?.closed ?? false, revenue: round2(sold * i.price), tracked: !!p,
+      closed: p?.closed ?? false, revenue: round2(sold * i.price), tracked: !!p, suggested: suggest(i.id),
     };
   });
   const tracked = rows.filter((r) => r.tracked);
@@ -125,7 +143,7 @@ doughnutsRouter.get("/reports", requireAdmin, async (req, res) => {
   const to = (q.to || "").trim() || hansonToday();
   const from = (q.from || "").trim() || hansonToday(new Date(Date.now() - 6 * 86400000));
   const prod = await prisma.hansonProduction.findMany({ where: { date: { gte: from, lte: to } } });
-  const items = await prisma.menuItem.findMany({ where: { category: DOUGHNUT_CATEGORY }, select: { id: true, name: true, subcategory: true, price: true } });
+  const items = await prisma.menuItem.findMany({ where: { category: DOUGHNUT_CATEGORY }, select: { id: true, name: true, subcategory: true, price: true, costPrice: true } });
   const imap = new Map(items.map((i) => [i.id, i]));
 
   // Per-doughnut aggregate over the range.
@@ -139,37 +157,61 @@ doughnutsRouter.get("/reports", requireAdmin, async (req, res) => {
 
   const byDoughnut = [...agg.entries()].map(([id, a]) => {
     const it = imap.get(id);
-    const price = it?.price ?? 0;
+    const price = it?.price ?? 0, cost = it?.costPrice ?? 0;
     const leftover = Math.max(0, a.made - a.sold);
+    const revenue = round2(a.sold * price);
+    const cogs = round2(a.made * cost); // cost of everything made (sold + leftover)
     return {
-      menuItemId: id, name: it?.name ?? "—", subcategory: it?.subcategory || "Other", price,
+      menuItemId: id, name: it?.name ?? "—", subcategory: it?.subcategory || "Other", price, cost,
       made: a.made, sold: a.sold, leftover, wasteQty: a.wasteQty,
-      revenue: round2(a.sold * price), wasteValue: round2(a.wasteQty * price),
+      revenue, cogs, profit: round2(revenue - cogs), wasteValue: round2(a.wasteQty * price), wasteCost: round2(a.wasteQty * cost),
       sellThrough: a.made > 0 ? Math.round((a.sold / a.made) * 100) : null,
     };
   }).sort((x, y) => y.sold - x.sold);
 
   const byCategory = [...byDoughnut.reduce((m, r) => {
-    const c = m.get(r.subcategory) ?? { subcategory: r.subcategory, made: 0, sold: 0, revenue: 0, wasteQty: 0, wasteValue: 0 };
-    c.made += r.made; c.sold += r.sold; c.revenue = round2(c.revenue + r.revenue); c.wasteQty += r.wasteQty; c.wasteValue = round2(c.wasteValue + r.wasteValue);
+    const c = m.get(r.subcategory) ?? { subcategory: r.subcategory, made: 0, sold: 0, revenue: 0, profit: 0, wasteQty: 0, wasteValue: 0 };
+    c.made += r.made; c.sold += r.sold; c.revenue = round2(c.revenue + r.revenue); c.profit = round2(c.profit + r.profit); c.wasteQty += r.wasteQty; c.wasteValue = round2(c.wasteValue + r.wasteValue);
     return m.set(r.subcategory, c);
-  }, new Map<string, { subcategory: string; made: number; sold: number; revenue: number; wasteQty: number; wasteValue: number }>()).values()];
+  }, new Map<string, { subcategory: string; made: number; sold: number; revenue: number; profit: number; wasteQty: number; wasteValue: number }>()).values()];
 
   const totMade = byDoughnut.reduce((s, r) => s + r.made, 0);
   const totSold = byDoughnut.reduce((s, r) => s + r.sold, 0);
+  const hasCost = byDoughnut.some((r) => r.cost > 0);
   const totals = {
     made: totMade, sold: totSold, leftover: byDoughnut.reduce((s, r) => s + r.leftover, 0),
     revenue: round2(byDoughnut.reduce((s, r) => s + r.revenue, 0)),
+    cogs: round2(byDoughnut.reduce((s, r) => s + r.cogs, 0)),
+    profit: round2(byDoughnut.reduce((s, r) => s + r.profit, 0)),
     wasteQty: byDoughnut.reduce((s, r) => s + r.wasteQty, 0),
     wasteValue: round2(byDoughnut.reduce((s, r) => s + r.wasteValue, 0)),
+    wasteCost: round2(byDoughnut.reduce((s, r) => s + r.wasteCost, 0)),
     sellThrough: totMade > 0 ? Math.round((totSold / totMade) * 100) : null,
     days: new Set(prod.map((p) => p.date)).size,
+    hasCost,
   };
   const rated = byDoughnut.filter((r) => r.made > 0);
   const bestSellers = [...rated].sort((a, b) => b.sold - a.sold).slice(0, 6);
   const slowSellers = [...rated].sort((a, b) => (a.sellThrough ?? 0) - (b.sellThrough ?? 0)).slice(0, 6);
 
   res.json({ from, to, totals, byDoughnut, byCategory, bestSellers, slowSellers });
+});
+
+// GET /api/doughnuts/costs  (admin) — per-doughnut cost to make (for profit).
+doughnutsRouter.get("/costs", requireAdmin, async (_req, res) => {
+  const items = await prisma.menuItem.findMany({ where: { category: DOUGHNUT_CATEGORY, isHidden: false }, orderBy: [{ sortOrder: "asc" }], select: { id: true, name: true, subcategory: true, price: true, costPrice: true } });
+  res.json(items.map((i) => ({ menuItemId: i.id, name: i.name, subcategory: i.subcategory || "Other", price: i.price, costPrice: i.costPrice })));
+});
+
+// POST /api/doughnuts/costs  (admin) — set per-doughnut cost.  { entries:[{menuItemId, costPrice}] }
+doughnutsRouter.post("/costs", requireAdmin, async (req, res) => {
+  const entries: { menuItemId: number; costPrice: number }[] = Array.isArray(req.body?.entries) ? req.body.entries : [];
+  for (const e of entries) {
+    const id = Number(e.menuItemId);
+    if (!id) continue;
+    await prisma.menuItem.update({ where: { id }, data: { costPrice: Math.max(0, round2(Number(e.costPrice) || 0)) } });
+  }
+  res.json({ ok: true });
 });
 
 // POST /api/doughnuts/production  (admin) — set today's "made" per doughnut.
