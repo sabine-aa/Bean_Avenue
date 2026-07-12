@@ -2,13 +2,14 @@ import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
-import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
+import { earnBeans, genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
+import { notify } from "../lib/notify";
 import { consumeForOrder } from "../lib/consumption";
 import { validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
 import { applyOrderStatus } from "../lib/orderStatus";
 import { terminalProvider } from "../lib/paymentTerminal";
-import { outOrder } from "../lib/serialize";
+import { outBooking, outOrder } from "../lib/serialize";
 import { posConfig, storefrontConfig } from "../lib/settings";
 import { buildLines, type IncomingItem } from "./orders";
 
@@ -297,6 +298,53 @@ posRouter.get("/summary", async (req, res) => {
     whish: sum(sales.filter((o) => o.paymentMethod === "WHISH")),
     sales: sales.map(outOrder),
   });
+});
+
+// POST /api/pos/booking — staff books a Study/Conference room for a walk-in.
+// Reuses the same rules as the public booking flow (capacity + no time clash),
+// records who booked it, and earns beans when a phone is given.
+posRouter.post("/booking", async (req, res) => {
+  const b = req.body ?? {};
+  const room = await prisma.room.findUnique({ where: { id: Number(b.roomId) } });
+  if (!room || !room.isAvailable) return res.status(400).json({ error: "That room isn't available." });
+
+  const peopleCount = Number(b.peopleCount) || room.capacityMin;
+  if (peopleCount < room.capacityMin || peopleCount > room.capacityMax)
+    return res.status(400).json({ error: `${room.name} fits ${room.capacityMin}–${room.capacityMax} people.` });
+
+  const [y, m, d] = String(b.date ?? "").split("-").map(Number);
+  const startHour = Number(b.startHour);
+  const durationHours = Math.max(1, Number(b.durationHours) || 1);
+  if (!y || !m || !d || Number.isNaN(startHour)) return res.status(400).json({ error: "Choose a date and start time." });
+  const start = new Date(y, m - 1, d, startHour);
+  const end = new Date(y, m - 1, d, startHour + durationHours);
+
+  const clash = await prisma.booking.findFirst({
+    where: { roomId: room.id, status: { in: ["PENDING", "CONFIRMED", "IN_USE", "COMPLETED"] }, startTime: { lt: end }, endTime: { gt: start } },
+  });
+  if (clash) return res.status(409).json({ error: "That time is already booked — pick another slot." });
+
+  const total = round2(room.pricePerHour * durationHours);
+  const beansEarned = Math.floor(total);
+  const phone = String(b.phone ?? "").trim();
+  const customerName = String(b.customerName ?? "").trim() || "Walk-in";
+  const customer = phone ? await getOrCreateCustomer(phone, customerName) : null;
+
+  const booking = await prisma.booking.create({
+    data: {
+      number: genNumber("BK"), roomId: room.id, customerId: customer?.id, customerName, phone: phone || "-",
+      startTime: start, endTime: end, durationHours, peopleCount, notes: String(b.notes ?? "").trim() || null,
+      total, status: "CONFIRMED", beansEarned, bookedBy: req.staffName ?? "Staff",
+    },
+    include: { room: true },
+  });
+
+  if (customer) {
+    await earnBeans(customer.id, beansEarned, "Booking", booking.number);
+    await notify(customer.id, { type: "BOOKING", title: "Booking confirmed", message: `Your ${room.name} booking ${booking.number} is confirmed.`, link: `/booking-success/${booking.number}` });
+  }
+
+  res.status(201).json(outBooking(booking));
 });
 
 // ---- Online orders (website/app) in the register -----------------------------

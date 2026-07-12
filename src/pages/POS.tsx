@@ -191,6 +191,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [busy, setBusy] = useState(false);
   const [receipt, setReceipt] = useState<Order | null>(null);
   const [shiftPanel, setShiftPanel] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
   const [table, setTable] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
@@ -364,6 +365,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
             {onlineNew > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-espresso px-1 text-xs font-bold text-cream">{onlineNew}</span>}
           </button>
           <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
+          <button onClick={() => setShowBooking(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">📅 Book Room</button>
           <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
             Shift · expected {money(shift.expectedCash)}
           </button>
@@ -489,6 +491,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} staffName={staffPurchase?.name} tabPin={tabPin} setTabPin={setTabPin} onCancel={() => { setPay(null); setTabPin(""); }} onConfirm={() => completeSale(pay)} />}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
       {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
+      {showBooking && <RoomBookingModal onClose={() => setShowBooking(false)} />}
     </div>
   );
 }
@@ -916,6 +919,168 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
           <button onClick={onCancel} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
           <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0)) || (method === "SALARY" && tabPin.trim().length < 4)} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}</button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Room booking (walk-in) ---------------------------------------------------
+type PosRoom = { id: number; name: string; type: string; pricePerHour: number; capacityMin: number; capacityMax: number; openHour: number; closeHour: number; isAvailable: boolean };
+
+function RoomBookingModal({ onClose }: { onClose: () => void }) {
+  const [rooms, setRooms] = useState<PosRoom[]>([]);
+  const [roomId, setRoomId] = useState<number | null>(null);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startHour, setStartHour] = useState<number | null>(null);
+  const [duration, setDuration] = useState(1);
+  const [people, setPeople] = useState(1);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState<{ start: string; end: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState<{ number: string; total: number; roomName: string; when: string } | null>(null);
+
+  useEffect(() => { posApi.get<PosRoom[]>("/api/rooms").then((r) => setRooms(r.filter((x) => x.isAvailable))).catch(() => {}); }, []);
+  const room = rooms.find((r) => r.id === roomId) ?? null;
+
+  useEffect(() => {
+    if (!roomId || !date) { setBusy([]); return; }
+    posApi.get<{ busy: { start: string; end: string }[] }>(`/api/bookings/availability?roomId=${roomId}&date=${date}`).then((r) => setBusy(r.busy)).catch(() => setBusy([]));
+  }, [roomId, date]);
+  // Reset the chosen start when the room, date or duration changes.
+  useEffect(() => { setStartHour(null); }, [roomId, date, duration]);
+  useEffect(() => { if (room) setPeople((p) => Math.min(Math.max(p, room.capacityMin), room.capacityMax)); }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [y, m, d] = date.split("-").map(Number);
+  const now = new Date();
+  const isToday = date === now.toISOString().slice(0, 10);
+  const hourOptions = useMemo(() => {
+    if (!room) return [] as { h: number; label: string; disabled: boolean }[];
+    const out: { h: number; label: string; disabled: boolean }[] = [];
+    for (let h = room.openHour; h + duration <= room.closeHour; h++) {
+      const s = new Date(y, m - 1, d, h).getTime();
+      const e = new Date(y, m - 1, d, h + duration).getTime();
+      const clash = busy.some((b) => new Date(b.start).getTime() < e && new Date(b.end).getTime() > s);
+      const past = isToday && h <= now.getHours();
+      const lab = (n: number) => `${((n + 11) % 12) + 1}${n < 12 ? "am" : "pm"}`;
+      out.push({ h, label: `${lab(h)}–${lab(h + duration)}`, disabled: clash || past });
+    }
+    return out;
+  }, [room, duration, busy, y, m, d, isToday]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const total = room ? Math.round(room.pricePerHour * duration * 100) / 100 : 0;
+
+  async function submit() {
+    if (!room || startHour == null) return setError("Pick a room and a start time.");
+    if (!name.trim()) return setError("Enter the customer's name.");
+    setSaving(true); setError("");
+    try {
+      const bk = await posApi.post<{ number: string; total: number; room?: { name: string }; startTime: string; endTime: string }>("/api/pos/booking", {
+        roomId: room.id, date, startHour, durationHours: duration, peopleCount: people,
+        customerName: name.trim(), phone: phone.trim() || undefined, notes: notes.trim() || undefined,
+      });
+      setDone({ number: bk.number, total: bk.total, roomName: bk.room?.name ?? room.name, when: `${new Date(bk.startTime).toLocaleString()} → ${new Date(bk.endTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't book the room.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function reset() {
+    setDone(null); setRoomId(null); setStartHour(null); setDuration(1); setPeople(1); setName(""); setPhone(""); setNotes(""); setError("");
+  }
+
+  const field = "mt-1 w-full rounded-xl border border-oat px-3 py-2 text-sm";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        {done ? (
+          <div className="text-center">
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-sage/20 text-3xl">✓</div>
+            <p className="font-display text-xl font-bold text-espresso">Room booked</p>
+            <p className="mt-1 text-sm text-charcoal/60">{done.number} · {done.roomName}</p>
+            <p className="mt-1 text-sm text-charcoal/60">{done.when}</p>
+            <p className="mt-3 text-3xl font-bold text-terracotta">{money(done.total)}</p>
+            <p className="text-sm text-charcoal/50">Collect {money(done.total)} from the customer.</p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={reset} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">Book another</button>
+              <button onClick={onClose} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">Done</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-bold text-espresso">📅 Book a room</h2>
+              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">✕</button>
+            </div>
+            <p className="mt-1 text-sm text-charcoal/55">For a walk-in customer.</p>
+
+            {/* Room picker */}
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {rooms.map((r) => (
+                <button key={r.id} onClick={() => setRoomId(r.id)} className={`rounded-xl border-2 p-3 text-left transition ${roomId === r.id ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage"}`}>
+                  <p className="font-semibold text-espresso">{r.type === "STUDY" ? "📚" : "👥"} {r.name}</p>
+                  <p className="text-xs text-charcoal/55">{money(r.pricePerHour)}/hr · {r.capacityMin}–{r.capacityMax} ppl</p>
+                </button>
+              ))}
+              {rooms.length === 0 && <p className="col-span-2 text-sm text-charcoal/50">No rooms available.</p>}
+            </div>
+
+            {room && (
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block text-xs font-semibold text-espresso">Date
+                    <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} className={field} />
+                  </label>
+                  <label className="block text-xs font-semibold text-espresso">Duration
+                    <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className={field}>
+                      {[1, 2, 3, 4].map((h) => <option key={h} value={h}>{h} hour{h > 1 ? "s" : ""}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-espresso">Start time</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {hourOptions.map((o) => (
+                      <button key={o.h} disabled={o.disabled} onClick={() => setStartHour(o.h)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${startHour === o.h ? "bg-espresso text-cream" : o.disabled ? "cursor-not-allowed bg-oat/50 text-charcoal/30 line-through" : "bg-oat hover:bg-espresso hover:text-cream"}`}>{o.label}</button>
+                    ))}
+                    {hourOptions.length === 0 && <p className="text-xs text-charcoal/45">No open slots for this duration.</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block text-xs font-semibold text-espresso">Customer name
+                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Walk-in name" className={field} />
+                  </label>
+                  <label className="block text-xs font-semibold text-espresso">People
+                    <input type="number" min={room.capacityMin} max={room.capacityMax} value={people} onChange={(e) => setPeople(Number(e.target.value))} className={field} />
+                  </label>
+                  <label className="block text-xs font-semibold text-espresso">Phone <span className="font-normal text-charcoal/40">(optional · earns beans)</span>
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" className={field} />
+                  </label>
+                  <label className="block text-xs font-semibold text-espresso">Notes
+                    <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" className={field} />
+                  </label>
+                </div>
+
+                {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
+
+                <div className="flex items-center justify-between rounded-xl bg-oat/50 px-3 py-2">
+                  <span className="text-sm text-charcoal/60">Total</span>
+                  <span className="text-lg font-bold text-espresso">{money(total)}</span>
+                </div>
+                <button onClick={submit} disabled={saving || startHour == null} className="btn-3d w-full rounded-full bg-terracotta py-3 font-semibold text-cream disabled:opacity-50">
+                  {saving ? "Booking…" : `Book & collect ${money(total)}`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

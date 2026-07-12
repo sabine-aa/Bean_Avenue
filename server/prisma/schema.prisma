@@ -607,6 +607,7 @@ model Booking {
   total         Float
   status        String    @default("CONFIRMED") // PENDING | CONFIRMED | IN_USE | COMPLETED | CANCELLED | NO_SHOW
   beansEarned   Int       @default(0)
+  bookedBy      String? // register staff who booked it for a walk-in (null = online)
   createdAt     DateTime  @default(now())
 }
 
