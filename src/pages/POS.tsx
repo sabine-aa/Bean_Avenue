@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Img } from "../components/Img";
 import { ApiError, api, formatTime, getPosTerminal, isPosTokenValid, money, posApi, setPosToken, setPosTerminal } from "../lib/api";
@@ -209,18 +209,61 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
   const [onlineNew, setOnlineNew] = useState(0);
   const [showOnline, setShowOnline] = useState(false);
+  const [orderAlert, setOrderAlert] = useState<{ count: number; latest: string } | null>(null);
+  const seenIds = useRef<Set<number>>(new Set());
+  const firstLoad = useRef(true);
+  const audioRef = useRef<AudioContext | null>(null);
 
-  // Website/app orders stream into the register live.
+  // A short two-note chime to alert the cashier (generated, no audio file needed).
+  const chime = useCallback(() => {
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = audioRef.current ?? new AC();
+      audioRef.current = ctx;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const tone = (freq: number, at: number, dur: number) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = freq;
+        o.connect(g);
+        g.connect(ctx.destination);
+        const t = ctx.currentTime + at;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t);
+        o.stop(t + dur + 0.02);
+      };
+      tone(880, 0, 0.18);
+      tone(1320, 0.16, 0.26);
+    } catch { /* audio blocked — the visual alert still shows */ }
+  }, []);
+  // Browsers block audio until the user interacts; resume the context on any tap.
+  useEffect(() => {
+    const unlock = () => audioRef.current?.resume?.().catch(() => {});
+    window.addEventListener("pointerdown", unlock);
+    return () => window.removeEventListener("pointerdown", unlock);
+  }, []);
+
+  // Website/app orders stream into the register live (poll) — a NEW arrival chimes.
   const loadOnline = useCallback(async () => {
     try {
       const r = await posApi.get<{ newCount: number; orders: Order[] }>("/api/pos/online");
       setOnlineOrders(r.orders);
       setOnlineNew(r.newCount);
+      const arrivals = r.orders.filter((o) => !seenIds.current.has(o.id));
+      r.orders.forEach((o) => seenIds.current.add(o.id));
+      if (!firstLoad.current && arrivals.length) {
+        chime();
+        setOrderAlert({ count: arrivals.length, latest: arrivals[arrivals.length - 1].number });
+      }
+      firstLoad.current = false;
     } catch { /* offline — keep the last list */ }
-  }, []);
+  }, [chime]);
   useEffect(() => {
     loadOnline();
-    const t = setInterval(loadOnline, 12000);
+    const t = setInterval(loadOnline, 8000);
     return () => clearInterval(t);
   }, [loadOnline]);
 
@@ -360,7 +403,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           <span className="rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">🖥 {session.terminal ?? getPosTerminal()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setShowOnline(true)} className={`relative rounded-full px-3 py-1.5 text-sm font-semibold ${onlineNew > 0 ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}>
+          <button onClick={() => { setShowOnline(true); setOrderAlert(null); }} className={`relative rounded-full px-3 py-1.5 text-sm font-semibold ${onlineNew > 0 ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}>
             🌐 Online Orders{onlineOrders.length ? ` · ${onlineOrders.length}` : ""}
             {onlineNew > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-espresso px-1 text-xs font-bold text-cream">{onlineNew}</span>}
           </button>
@@ -371,6 +414,15 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           </button>
         </div>
       </div>
+
+      {orderAlert && (
+        <button
+          onClick={() => { setShowOnline(true); setOrderAlert(null); }}
+          className="flex w-full animate-pulse items-center justify-center gap-2 bg-terracotta px-4 py-2.5 text-sm font-bold text-cream shadow-md"
+        >
+          🔔 New online order{orderAlert.count > 1 ? `s · ${orderAlert.count} waiting` : ` · ${orderAlert.latest}`} — tap to view
+        </button>
+      )}
 
       {(!online || pending > 0) && (
         <div className={`px-4 py-1 text-center text-sm font-semibold ${online ? "bg-amber-400/40 text-amber-900" : "bg-terracotta text-cream"}`}>
