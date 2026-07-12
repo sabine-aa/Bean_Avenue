@@ -97,6 +97,14 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
 
 // DELETE /api/menu/:id  (admin)
 menuRouter.delete("/:id", requireAdmin, async (req, res) => {
-  await prisma.menuItem.delete({ where: { id: Number(req.params.id) } });
-  res.json({ ok: true });
+  const id = Number(req.params.id);
+  try {
+    // Recipe components reference the item by plain id (no cascade) — tidy them up
+    // so a deleted product leaves no orphan recipe rows.
+    await prisma.recipeComponent.deleteMany({ where: { menuItemId: id } });
+    await prisma.menuItem.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch {
+    res.status(400).json({ error: "Couldn't delete this product. Try hiding it instead." });
+  }
 });

@@ -193,6 +193,17 @@ export function AdminMenuManager() {
     load();
   }
 
+  async function del(item: MenuItem) {
+    if (!window.confirm(`Delete “${item.name}” permanently? This can't be undone.\n\nTip: to just take it off the menu, use Hide instead — that's reversible.`)) return;
+    try {
+      await api.delete(`/api/menu/${item.id}`);
+      toast(`“${item.name}” deleted.`);
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Couldn't delete the product.", "error");
+    }
+  }
+
   async function move(index: number, dir: -1 | 1) {
     const next = [...items];
     const target = index + dir;
@@ -689,6 +700,14 @@ export function AdminMenuManager() {
               className="rounded-full bg-espresso px-4 py-1 text-xs font-semibold text-cream hover:bg-mocha"
             >
               Edit
+            </button>
+            <button
+              onClick={() => del(item)}
+              aria-label={`Delete ${item.name}`}
+              title="Delete product"
+              className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta"
+            >
+              🗑
             </button>
           </div>
         ))}
