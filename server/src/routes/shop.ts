@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { requireAdmin, requireStaff } from "../auth";
 import { prisma } from "../db";
+import { consumeShopForOrder } from "../lib/consumption";
+import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 
 export const shopRouter = Router();
 
@@ -54,6 +56,46 @@ shopRouter.get("/:id(\\d+)", async (req, res) => {
   const p = await prisma.shopProduct.findUnique({ where: { id: Number(req.params.id) } });
   if (!p || p.isHidden || !p.availableOnline) return res.status(404).json({ error: "Product not found." });
   res.json(outProduct(p));
+});
+
+// POST /api/shop/order — public: place a retail pickup order (pay at pickup).
+// Reuses the normal order pipeline (channel ONLINE + pickup) so it shows up for
+// staff/admin, and deducts shop stock. Preorder items are handled in Phase 3.
+shopRouter.post("/order", async (req, res) => {
+  const b = req.body ?? {};
+  const rawItems: { productId: number; quantity: number }[] = Array.isArray(b.items) ? b.items : [];
+  const customerName = String(b.customerName ?? "").trim().slice(0, 80);
+  const phone = String(b.phone ?? "").trim().slice(0, 30);
+  if (!customerName || !phone) return res.status(400).json({ error: "Your name and phone are required." });
+  if (!rawItems.length) return res.status(400).json({ error: "Your cart is empty." });
+
+  const built: { menuItemId: null; name: string; unitPrice: number; quantity: number; selectedOptions: string; addons: string; specialInstructions: null; lineTotal: number }[] = [];
+  const consume: { shopProductId: number; quantity: number }[] = [];
+  let subtotal = 0;
+  for (const it of rawItems) {
+    const qty = Math.max(1, Math.round(Number(it.quantity) || 1));
+    const p = await prisma.shopProduct.findUnique({ where: { id: Number(it.productId) } });
+    if (!p || p.isHidden || !p.availableOnline) return res.status(400).json({ error: "A product in your cart is no longer available." });
+    if (p.quantity < qty) return res.status(409).json({ error: `Only ${p.quantity} of ${p.name} left in stock.` });
+    const lineTotal = round2(p.price * qty);
+    built.push({ menuItemId: null, name: p.name, unitPrice: p.price, quantity: qty, selectedOptions: "[]", addons: "[]", specialInstructions: null, lineTotal });
+    consume.push({ shopProductId: p.id, quantity: qty });
+    subtotal += lineTotal;
+  }
+  subtotal = round2(subtotal);
+  const customer = await getOrCreateCustomer(phone, customerName);
+
+  const order = await prisma.order.create({
+    data: {
+      number: genNumber("SHOP"), channel: "ONLINE", customerId: customer?.id, customerName, phone,
+      email: String(b.email ?? "").trim() || null, fulfillment: "PICKUP", pickupTime: "When ready",
+      subtotal, total: subtotal, paymentMethod: "CASH_AT_PICKUP", status: "RECEIVED", paymentStatus: "CASH_DUE",
+      beansEarned: Math.floor(subtotal), items: { create: built },
+    },
+    include: { items: true },
+  });
+  await consumeShopForOrder(consume, { orderId: order.id, staffName: "Online shop" });
+  res.status(201).json({ number: order.number, total: subtotal });
 });
 
 // ---- POS ----

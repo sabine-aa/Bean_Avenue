@@ -16,6 +16,7 @@ const ACCOUNT_LINKS = [
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/menu", label: "Menu" },
+  { to: "/shop", label: "Shop" },
   { to: "/doughnuts", label: "Doughnuts" },
   { to: "/rooms", label: "Rooms" },
   { to: "/events", label: "Events" },
