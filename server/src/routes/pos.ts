@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { earnBeans, genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { notify } from "../lib/notify";
 import { consumeForOrder, consumeShopForOrder } from "../lib/consumption";
+import { checkHansonAvailability } from "../lib/hanson";
 import { validateStock } from "../lib/inventory";
 import { awardOrderBeans } from "../lib/loyalty";
 import { applyOrderStatus } from "../lib/orderStatus";
@@ -181,6 +182,8 @@ posRouter.post("/sale", async (req, res) => {
   // Block overselling any stock-tracked item before we take payment.
   const stockError = await validateStock((body.items ?? []).map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
   if (stockError) return res.status(409).json({ error: stockError });
+  const hansonError = await checkHansonAvailability((body.items ?? []).map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
+  if (hansonError) return res.status(409).json({ error: hansonError });
 
   const result = await buildLines(body.items ?? []);
   if ("error" in result) return res.status(400).json({ error: result.error });

@@ -9,6 +9,7 @@ import { AdminCustomers } from "./admin/Customers";
 import { AdminDashboard } from "./admin/Dashboard";
 import { AdminDelivery } from "./admin/Delivery";
 import { AdminDoughnuts } from "./admin/DoughnutsManager";
+import { AdminHansonProduction } from "./admin/HansonProduction";
 import { AdminEvents } from "./admin/EventsManager";
 import { AdminEventSuggestions } from "./admin/EventSuggestions";
 import { AdminFeatured } from "./admin/FeaturedManager";
@@ -114,6 +115,7 @@ export default function App() {
         <Route path="menu" element={<AdminMenuManager />} />
         <Route path="addons" element={<AdminAddons />} />
         <Route path="doughnuts" element={<AdminDoughnuts />} />
+        <Route path="hanson-production" element={<AdminHansonProduction />} />
         <Route path="featured" element={<AdminFeatured />} />
         <Route path="bookings" element={<AdminBookings />} />
         <Route path="rooms" element={<AdminRooms />} />

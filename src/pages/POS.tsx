@@ -7,7 +7,9 @@ import type { Addon, AddonGroup, MenuItem, Order, OrderItemLine, OrderStatus } f
 
 const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 const RETAIL_CAT = "🛍 Retail";
+const HANSON_CAT = "🍩 Hanson";
 type ShopProd = { id: number; name: string; category: string; price: number; quantity: number; images: string[]; status: string; availablePos: boolean; allowPreorder: boolean };
+type PosDoughnut = MenuItem & { remaining: number | null; soldOut: boolean; tracked: boolean };
 
 // ---- Shared models ------------------------------------------------------------
 type Sel = { group: string; choice: string; priceDelta: number };
@@ -202,6 +204,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [ticketOpen, setTicketOpen] = useState(false); // slide-out sale panel on tablet/narrow screens
   const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
   useEffect(() => { loadShop(); }, [loadShop]);
+  const [doughnuts, setDoughnuts] = useState<PosDoughnut[]>([]);
+  const loadDoughnuts = useCallback(() => { posApi.get<PosDoughnut[]>("/api/doughnuts").then(setDoughnuts).catch(() => {}); }, []);
+  useEffect(() => { loadDoughnuts(); }, [loadDoughnuts]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
   const [table, setTable] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
@@ -324,6 +329,10 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     const s = q.trim().toLowerCase();
     return shopProducts.filter((p) => s === "" || p.name.toLowerCase().includes(s) || p.category.toLowerCase().includes(s));
   }, [shopProducts, q]);
+  const visibleDoughnuts = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return doughnuts.filter((d) => s === "" || d.name.toLowerCase().includes(s) || (d.subcategory ?? "").toLowerCase().includes(s));
+  }, [doughnuts, q]);
 
   function addShopLine(p: ShopProd) {
     if (p.quantity <= 0) return; // out of stock — preorder-from-POS comes in the preorder slice
@@ -401,6 +410,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       setTicketOpen(false);
       reload();
       if (shopLines.length) loadShop(); // refresh retail stock counts
+      loadDoughnuts(); // refresh doughnut remaining counts
     } catch (e) {
       // A real server rejection → show it. A network failure (offline) → save the
       // sale locally and sync it automatically when the connection returns.
@@ -563,7 +573,7 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       <div className="flex min-h-0 flex-1">
         {/* Category rail — vertical, down the side */}
         <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-1.5 [scrollbar-width:none] sm:w-36 [&::-webkit-scrollbar]:hidden">
-          {["All", ...cats, ...(shopProducts.length ? [RETAIL_CAT] : [])].map((c) => (
+          {["All", ...cats, ...(doughnuts.length ? [HANSON_CAT] : []), ...(shopProducts.length ? [RETAIL_CAT] : [])].map((c) => (
             <button key={c} onClick={() => setCat(c)} className={`w-full truncate rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
           ))}
         </div>
@@ -577,6 +587,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
                   const canPreorder = p.quantity <= 0 && p.allowPreorder;
                   return <PosShopTile key={p.id} p={p} compact={compact} disabled={p.quantity <= 0 && !p.allowPreorder} onTap={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))} />;
                 })
+              : cat === HANSON_CAT
+              ? visibleDoughnuts.map((d) => <PosDoughnutTile key={d.id} d={d} compact={compact} onAdd={() => addItem(d)} />)
               : visible.map((item) => <PosMenuTile key={item.id} item={item} compact={compact} onAdd={() => addItem(item)} />)}
           </div>
         </div>
@@ -1258,6 +1270,34 @@ function PosShopTile({ p, compact, disabled, onTap }: { p: ShopProd; compact: bo
         <p className="line-clamp-2 text-xs font-semibold leading-tight">{p.name}</p>
         <p className="text-sm font-bold text-terracotta">{money(p.price)}</p>
         <p className={`text-[10px] font-semibold ${cls}`}>{out ? (p.allowPreorder ? "Preorder" : "Out of stock") : `${p.quantity} in stock`}</p>
+      </div>
+    </button>
+  );
+}
+
+function PosDoughnutTile({ d, compact, onAdd }: { d: PosDoughnut; compact: boolean; onAdd: () => void }) {
+  const soldOut = d.soldOut;
+  const cls = soldOut ? "text-terracotta-dark" : d.remaining != null && d.remaining <= 3 ? "text-amber-600" : "text-charcoal/45";
+  if (compact) {
+    return (
+      <button onClick={onAdd} disabled={soldOut} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{d.name}</p>
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-terracotta">{money(d.price)}</span>
+          {d.tracked && <span className={`text-[10px] font-semibold ${cls}`}>{soldOut ? "Out" : d.remaining}</span>}
+        </div>
+      </button>
+    );
+  }
+  return (
+    <button onClick={onAdd} disabled={soldOut} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+      {d.photo
+        ? <Img src={d.photo} alt={d.name} fit={d.imageFit === "contain" ? "contain" : "cover"} className="aspect-[4/3] w-full bg-oat/30" />
+        : <div className="flex aspect-[5/2] w-full items-center justify-center bg-oat/40 text-lg">🍩</div>}
+      <div className="p-1.5">
+        <p className="line-clamp-2 text-xs font-semibold leading-tight">{d.name}</p>
+        <p className="text-sm font-bold text-terracotta">{money(d.price)}</p>
+        {d.tracked && <p className={`text-[10px] font-semibold ${cls}`}>{soldOut ? "Sold out" : `${d.remaining} left`}</p>}
       </div>
     </button>
   );

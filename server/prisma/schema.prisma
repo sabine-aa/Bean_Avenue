@@ -27,6 +27,7 @@ model MenuItem {
   id          Int              @id @default(autoincrement())
   name        String
   category    String
+  subcategory String           @default("") // e.g. Hanson: Regular | Advanced | Special | Creation
   description String           @default("")
   price       Float            @default(0)
   options     String           @default("[]") // JSON-encoded OptionGroup[]
@@ -78,6 +79,27 @@ model FeaturedProduct {
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   sortOrder  Int      @default(0)
   isHidden   Boolean  @default(false)
+}
+
+// Hanson Donuts daily production — its own inventory, SEPARATE from the café/shop
+// stock. One row per doughnut per day: how many were made, how many sold, and
+// end-of-day leftover handling. Remaining = made - sold. Sold-out when <= 0.
+model HansonProduction {
+  id            Int      @id @default(autoincrement())
+  menuItemId    Int
+  date          String // local day "YYYY-MM-DD"
+  made          Int      @default(0)
+  sold          Int      @default(0)
+  wasted        Int      @default(0) // end-of-day leftover marked wasted
+  leftoverAction String? // WASTED | STAFF | DISCOUNTED | CARRIED
+  closed        Boolean  @default(false) // end-of-day closed
+  notes         String?
+  createdBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([menuItemId, date])
+  @@index([date])
 }
 
 // Simple key/value store for site settings (e.g. homepage section title/visibility).

@@ -21,6 +21,7 @@ export interface MenuItem {
   id: number;
   name: string;
   category: string;
+  subcategory?: string;
   description: string;
   price: number;
   options: OptionGroup[];

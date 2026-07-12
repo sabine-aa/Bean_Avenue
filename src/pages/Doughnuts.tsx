@@ -6,15 +6,17 @@ import { useToast } from "../context/ToastContext";
 import { api, money } from "../lib/api";
 import type { MenuItem } from "../types";
 
+type DoughnutItem = MenuItem & { tracked: boolean; remaining: number | null; soldOut: boolean; madeToday: number | null };
+
 export function Doughnuts() {
   const { add } = useCart();
   const toast = useToast();
-  const [items, setItems] = useState<MenuItem[]>([]);
+  const [items, setItems] = useState<DoughnutItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api
-      .get<MenuItem[]>("/api/doughnuts")
+      .get<DoughnutItem[]>("/api/doughnuts")
       .then(setItems)
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -57,7 +59,8 @@ export function Doughnuts() {
       ) : (
         <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((d) => {
-            const soldOut = !d.inStock;
+            const soldOut = d.soldOut || !d.inStock;
+            const lowLeft = d.tracked && !soldOut && d.remaining != null && d.remaining <= 5;
             return (
               <div key={d.id} className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
                 <Link to={`/menu/${d.id}`} className="relative block">
@@ -68,11 +71,15 @@ export function Doughnuts() {
                     position={`${d.focalX ?? 50}% ${d.focalY ?? 50}%`}
                     className="aspect-[4/3] w-full bg-oat/30"
                   />
-                  {soldOut && (
+                  {soldOut ? (
                     <span className="absolute left-2 top-2 rounded-full bg-terracotta-dark px-2.5 py-0.5 text-xs font-bold text-cream">
                       Sold Out
                     </span>
-                  )}
+                  ) : lowLeft ? (
+                    <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                      Only {d.remaining} left
+                    </span>
+                  ) : null}
                 </Link>
                 <div className="flex flex-1 flex-col p-3 sm:p-4">
                   <div className="flex items-start justify-between gap-2">

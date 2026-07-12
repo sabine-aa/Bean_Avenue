@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
 import { DOUGHNUT_CATEGORY } from "../lib/constants";
+import { hansonMap, hansonToday } from "../lib/hanson";
 import { outMenuItem } from "../lib/serialize";
 
 export const doughnutsRouter = Router();
@@ -27,13 +28,18 @@ async function getPromo() {
   };
 }
 
-// GET /api/doughnuts  (public) — only today's available, visible doughnuts
+// GET /api/doughnuts  (public) — today's visible doughnuts, annotated with live
+// stock. Tracked (produced today) → remaining + soldOut; untracked → available.
 doughnutsRouter.get("/", async (_req, res) => {
   const items = await prisma.menuItem.findMany({
     where: { category: DOUGHNUT_CATEGORY, isHidden: false, availableToday: true },
-    orderBy: { sortOrder: "asc" },
+    orderBy: [{ sortOrder: "asc" }],
   });
-  res.json(items.map(outMenuItem));
+  const map = await hansonMap(hansonToday());
+  res.json(items.map((i) => {
+    const a = map.get(i.id);
+    return { ...outMenuItem(i), tracked: !!a, remaining: a ? a.remaining : null, soldOut: a ? a.remaining <= 0 : false, madeToday: a ? a.made : null };
+  }));
 });
 
 // GET /api/doughnuts/promo  (public) — homepage promo section settings
@@ -50,6 +56,47 @@ doughnutsRouter.get("/admin", requireAdmin, async (_req, res) => {
     orderBy: { sortOrder: "asc" },
   });
   res.json(items.map(outMenuItem));
+});
+
+// GET /api/doughnuts/production?date=YYYY-MM-DD  (admin) — Hanson daily stock.
+doughnutsRouter.get("/production", requireAdmin, async (req, res) => {
+  const date = String((req.query as Record<string, string>).date || "").trim() || hansonToday();
+  const items = await prisma.menuItem.findMany({
+    where: { category: DOUGHNUT_CATEGORY, isHidden: false },
+    orderBy: [{ sortOrder: "asc" }],
+    select: { id: true, name: true, subcategory: true, price: true, availableToday: true },
+  });
+  const map = await hansonMap(date);
+  const rows = items.map((i) => {
+    const a = map.get(i.id);
+    return { menuItemId: i.id, name: i.name, subcategory: i.subcategory || "Other", price: i.price, availableToday: i.availableToday, made: a?.made ?? 0, sold: a?.sold ?? 0, remaining: a ? a.remaining : 0, tracked: !!a };
+  });
+  const summary = {
+    made: rows.reduce((s, r) => s + r.made, 0),
+    sold: rows.reduce((s, r) => s + r.sold, 0),
+    remaining: rows.reduce((s, r) => s + r.remaining, 0),
+    revenue: Math.round(rows.reduce((s, r) => s + r.sold * r.price, 0) * 100) / 100,
+  };
+  res.json({ date, today: hansonToday(), rows, summary });
+});
+
+// POST /api/doughnuts/production  (admin) — set today's "made" per doughnut.
+//   { date?, entries: [{ menuItemId, made }], createdBy? }
+doughnutsRouter.post("/production", requireAdmin, async (req, res) => {
+  const date = String(req.body?.date || "").trim() || hansonToday();
+  const entries = Array.isArray(req.body?.entries) ? req.body.entries : [];
+  const createdBy = String(req.body?.createdBy ?? "Admin").trim() || "Admin";
+  for (const e of entries) {
+    const menuItemId = Number(e.menuItemId);
+    if (!menuItemId) continue;
+    const made = Math.max(0, Math.round(Number(e.made) || 0));
+    await prisma.hansonProduction.upsert({
+      where: { menuItemId_date: { menuItemId, date } },
+      create: { menuItemId, date, made, sold: 0, createdBy },
+      update: { made },
+    });
+  }
+  res.json({ ok: true, date });
 });
 
 // POST /api/doughnuts/promo  (admin) — update homepage promo settings

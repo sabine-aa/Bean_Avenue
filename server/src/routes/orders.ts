@@ -5,6 +5,7 @@ import { actorFrom, logActivity } from "../lib/activity";
 import { quoteDelivery } from "../lib/delivery";
 import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
 import { consumeForOrder, reverseForOrder } from "../lib/consumption";
+import { checkHansonAvailability } from "../lib/hanson";
 import { validateStock } from "../lib/inventory";
 import { awardOrderBeans, reverseOrderBeans } from "../lib/loyalty";
 import { notify } from "../lib/notify";
@@ -140,9 +141,11 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
   const fulfillment = body.fulfillment === "DELIVERY" ? "DELIVERY" : "PICKUP";
   const config = await storefrontConfig();
 
-  // Don't let the storefront oversell a stock-tracked item.
+  // Don't let the storefront oversell a stock-tracked item or a sold-out doughnut.
   const stockError = await validateStock(items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
   if (stockError) return res.status(409).json({ error: stockError });
+  const hansonError = await checkHansonAvailability(items.map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
+  if (hansonError) return res.status(409).json({ error: hansonError });
 
   // Build line items + money.
   const result = await buildLines(items);

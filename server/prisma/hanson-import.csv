@@ -1,0 +1,61 @@
+Category,Subcategory,Name,Description,Price,Available,Featured,Stock Tracking,Image URL / File,Original Type
+Hanson Donuts,Regular,Canelle,Ring Doughnut Rolled in Cinnamon sugar,$2.25,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Codineige,Ring Doughnut Rolled in Icing sugar,$2.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Royal Glaze,Ring Doughnut Dipped in Royal Glaze,$2.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Strawberry Glaze,Ring Doughnut Dipped in Strawberry Glaze,$2.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Nutella Glaze,"Ring Doughnut, Dipped in Nutella glaze",$2.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Lotus Glaze,Ring Doughnut Dipped in Lotus Glaze,$2.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Only You,Ring Doughnut Dipped in Milk Chocolate Ganash & a sprinkle of cacao,$3.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Only You Dark,Ring Doughnut Dipped in Dark Chocolate Ganash & a sprinkle of cacao,$3.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Only You White,Ring Doughnut White Chocolate Ganash & a sprinkle of cacao,$3.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Only Pistache,"Ring Doughnut Dipped in Pistachio Chocolate Ganash, a sprinkle of crushed Pistachio",$3.10,Yes,No,Optional,,1) Regular
+Hanson Donuts,Regular,Caramel Coco,Ring Doughnut Dipped in Caramel Chocolate ganash & a sprinkle of cacao,$3.00,Yes,No,Optional,,1) Regular
+Hanson Donuts,Advanced,Cookies n Cream,"Ring Doughnut Dipped in Nutella Glaze, topped with Crushed Oreo & Hershey's pieces",$3.00,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Biscuit Crunch,Ring Doughnut Dipped in Milk Chocolate Ganash & KitKat Crunch,$3.75,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,PB&J,"Ring Doughnut Filled with Strawberry jam spread Topped with Peanut butter glaze, a sprinkle of crushed peanuts & a swipe of jam",$2.75,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Strawberry Jam,Full Doughnut Filled with Strawberry jam. Rolled in Icing Sugar. Topped with a strawberry piece,$2.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Raspberry Jam,Full Doughnut Filled with Raspberry jam Rolled in icing sugar & topped with Raspberry pieces,$4.00,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Blackberry Jam,Full Doughnut Filled with Blackberry jam Rolled in icing sugar & topped with Blackberry pieces,$4.00,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Simply Nutella,Full Doughnut Filled with Nutella. Rolled in Icing Sugar.,$2.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Boston Dream,"Full Doughnut Filled with Vanilla Pastry cream Dipped in Dark chocolate ganash, & Cacao Sprinkle",$3.30,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Boston Cream,"Full Doughnut Filled with Vanilla Pastry cream Dipped in Milk chocolate ganash, & Cacao Sprinkle",$3.30,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,White Boston,"Full Doughnut Filled with Vanilla Pastry cream Dipped in White chocolate ganash, & Cacao Sprinkle",$3.30,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Crème Brulee,Full Doughnut Filled with Vanilla Pastry Cream Dipped in Molten sugar,$2.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Creamy Cloud,Full Doughnut Filled with Vanilla Pastry Cream Rolled in Icing sugar,$2.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,White Cloud,Full Doughnut Filled with White Chocolate Pastry Cream Rolled in Icing Sugar,$2.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Perdu Cloud,Square Pain Perdu Doughnut Rolled in Icing Sugar,$2.75,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Pain Perdu Lotus,"Square Pain Perdu Doughnut Topped with Lotus spread, & a sprinkle of lotus crumble",$3.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Pain Perdu Nutella,Square Pain Perdu Doughnut Topped with Nutella spread & a sprinkle of crushed hazelnut,$3.30,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Advanced,Triumph Caramel Cheesecake,"Ring Doughnut Topped with Chocolate Cheesecake cream, Chocolate chips and a drizzle of Salted butter caramel.",$3.50,Yes,No,Optional,,2) Advanced
+Hanson Donuts,Special,Perdu Bites,Perdu Doughnut Bites in cup Side: Pastry Cream in cup Sprinkle Icing Sugar,$2.75,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Bueno,"Ring Doughnut Filled with Chocolate Pastry cream, Dipped in White chocolate Ganash & topped with Bueno pieces & a sprinkle of crushed hazelnut & dark chocolate syrup drizzle",$4.80,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Choco Bueno,"Ring Doughnut Filled with Chocolate Pastry cream, Dipped in Milk chocolate Ganash & topped with White Bueno pieces & a sprinkle of crushed hazelnut & dark chocolate syrup drizzle",$4.80,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Ole Oreo,"Ring Doughnut Filled with Oreo Pastry Cream Dipped in White Chocolate Ganash, with a sprinkle of Powdered Oreo & a piece of Oreo Bisquit on top",$4.00,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Lotus Deluxe,"Ring Doughnut Filled with Lotus Pastry Cream Dipped in Lotus Glaze, topped with a of Sprinkle lotus crunch, a swipe of spread lotus spread, & a Lotus Bisquit.",$3.30,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Monkey Nutella,Ring Doughnut Filled with Nutella spread & Caramelized Banana Dipped in Nutella glaze & a Sprinkle of crushed hazelnut.,$3.30,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Creamy Nutella,"Ring Doughnut Filled with Vanilla Pastry Cream, & Nutella drizzle. Topped with Spread Nutella, & a Sprinkle of crushed Hazelnut.",$4.00,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Nutella Cheesecake,"Full Doughnut Filled with Cheesecake cream & Nutella drizzle. Dipped in Milk Chocolate ganash, with a drizzle of Nutella & powdered Biscuit sprinkle.",$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Captain Cookie,"Ring Doughnut Filled with Nutella Spread, & Cookie Crumble. Dipped in Milk Chocolate Ganash, topped with a Big Cookie piece, & Nutella Drizzle.",$5.20,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Captain Cookie White,"Ring Doughnut Filled with Nutella Spread, & Cookie Crumble. Dipped in White Chocolate Ganash, topped with a Big Cookie piece, & Nutella Drizzle.",$5.20,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Hazel Brownie,"Ring Doughnut Filled with Nutella Spread, & Brownie Crumble. Dipped in Milk Chocolate Ganash, topped with a Brownie Cube, & Nutella Drizzle.",$5.00,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Lucky Brownie,"Ring Doughnut Filled with Chocolate Pastry Cream Dipped in Dark Chocolate Ganash, topped with 2 brownie pieces a chocolate wafer roll & a Sprinkle of Cacao.",$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Super Brownie Perdu,"Open Square Pain Perdu Doughnut Dipped in Dark Chocolate Ganash, & Brownie Crumble, & Dark Chocolate Syrup drizzle.",$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Le Truffe,Full Doughnut Filled with Dark Choco Mousse Dipped in Dark chocolate ganash & cacao sprinkle,$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Le Truffe Blanc,Full Doughnut Filled with Dark Choco Mousse Dipped in White chocolate ganash & cacao sprinkle,$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Strawberry Cheesecake,"Full Doughnut Filled with Cheesecake spread, strawberry cuts, & digestive crumble Dipped in Royal Glaze, topped with a Half Strawberry piece, & digestive crumble sprinkle",$4.80,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Ma Tarte Aux Fraises,Ring Doughnut Filled with Vanilla Pastry Cream & strawberry cuts Topped with Icing sugar & a Strawberry,$4.50,Yes,No,Optional,,3) Special
+Hanson Donuts,Special,Super Berry Perdu,Square Pain Perdu Doughnut Rolled in Icing Sugar with blackberry/Bluberries & strawberries/raspberry pieces on top,$4.40,Yes,No,Optional,,3) Special
+Hanson Donuts,Creation,American Cheesecake,"Full Doughnut Filled with Cheesecake Cream, & a drizzle of Raspberry Jam. Dipped in White chocolate Ganash, & a sprinkle of Lotus Powder.",$4.80,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,American Strawberry Cheesecake,"Full Doughnut Filled with Cheesecake Cream, & a drizzle of Strawberry Jam. Dipped in Strawberry chocolate Ganash, & a sprinkle of Lotus Powder.",$4.80,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Salted Butter Caramel Cheescake,"Full Pain perdu Doughnut Filled with Cheesecake cream, & caramel drizzle Topped with Cheesecake Cream, caramel Drizzle, & a sprinkle of Lotus crumble.",$4.50,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Cheesecake Dream Perdu,"Ring Pain Perdu Doughnut Filled with Cheesecake Cream & Dark chocolate chips Dipped in Milk Chocolate Ganash, topped with Cheesecake Cream, biscuit stix & Cacao sprinkle.",$5.00,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Oh Pain Perdu,"Square Pain Perdu Doughnut Topped with Nutella spread, torched marshmallow Nutella drizzle & a sprinkle of crushed Hazelnut",$3.80,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Pain Perdu Intense,"Open Square Pain Perdu doughnut, Topped with Lotus pastry cream with Nutella drizzle & lotus crumble",$4.00,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Choco Cheese Perdu,"Open Square Perdu Doughnut Topped with Chocolate Cheesecake cream, Dark Choco Syrup drizzle, bisquit sprinkle, & a Wafer roll.",$4.20,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Strawberry Cheesecake Perdu,"Open Square pain perdu Doughnut Filled with Cheesecake cream & strawberry cuts Topped with Cheesecake Cream, Strawberry jam drizzle, & a sprinkle of Biscuit crumble.",$5.20,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Pink Lotus,"Ring Doughnut Filled with Lotus Pastry Cream, & Strawberry Slices Dipped in Strawberry Glaze, topped with lotus sprinkle, & a half strawberry",$4.50,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Tarte Tatin,"Ring Doughnut Filled with White choco Pastry cream Dipped in White choco ganash, topped with Caramelized apples, & a sprinkle of lotus powder.",$4.00,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Bean Special,"Full Doughnut Espresso cream filling Dipped in Coffee caramel chocolate ganash, topped with espresso cream & a biscuit stix",$4.80,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Pistache,"Full Doughnut Filled with Pistachio cream Dipped in Pistachio white Chocolate Ganash, topped with dried raspberry crumbles & crushed pistachio crumble.",$5.00,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Ruby Crown,"Full Doughnut Rolled in Butter & Cinnamon sugar, topped with Cheesecake cream, white wafer roll pieces, & a piece of Raspberry/Blackberry.",$5.50,Yes,No,Optional,,4) Creation
+Hanson Donuts,Creation,Midnight Crunch,"Square doughnut Filled with chocolate mousse & brownie Dipped in Milk Choco Ganash, & topped with Cornflakes ganash mix & Nutella Drizzle.",$5.20,Yes,No,Optional,,4) Creation
