@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Img } from "../components/Img";
 import { PhoneInput } from "../components/PhoneInput";
 import { useToast } from "../context/ToastContext";
@@ -135,12 +135,12 @@ export function Shop() {
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {shown.map((p) => (
           <div key={p.id} className="group flex flex-col rounded-2xl bg-white p-3 shadow-sm transition hover:shadow-md">
-            <button onClick={() => setDetail(p)} className="relative">
+            <Link to={`/shop/${p.id}`} className="relative block">
               <Img src={p.images[0] ?? ""} alt={p.name} fit="contain" className="aspect-square w-full rounded-xl bg-[#efe7dc]" />
               {p.featured && <span className="absolute left-2 top-2 rounded-full bg-espresso px-2 py-0.5 text-[10px] font-bold text-cream">BEST SELLER</span>}
-            </button>
+            </Link>
             <div className="mt-2 flex flex-1 flex-col">
-              <button onClick={() => setDetail(p)} className="text-left text-sm font-semibold leading-tight text-espresso hover:text-terracotta">{p.name}</button>
+              <Link to={`/shop/${p.id}`} className="text-left text-sm font-semibold leading-tight text-espresso hover:text-terracotta">{p.name}</Link>
               <p className="mt-0.5 text-xs text-charcoal/45">{p.description.split(" · ").slice(1, 2).join("")}</p>
               <div className="mt-2 flex items-center justify-between">
                 <span className="font-bold text-terracotta">{money(p.price)}</span>

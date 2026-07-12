@@ -78,7 +78,7 @@ export function CompactShopCard({ product }: { product: HomeShopProduct }) {
     preorder ? ["Preorder", "bg-[#5b3fd6]/15 text-[#5b3fd6]"] : ["Out", "bg-terracotta/15 text-terracotta-dark"];
   return (
     <div className="card-lift flex w-44 shrink-0 snap-start flex-col overflow-hidden rounded-2xl bg-white shadow-sm sm:w-48">
-      <button onClick={() => navigate("/shop")} className="block">
+      <button onClick={() => navigate(`/shop/${product.id}`)} className="block">
         <Img src={product.images[0] ?? ""} alt={product.name} fit="contain" className="aspect-square w-full bg-[#efe7dc]" />
       </button>
       <div className="flex flex-1 flex-col p-3">
@@ -89,7 +89,7 @@ export function CompactShopCard({ product }: { product: HomeShopProduct }) {
           <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${badge[1]}`}>{badge[0]}</span>
         </div>
         <button
-          onClick={() => (preorder || product.status === "OUT" ? navigate("/shop") : (addToShopCart(product), toast(`${product.name.split(" - ")[0]} added — checkout in the shop 🛍`)))}
+          onClick={() => (preorder || product.status === "OUT" ? navigate(`/shop/${product.id}`) : (addToShopCart(product), toast(`${product.name.split(" - ")[0]} added — checkout in the shop 🛍`)))}
           className="btn-3d mt-2 w-full rounded-full bg-espresso py-1.5 text-xs font-bold text-cream"
         >
           {preorder ? "Preorder" : product.status === "OUT" ? "View" : "Add to Cart"}
