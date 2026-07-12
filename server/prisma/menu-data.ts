@@ -171,9 +171,9 @@ export const MENU_ITEMS: MenuSeedItem[] = [
   { name: "Dessert Fuel", category: "Protein Drinks", price: PROTEIN_PRICE, description: "Cookies-and-cream style protein treat.", nutrition: { kcal: 455, protein: 33, carbs: 50, fat: 15, fibers: 5 }, photo: "/api/uploads/protein-dessert-fuel.png", imageFit: "contain" },
 
   // ---------------- Soft Cream (Cream Avenue) — free toppings via add-ons ----------------
-  { name: "Chocolate", category: "Soft Cream", price: 5, description: "Chocolate soft serve.", photo: null },
-  { name: "Vanilla", category: "Soft Cream", price: 5, description: "Vanilla soft serve.", photo: null },
-  { name: "Mixed Chocolate & Vanilla", category: "Soft Cream", price: 5, description: "A swirl of chocolate & vanilla soft serve.", photo: null },
+  { name: "Chocolate", category: "Soft Cream", price: 5, description: "Chocolate soft serve.", photo: "/photos/soft-cream/chocolate.jpg" },
+  { name: "Vanilla", category: "Soft Cream", price: 5, description: "Vanilla soft serve.", photo: "/photos/soft-cream/vanilla.jpg" },
+  { name: "Mixed Chocolate & Vanilla", category: "Soft Cream", price: 5, description: "A swirl of chocolate & vanilla soft serve.", photo: "/photos/soft-cream/mix.jpg" },
 
   // ---------------- Special Items (dessert board) ----------------
   { name: "Strawberry Dubai Chocolate", category: "Special Items", price: 8 },
