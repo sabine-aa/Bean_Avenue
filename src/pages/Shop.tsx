@@ -14,6 +14,9 @@ type ShopProduct = {
 type ShopCategory = { id: number; name: string };
 type CartLine = { productId: number; name: string; price: number; image: string; quantity: number };
 
+const MACHINE_CATS = ["Iperespresso Capsule Machines", "illy Easy Compatible Capsule Machines", "ESE Pod Machines", "Milk Frothers", "Coffee Makers"];
+const ALL_COFFEE = "All Coffee";
+const ALL_MACHINES = "All Machines & Makers";
 const CART_KEY = "beanavenue.shopCart";
 const loadCart = (): CartLine[] => { try { return JSON.parse(localStorage.getItem(CART_KEY) || "[]"); } catch { return []; } };
 
@@ -22,7 +25,7 @@ export function Shop() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [cats, setCats] = useState<ShopCategory[]>([]);
-  const [active, setActive] = useState("All Coffee");
+  const [active, setActive] = useState(ALL_COFFEE);
   const [detail, setDetail] = useState<ShopProduct | null>(null);
   const [cart, setCart] = useState<CartLine[]>(loadCart);
   const [showCart, setShowCart] = useState(false);
@@ -43,7 +46,14 @@ export function Shop() {
   }, []);
   useEffect(() => { localStorage.setItem(CART_KEY, JSON.stringify(cart)); }, [cart]);
 
-  const shown = useMemo(() => (active === "All Coffee" ? products : products.filter((p) => p.category === active)), [products, active]);
+  const machineSet = useMemo(() => new Set(MACHINE_CATS), []);
+  const coffeeCats = useMemo(() => cats.filter((c) => !machineSet.has(c.name)), [cats, machineSet]);
+  const machineCats = useMemo(() => cats.filter((c) => machineSet.has(c.name)), [cats, machineSet]);
+  const shown = useMemo(() => {
+    if (active === ALL_COFFEE) return products.filter((p) => !machineSet.has(p.category));
+    if (active === ALL_MACHINES) return products.filter((p) => machineSet.has(p.category));
+    return products.filter((p) => p.category === active);
+  }, [products, active, machineSet]);
   const cartCount = cart.reduce((s, l) => s + l.quantity, 0);
   const cartTotal = Math.round(cart.reduce((s, l) => s + l.price * l.quantity, 0) * 100) / 100;
 
@@ -96,7 +106,6 @@ export function Shop() {
     }
   }
 
-  const tabs = ["All Coffee", ...cats.map((c) => c.name)];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -105,13 +114,21 @@ export function Shop() {
         <p className="mt-2 text-charcoal/60">Take illy home — capsules, beans, ground coffee & more. Order online for pickup.</p>
       </div>
 
-      {/* Category nav (illy-style) */}
-      <div className="sticky top-16 z-20 -mx-4 mt-6 overflow-x-auto border-b border-oat bg-cream/95 px-4 py-3 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex gap-6 whitespace-nowrap">
-          {tabs.map((t) => (
+      {/* Category nav (illy-style) — Coffee on top, Machines & Makers below */}
+      <div className="sticky top-16 z-20 -mx-4 mt-6 border-b border-oat bg-cream/95 px-4 py-3 backdrop-blur">
+        <div className="flex gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {[ALL_COFFEE, ...coffeeCats.map((c) => c.name)].map((t) => (
             <button key={t} onClick={() => setActive(t)} className={`text-sm font-semibold transition ${active === t ? "text-espresso underline decoration-terracotta decoration-2 underline-offset-8" : "text-charcoal/55 hover:text-espresso"}`}>{t}</button>
           ))}
         </div>
+        {machineCats.length > 0 && (
+          <div className="mt-2 flex items-center gap-5 overflow-x-auto whitespace-nowrap border-t border-oat/60 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-charcoal/35">Machines &amp; Makers</span>
+            {[ALL_MACHINES, ...machineCats.map((c) => c.name)].map((t) => (
+              <button key={t} onClick={() => setActive(t)} className={`text-sm font-semibold transition ${active === t ? "text-espresso underline decoration-terracotta decoration-2 underline-offset-8" : "text-charcoal/55 hover:text-espresso"}`}>{t === ALL_MACHINES ? "All Machines" : t}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Grid */}
