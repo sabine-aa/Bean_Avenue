@@ -33,6 +33,8 @@ export interface MenuItem {
   ingredients?: string | null;
   nutrition?: Nutrition | null;
   inStock: boolean;
+  trackStock?: boolean; // limited-stock item (e.g. cold sandwiches, salads)
+  stockQty?: number; // units on hand when trackStock is on
   isHidden: boolean;
   isBestSeller?: boolean;
   availableToday?: boolean;

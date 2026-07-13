@@ -286,7 +286,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   useEffect(() => {
     Promise.all([api.get<MenuItem[]>("/api/menu"), api.get<string[]>("/api/categories")])
       .then(([m, c]) => {
-        const menu = m.filter((i) => i.inStock && !i.isHidden);
+        // Keep limited-stock items (sandwiches, salads…) on screen even at zero so
+        // the cashier sees them greyed-out, not vanished. Plain 86'd items drop out.
+        const menu = m.filter((i) => !i.isHidden && (i.inStock || i.trackStock));
         setItems(menu);
         setCats(c);
         cacheMenu(menu, c);
@@ -352,6 +354,14 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const total = Math.round((subtotal - disc) * 100) / 100;
 
   function addItem(item: MenuItem) {
+    // Limited-stock items can't be over-added — count what's already on the ticket.
+    if (item.trackStock && typeof item.stockQty === "number") {
+      const inTicket = lines.reduce((s, l) => (l.item.id === item.id ? s + l.quantity : s), 0);
+      if (inTicket >= item.stockQty) {
+        alert(item.stockQty <= 0 ? `${item.name} is sold out.` : `Only ${item.stockQty} ${item.name} in stock.`);
+        return;
+      }
+    }
     const options = defaultOptions(item);
     // Sizes/add-ons → open the customizer for a fresh line. Simple items add instantly.
     if (needsConfig(item)) {
@@ -374,7 +384,19 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setModal(null);
   }
   const setQty = (id: number, delta: number) =>
-    setLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: l.quantity + delta }]) : [l])));
+    setLines((ls) =>
+      ls.flatMap((l) => {
+        if (l.id !== id) return [l];
+        let q = l.quantity + delta;
+        if (q <= 0) return [];
+        // Don't let a + push a limited item past its stock (minus other lines of it).
+        if (delta > 0 && l.item.trackStock && typeof l.item.stockQty === "number") {
+          const others = ls.reduce((s, x) => (x.item.id === l.item.id && x.id !== l.id ? s + x.quantity : s), 0);
+          q = Math.min(q, Math.max(l.quantity, l.item.stockQty - others));
+        }
+        return [{ ...l, quantity: q }];
+      })
+    );
 
   function newSale() {
     setLines([]); setShopLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin(""); setTicketOpen(false);
@@ -1228,16 +1250,26 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
 // ---- Product tiles (image mode vs compact mode) -------------------------------
 function PosMenuTile({ item, compact, onAdd }: { item: MenuItem; compact: boolean; onAdd: () => void }) {
   const price = item.options.length ? `From ${money(item.price)}` : money(item.price);
+  const tracked = item.trackStock === true && typeof item.stockQty === "number";
+  const left = tracked ? (item.stockQty as number) : null;
+  const out = left != null && left <= 0;
+  const stockCls = left == null ? "" : left <= 0 ? "text-terracotta-dark" : left <= 5 ? "text-amber-600" : "text-charcoal/45";
   if (compact) {
     return (
-      <button onClick={onAdd} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95">
+      <button onClick={onAdd} disabled={out} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
         <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{item.name}</p>
-        <p className="mt-1 text-sm font-bold text-terracotta">{price}</p>
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-sm font-bold text-terracotta">{price}</span>
+          {left != null && <span className={`text-[10px] font-semibold ${stockCls}`}>{out ? "Out" : left}</span>}
+        </div>
       </button>
     );
   }
   return (
-    <button onClick={onAdd} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95">
+    <button onClick={onAdd} disabled={out} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+      {left != null && (
+        <span className={`absolute right-1 top-1 z-10 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${stockCls}`}>{out ? "Out" : `${left} left`}</span>
+      )}
       {item.photo
         ? <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-[4/3] w-full bg-oat/30" />
         : <div className="flex aspect-[5/2] w-full items-center justify-center bg-oat/40 text-lg font-bold text-espresso/25">{item.name.slice(0, 1)}</div>}

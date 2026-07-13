@@ -15,6 +15,8 @@ interface CartContextValue {
   updateQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
+  // How many more of a limited-stock item can still be added (null = unlimited).
+  remainingFor: (item: MenuItem) => number | null;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -55,10 +57,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // Same item + same customisation merges; any difference is a new line.
         const key = `${item.id}::${optKey}::${addonKey}::${noteKey}`;
         setLines((prev) => {
+          // Limited-stock items (cold sandwiches, salads…) can never exceed what's
+          // on hand — sum every line for this product and clamp the amount added.
+          let qty = quantity;
+          if (item.trackStock && typeof item.stockQty === "number") {
+            const already = prev.reduce((s, l) => (l.menuItemId === item.id ? s + l.quantity : s), 0);
+            qty = Math.min(quantity, Math.max(0, item.stockQty - already));
+            if (qty <= 0) return prev;
+          }
           const existing = prev.find((l) => l.key === key);
           if (existing) {
             return prev.map((l) =>
-              l.key === key ? { ...l, quantity: l.quantity + quantity } : l
+              l.key === key ? { ...l, quantity: l.quantity + qty } : l
             );
           }
           const unitPrice =
@@ -74,7 +84,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               photo: item.photo,
               basePrice: item.price,
               unitPrice,
-              quantity,
+              quantity: qty,
               selectedOptions,
               addons,
               specialInstructions: noteKey,
@@ -90,6 +100,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ),
       remove: (key) => setLines((prev) => prev.filter((l) => l.key !== key)),
       clear: () => setLines([]),
+      remainingFor: (item) => {
+        if (!item.trackStock || typeof item.stockQty !== "number") return null;
+        const already = lines.reduce((s, l) => (l.menuItemId === item.id ? s + l.quantity : s), 0);
+        return Math.max(0, item.stockQty - already);
+      },
     };
   }, [lines]);
 

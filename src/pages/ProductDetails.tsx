@@ -10,7 +10,7 @@ import type { AddonGroup, MenuItem, SelectedAddon, SelectedOption } from "../typ
 export function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { add } = useCart();
+  const { add, remainingFor } = useCart();
   const toast = useToast();
 
   const [item, setItem] = useState<MenuItem | null>(null);
@@ -131,6 +131,9 @@ export function ProductDetails() {
 
   const isDoughnut = item.category === "Hanson Doughnuts";
   const backTo = isDoughnut ? "/doughnuts" : "/menu";
+  const remaining = remainingFor(item); // null = unlimited; caps a limited item's quantity
+  const maxQty = remaining == null ? 20 : Math.min(20, remaining);
+  const soldOut = !item.inStock || remaining === 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -333,6 +336,9 @@ export function ProductDetails() {
             />
           </div>
 
+          {remaining != null && remaining > 0 && remaining <= 8 && (
+            <p className="mt-6 text-sm font-semibold text-amber-600">Only {remaining} left in stock</p>
+          )}
           <div className="mt-8 flex items-center gap-4">
             <div className="flex items-center rounded-full border border-oat bg-white">
               <button
@@ -344,15 +350,16 @@ export function ProductDetails() {
               </button>
               <span className="w-8 text-center font-semibold" aria-live="polite">{quantity}</span>
               <button
-                onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                className="px-4 py-2 text-lg font-bold text-espresso"
+                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+                disabled={quantity >= maxQty}
+                className="px-4 py-2 text-lg font-bold text-espresso disabled:opacity-30"
                 aria-label="Increase quantity"
               >
                 +
               </button>
             </div>
             <button
-              disabled={!item.inStock || unmetGroups.length > 0}
+              disabled={soldOut || unmetGroups.length > 0}
               onClick={() => {
                 add(item, quantity, selectedOptions, selectedAddons, instructions);
                 toast(`${item.name} added to cart ☕`);
@@ -360,7 +367,7 @@ export function ProductDetails() {
               }}
               className="btn-3d flex-1 rounded-full bg-espresso px-6 py-3 font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {!item.inStock
+              {soldOut
                 ? "Sold out"
                 : unmetGroups.length > 0
                   ? `Choose your ${unmetGroups[0].name}`

@@ -77,6 +77,7 @@ export function AdminInventory() {
 
   const s = q.trim().toLowerCase();
   const filtered = items.filter((i) => s === "" || i.name.toLowerCase().includes(s) || i.category.toLowerCase().includes(s));
+  const categories = [...new Set(items.map((i) => i.category))].sort();
   const tracked = filtered.filter((i) => i.trackStock);
   const untracked = filtered.filter((i) => !i.trackStock);
 
@@ -103,6 +104,12 @@ export function AdminInventory() {
       </div>
 
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full max-w-sm rounded-xl border border-oat bg-white px-4 py-2.5 text-sm" />
+      <div className="flex flex-wrap gap-1.5">
+        <button onClick={() => setQ("")} className={`rounded-full px-3 py-1 text-xs font-semibold ${q === "" ? "bg-espresso text-cream" : "bg-white text-espresso hover:bg-oat"}`}>All</button>
+        {categories.map((c) => (
+          <button key={c} onClick={() => setQ(c)} className={`rounded-full px-3 py-1 text-xs font-semibold ${q === c ? "bg-espresso text-cream" : "bg-white text-espresso hover:bg-oat"}`}>{c}</button>
+        ))}
+      </div>
 
       {/* Tracked items */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">
@@ -131,12 +138,13 @@ export function AdminInventory() {
       {/* Untracked items — enable tracking */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">
         <h2 className="font-display text-xl font-bold text-espresso">Not tracked</h2>
-        <p className="mt-1 text-xs text-charcoal/50">Made-to-order drinks usually don't need counting. Turn tracking on for anything with a finite daily count.</p>
+        <p className="mt-1 text-xs text-charcoal/50">Made-to-order drinks usually don't need counting. For a limited item (cold sandwiches, salads, pastries…) just <b>Set count</b> to how many you have — that turns tracking on and it can't be over-ordered.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {untracked.map((i) => (
-            <button key={i.id} disabled={busyId === i.id} onClick={() => setTracking(i, true)} className="rounded-full border border-oat px-3 py-1.5 text-xs font-semibold text-espresso hover:border-sage hover:bg-sage/10 disabled:opacity-40">
-              + Track {i.name}
-            </button>
+            <div key={i.id} className="flex items-center gap-1 rounded-full border border-oat py-0.5 pl-3 pr-1">
+              <span className="text-xs font-semibold text-espresso">{i.name}</span>
+              <button disabled={busyId === i.id} onClick={() => adjust(i, "COUNT")} className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold text-sage-dark hover:bg-sage/25 disabled:opacity-40">Set count</button>
+            </div>
           ))}
         </div>
       </section>

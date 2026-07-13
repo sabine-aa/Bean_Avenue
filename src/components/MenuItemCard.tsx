@@ -6,9 +6,11 @@ import type { MenuItem } from "../types";
 import { Img } from "./Img";
 
 export function MenuItemCard({ item }: { item: MenuItem }) {
-  const { add } = useCart();
+  const { add, remainingFor } = useCart();
   const toast = useToast();
   const hasOptions = item.options.length > 0;
+  const remaining = remainingFor(item); // null = unlimited
+  const lowStock = remaining != null && remaining <= 8; // show count for limited items
 
   return (
     <div className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -50,25 +52,30 @@ export function MenuItemCard({ item }: { item: MenuItem }) {
               </span>
             ))}
           </div>
-          {!item.inStock ? (
+          {!item.inStock || remaining === 0 ? (
             <span className="text-sm font-medium text-charcoal/50">Sold out</span>
-          ) : hasOptions ? (
-            <Link
-              to={`/menu/${item.id}`}
-              className="rounded-full bg-oat px-4 py-1.5 text-sm font-semibold text-espresso transition hover:bg-espresso hover:text-cream"
-            >
-              View
-            </Link>
           ) : (
-            <button
-              onClick={() => {
-                add(item, 1, []);
-                toast(`${item.name} added to cart ☕`);
-              }}
-              className="btn-3d rounded-full bg-espresso px-4 py-1.5 text-sm font-semibold text-cream"
-            >
-              Add to Cart
-            </button>
+            <div className="flex items-center gap-2">
+              {lowStock && <span className="whitespace-nowrap text-xs font-semibold text-amber-600">Only {remaining} left</span>}
+              {hasOptions ? (
+                <Link
+                  to={`/menu/${item.id}`}
+                  className="rounded-full bg-oat px-4 py-1.5 text-sm font-semibold text-espresso transition hover:bg-espresso hover:text-cream"
+                >
+                  View
+                </Link>
+              ) : (
+                <button
+                  onClick={() => {
+                    add(item, 1, []);
+                    toast(`${item.name} added to cart ☕`);
+                  }}
+                  className="btn-3d rounded-full bg-espresso px-4 py-1.5 text-sm font-semibold text-cream"
+                >
+                  Add to Cart
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
