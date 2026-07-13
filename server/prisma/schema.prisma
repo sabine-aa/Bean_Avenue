@@ -665,6 +665,10 @@ model InventoryItem {
   costPerUnit Float     @default(0) // for stock valuation + cost reports
   supplier    String?
   expiryDate  DateTime?
+  trackExpiry Boolean   @default(false)
+  batchLot    String? // delivery batch / lot reference (optional)
+  storageLocation String? // Fridge, Freezer, Dry Storage, Bar… (optional)
+  notes       String?
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -835,6 +839,9 @@ model RecipeComponent {
   inventoryItemId Int
   item            InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   quantity        Float // amount of `item` consumed, in the item's unit
+  // For a REPLACE add-on line: the base ingredient this one swaps out (e.g. Oat
+  // Milk replaces Milk) — when the add-on is chosen, the base item is not deducted.
+  replacesInventoryItemId Int?
   createdAt       DateTime      @default(now())
 
   @@index([menuItemId])

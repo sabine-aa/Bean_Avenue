@@ -16,7 +16,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,png,svg,jpg,jpeg,webp,woff,woff2}"],
         // Shop product photos are many and load on demand — keep them out of the
         // precache so the service worker install stays small.
-        globIgnores: ["**/photos/shop/**", "**/photos/doughnuts/**"],
+        globIgnores: ["**/photos/shop/**", "**/photos/doughnuts/**", "**/xlsx-*.js"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [
           {

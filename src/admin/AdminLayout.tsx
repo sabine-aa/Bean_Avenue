@@ -74,6 +74,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/suppliers", label: "Suppliers" },
       { to: "/admin/recipes", label: "Recipes" },
       { to: "/admin/low-stock", label: "Low Stock Alerts" },
+      { to: "/admin/import", label: "Import from Excel" },
     ],
   },
   {

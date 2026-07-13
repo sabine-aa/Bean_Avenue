@@ -40,10 +40,20 @@ export async function resolveConsumption(items: ConsumptionLine[]): Promise<Map<
     const mid = Number(line.menuItemId);
     const qty = Number(line.quantity) || 1;
     const size = sizeOf(line);
-    // Base recipe: no add-on, size unset or matching the chosen size.
+    const chosenAddonIds = new Set((line.addons ?? []).map((a) => Number(a.addonId)));
+    // REPLACE add-ons: any base ingredient these swap out must NOT be deducted
+    // (e.g. Oat Milk add-on replaces Milk → deduct oat milk, not regular milk).
+    const replaced = new Set<number>();
+    for (const c of comps) {
+      if (c.menuItemId === mid && c.addonId != null && chosenAddonIds.has(c.addonId) && c.replacesInventoryItemId != null) {
+        replaced.add(c.replacesInventoryItemId);
+      }
+    }
+    // Base recipe: no add-on, size unset or matching the chosen size, not replaced.
     for (const c of comps) {
       if (c.menuItemId !== mid || c.addonId != null) continue;
       if (c.size != null && c.size !== size) continue;
+      if (replaced.has(c.inventoryItemId)) continue;
       add(c.inventoryItemId, c.quantity * qty);
     }
     // Add-on recipes: consumed per chosen add-on (× its quantity).
