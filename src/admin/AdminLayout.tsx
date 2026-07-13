@@ -1,114 +1,259 @@
-import { Link, Navigate, NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAdminAuth } from "../context/AdminAuthContext";
 
-const links = [
-  { to: "/admin", label: "Dashboard", end: true },
-  { to: "/admin/orders", label: "Orders" },
-  { to: "/admin/delivery", label: "Delivery" },
-  { to: "/admin/payments", label: "Payments" },
-  { to: "/admin/menu", label: "Menu Manager" },
-  { to: "/admin/shop-products", label: "Shop Products" },
-  { to: "/admin/preorders", label: "Preorders" },
-  { to: "/admin/addons", label: "Add-ons" },
-  { to: "/admin/doughnuts", label: "Hanson Doughnuts" },
-  { to: "/admin/hanson-production", label: "Hanson Production" },
-  { to: "/admin/hanson-reports", label: "Hanson Reports" },
-  { to: "/admin/featured", label: "Homepage Featured" },
-  { to: "/admin/bookings", label: "Room Bookings" },
-  { to: "/admin/rooms", label: "Rooms" },
-  { to: "/admin/customers", label: "Customers" },
-  { to: "/admin/rewards", label: "Rewards" },
-  { to: "/admin/birthday", label: "Birthday Rewards" },
-  { to: "/admin/loyalty", label: "Loyalty Points" },
-  { to: "/admin/events", label: "Events" },
-  { to: "/admin/event-suggestions", label: "Ideas & Voting" },
-  { to: "/admin/banners", label: "Homepage Banner" },
-  { to: "/admin/subscribers", label: "Offer Sign-ups" },
-  { to: "/admin/suggestions", label: "Suggestions" },
-  { to: "/admin/reports", label: "Sales Reports" },
-  { to: "/admin/inventory", label: "Product Stock" },
-  { to: "/admin/stock", label: "Stock / Ingredients" },
-  { to: "/admin/restock", label: "Restock / Receive" },
-  { to: "/admin/suppliers", label: "Suppliers" },
-  { to: "/admin/recipes", label: "Recipes" },
-  { to: "/admin/staff", label: "Register Staff" },
-  { to: "/admin/timesheets", label: "Timesheets" },
+type NavItem = { to: string; label: string; end?: boolean };
+type NavGroup = { title: string; icon: string; items: NavItem[] };
+
+// The one Main item lives above the collapsible groups as a standalone link.
+const DASHBOARD: NavItem = { to: "/admin", label: "Dashboard", end: true };
+
+const GROUPS: NavGroup[] = [
+  {
+    title: "Sales & Orders",
+    icon: "🧾",
+    items: [
+      { to: "/admin/orders", label: "Orders" },
+      { to: "/admin/reports", label: "Sales Reports" },
+      { to: "/admin/payments", label: "Payments" },
+      { to: "/admin/delivery", label: "Delivery" },
+    ],
+  },
+  {
+    title: "Menu & Products",
+    icon: "☕",
+    items: [
+      { to: "/admin/menu", label: "Menu Manager" },
+      { to: "/admin/addons", label: "Add-ons" },
+      { to: "/admin/featured", label: "Featured Items" },
+      { to: "/admin/banners", label: "Home Banner" },
+    ],
+  },
+  {
+    title: "Shop / Retail",
+    icon: "🛍",
+    items: [
+      { to: "/admin/shop-products", label: "Shop Products" },
+      { to: "/admin/preorders", label: "Preorders" },
+      { to: "/admin/inventory", label: "Retail Product Stock" },
+    ],
+  },
+  {
+    title: "Hanson Doughnuts",
+    icon: "🍩",
+    items: [
+      { to: "/admin/doughnuts", label: "Doughnut Products" },
+      { to: "/admin/hanson-production", label: "Daily Production" },
+      { to: "/admin/hanson-reports", label: "Hanson Reports" },
+    ],
+  },
+  {
+    title: "Rooms",
+    icon: "🛎",
+    items: [
+      { to: "/admin/bookings", label: "Room Bookings" },
+      { to: "/admin/rooms", label: "Rooms" },
+    ],
+  },
+  {
+    title: "Customers & Loyalty",
+    icon: "👥",
+    items: [
+      { to: "/admin/customers", label: "Customers" },
+      { to: "/admin/rewards", label: "Rewards" },
+      { to: "/admin/birthday", label: "Birthday Rewards" },
+      { to: "/admin/loyalty", label: "Loyalty Points" },
+    ],
+  },
+  {
+    title: "Inventory",
+    icon: "📦",
+    items: [
+      { to: "/admin/stock", label: "Ingredients Inventory" },
+      { to: "/admin/restock", label: "Restock / Receiving" },
+      { to: "/admin/suppliers", label: "Suppliers" },
+      { to: "/admin/recipes", label: "Recipes" },
+    ],
+  },
+  {
+    title: "Events & Marketing",
+    icon: "🎉",
+    items: [
+      { to: "/admin/events", label: "Events" },
+      { to: "/admin/event-suggestions", label: "Event Ideas & Voting" },
+      { to: "/admin/subscribers", label: "Offer Signups" },
+      { to: "/admin/suggestions", label: "Suggestions" },
+    ],
+  },
+  {
+    title: "Staff & Register",
+    icon: "⏱",
+    items: [
+      { to: "/admin/staff", label: "Staff & PINs" },
+      { to: "/admin/timesheets", label: "Staff Timesheets" },
+    ],
+  },
 ];
+
+// Most-used one-tap actions, kept out of the grouped list so it stays clean.
+const QUICK = [
+  { to: "/admin/menu", label: "+ Product" },
+  { to: "/admin/restock", label: "+ Restock" },
+  { to: "/book", label: "Book Room" },
+];
+
+const itemIsActive = (pathname: string, to: string) => pathname === to || pathname.startsWith(to + "/");
+const activeGroupTitle = (pathname: string) =>
+  GROUPS.find((g) => g.items.some((i) => itemIsActive(pathname, i.to)))?.title ?? null;
+
+// The sidebar body — shared by the desktop rail and the mobile drawer.
+function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const active = activeGroupTitle(pathname);
+    return active ? { [active]: true } : {};
+  });
+
+  // Keep the section you're in expanded as you move around.
+  useEffect(() => {
+    const active = activeGroupTitle(pathname);
+    if (active) setOpen((o) => (o[active] ? o : { ...o, [active]: true }));
+  }, [pathname]);
+
+  const linkCls = ({ isActive }: { isActive: boolean }) =>
+    `block rounded-lg px-3 py-2 text-sm font-medium transition ${
+      isActive ? "bg-mocha text-cream" : "text-oat hover:bg-mocha/60"
+    }`;
+
+  return (
+    <>
+      {/* Quick actions */}
+      <div className="mb-3 space-y-2">
+        <Link to="/pos" onClick={onNavigate} className="block rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark">
+          🧾 Open Register
+        </Link>
+        <Link to="/kds" onClick={onNavigate} className="block rounded-lg bg-mocha px-3 py-2 text-center text-sm font-bold text-cream transition hover:bg-mocha/80">
+          🍳 Kitchen Display
+        </Link>
+        <div className="flex flex-wrap gap-1.5">
+          {QUICK.map((q) => (
+            <Link key={q.label} to={q.to} onClick={onNavigate} className="rounded-full border border-oat/30 px-2.5 py-1 text-xs font-semibold text-oat transition hover:bg-mocha/60">
+              {q.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Main */}
+      <NavLink to={DASHBOARD.to} end={DASHBOARD.end} onClick={onNavigate} className={linkCls}>
+        🏠 Dashboard
+      </NavLink>
+
+      {/* Collapsible groups */}
+      <nav className="mt-2 flex flex-col gap-0.5" aria-label="Admin sections">
+        {GROUPS.map((g) => {
+          const isOpen = !!open[g.title];
+          const hasActive = g.items.some((i) => itemIsActive(pathname, i.to));
+          return (
+            <div key={g.title}>
+              <button
+                onClick={() => setOpen((o) => ({ ...o, [g.title]: !o[g.title] }))}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide transition hover:bg-mocha/40 ${
+                  hasActive ? "text-cream" : "text-oat/60"
+                }`}
+                aria-expanded={isOpen}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-sm">{g.icon}</span>
+                  {g.title}
+                  {hasActive && !isOpen && <span className="h-1.5 w-1.5 rounded-full bg-terracotta" />}
+                </span>
+                <span className={`text-base leading-none transition-transform ${isOpen ? "rotate-90" : ""}`}>›</span>
+              </button>
+              {isOpen && (
+                <div className="mb-1 ml-2 space-y-0.5 border-l border-mocha/50 pl-2">
+                  {g.items.map((i) => (
+                    <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} className={linkCls}>
+                      {i.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </nav>
+    </>
+  );
+}
 
 export function AdminLayout() {
   const { isAuthed, logout } = useAdminAuth();
+  const { pathname } = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => setMobileOpen(false), [pathname]);
 
   if (!isAuthed) return <Navigate to="/admin/login" replace />;
 
   return (
     <div className="flex min-h-screen bg-oat/40">
-      <aside className="hidden w-56 shrink-0 flex-col bg-espresso text-cream md:flex">
-        <Link to="/" className="flex items-center gap-2 px-5 py-5">
+      {/* Desktop rail — sticky, internally scrollable */}
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-espresso text-cream md:flex">
+        <Link to="/" className="flex items-center gap-2 px-5 py-4">
           <img src="/bean.png" alt="" className="h-7 w-7 brightness-0 invert" />
           <span className="font-display text-xl font-bold">Bean Avenue</span>
         </Link>
-        <Link
-          to="/pos"
-          className="mx-3 mb-2 rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark"
-        >
-          🧾 Open Register
-        </Link>
-        <Link
-          to="/kds"
-          className="mx-3 mb-3 rounded-lg bg-mocha px-3 py-2 text-center text-sm font-bold text-cream transition hover:bg-mocha/80"
-        >
-          🍳 Kitchen Display
-        </Link>
-        <nav className="flex flex-1 flex-col gap-1 px-3" aria-label="Admin">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.end}
-              className={({ isActive }) =>
-                `rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  isActive ? "bg-mocha text-cream" : "text-oat hover:bg-mocha/60"
-                }`
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </nav>
+        <div className="flex-1 overflow-y-auto px-3 pb-3">
+          <AdminNav />
+        </div>
         <button
           onClick={logout}
-          className="m-3 rounded-lg px-3 py-2 text-left text-sm text-oat hover:bg-mocha/60"
+          className="m-3 rounded-lg border-t border-mocha/50 px-3 py-2 text-left text-sm text-oat hover:bg-mocha/60"
         >
           Sign out
         </button>
       </aside>
 
-      <div className="flex-1">
-        <header className="flex items-center justify-between border-b border-oat bg-cream px-4 py-3 md:hidden">
-          <Link to="/admin" className="font-display text-lg font-bold text-espresso">
-            Bean Avenue Admin
-          </Link>
+      <div className="min-w-0 flex-1">
+        {/* Mobile top bar */}
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-oat bg-cream px-4 py-3 md:hidden">
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-espresso hover:bg-oat/60"
+            aria-label="Open admin menu"
+          >
+            <span className="text-xl leading-none">☰</span>
+            <span className="font-display text-lg font-bold">Admin</span>
+          </button>
           <button onClick={logout} className="text-sm font-medium text-terracotta">
             Sign out
           </button>
         </header>
-        <nav className="flex gap-1 overflow-x-auto border-b border-oat bg-cream px-2 py-2 md:hidden" aria-label="Admin mobile">
-          <Link to="/pos" className="whitespace-nowrap rounded-full bg-terracotta px-3 py-1.5 text-xs font-bold text-cream">🧾 Register</Link>
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.end}
-              className={({ isActive }) =>
-                `whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  isActive ? "bg-espresso text-cream" : "bg-oat text-espresso"
-                }`
-              }
-            >
-              {l.label}
-            </NavLink>
-          ))}
-        </nav>
+
+        {/* Mobile drawer */}
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-espresso text-cream shadow-2xl">
+              <div className="flex items-center justify-between px-5 py-4">
+                <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
+                  <img src="/bean.png" alt="" className="h-7 w-7 brightness-0 invert" />
+                  <span className="font-display text-xl font-bold">Bean Avenue</span>
+                </Link>
+                <button onClick={() => setMobileOpen(false)} className="rounded-lg p-1.5 text-xl leading-none text-oat hover:bg-mocha/60" aria-label="Close menu">✕</button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 pb-3">
+                <AdminNav onNavigate={() => setMobileOpen(false)} />
+              </div>
+              <button onClick={() => { setMobileOpen(false); logout(); }} className="m-3 rounded-lg border-t border-mocha/50 px-3 py-2 text-left text-sm text-oat hover:bg-mocha/60">
+                Sign out
+              </button>
+            </div>
+          </div>
+        )}
+
         <main className="p-4 md:p-8">
           <Outlet />
         </main>

@@ -21,11 +21,23 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function AdminDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [lowStock, setLowStock] = useState<number | null>(null);
+  const [hansonOut, setHansonOut] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const load = () =>
+    const load = () => {
       api.get<DashboardData>("/api/reports/dashboard").then(setData).catch((e) => setError(e.message));
+      // Extra at-a-glance counts (best-effort — never block the dashboard).
+      api
+        .get<{ summary: { low: number; out: number } }>("/api/inventory")
+        .then((r) => setLowStock(r.summary.low + r.summary.out))
+        .catch(() => {});
+      api
+        .get<{ soldOut?: boolean; tracked?: boolean }[]>("/api/doughnuts")
+        .then((r) => setHansonOut(r.filter((d) => d.tracked && d.soldOut).length))
+        .catch(() => {});
+    };
     load();
     const interval = setInterval(load, 30_000); // live-ish feed
     return () => clearInterval(interval);
@@ -34,20 +46,43 @@ export function AdminDashboard() {
   if (error) return <p className="text-terracotta-dark">{error}</p>;
   if (!data) return <p className="text-charcoal/60">Loading today's picture…</p>;
 
+  const lowLabel = lowStock == null ? "—" : String(lowStock);
+  const hansonLabel = hansonOut == null ? "—" : hansonOut === 0 ? "All in" : `${hansonOut} out`;
+
   return (
     <div>
+      {/* ---- Today ---- */}
       <h1 className="font-display text-3xl font-bold text-espresso">Today at a glance</h1>
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {[
-          ["Open orders", String(data.openOrders.length), "/admin/orders"],
-          ["Bookings today", String(data.todaysBookings.length), "/admin/bookings"],
-          ["Revenue today", money(data.revenueToday), "/admin/reports"],
-          ["New loyalty sign-ups", String(data.newCustomersToday), "/admin/customers"],
-        ].map(([label, value, to]) => (
-          <Link key={label} to={to} className="card-lift rounded-2xl bg-white p-5 shadow-sm">
+          ["Today's orders", String(data.openOrders.length), "/admin/orders", data.openOrders.length > 0],
+          ["Today's sales", money(data.revenueToday), "/admin/reports", false],
+          ["Room bookings", String(data.todaysBookings.length), "/admin/bookings", false],
+          ["Low stock", lowLabel, "/admin/inventory", (lowStock ?? 0) > 0],
+          ["Hanson availability", hansonLabel, "/admin/hanson-production", (hansonOut ?? 0) > 0],
+          ["New sign-ups", String(data.newCustomersToday), "/admin/customers", false],
+        ].map(([label, value, to, alert]) => (
+          <Link key={label as string} to={to as string} className="card-lift rounded-2xl bg-white p-5 shadow-sm">
             <p className="text-sm text-charcoal/60">{label}</p>
-            <p className="mt-1 font-display text-3xl font-bold text-espresso">{value}</p>
+            <p className={`mt-1 font-display text-3xl font-bold ${alert ? "text-terracotta-dark" : "text-espresso"}`}>{value}</p>
+          </Link>
+        ))}
+      </div>
+
+      {/* ---- Manage ---- */}
+      <h2 className="mt-8 font-display text-xl font-bold text-espresso">Manage</h2>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {[
+          ["☕", "Menu", "/admin/menu"],
+          ["🛍", "Shop Products", "/admin/shop-products"],
+          ["📦", "Inventory", "/admin/stock"],
+          ["🍩", "Hanson", "/admin/hanson-production"],
+          ["👥", "Customers", "/admin/customers"],
+          ["⏱", "Staff", "/admin/staff"],
+        ].map(([icon, label, to]) => (
+          <Link key={label} to={to} className="card-lift flex flex-col items-center gap-1.5 rounded-2xl bg-white p-4 text-center shadow-sm">
+            <span className="text-2xl">{icon}</span>
+            <span className="text-sm font-semibold text-espresso">{label}</span>
           </Link>
         ))}
       </div>
