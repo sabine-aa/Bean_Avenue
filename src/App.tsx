@@ -14,6 +14,7 @@ import { AdminHansonReports } from "./admin/HansonReports";
 import { AdminEvents } from "./admin/EventsManager";
 import { AdminEventSuggestions } from "./admin/EventSuggestions";
 import { AdminFeatured } from "./admin/FeaturedManager";
+import { AdminActivityLog } from "./admin/ActivityLog";
 import { AdminInventory } from "./admin/Inventory";
 import { AdminLowStock } from "./admin/LowStock";
 import { AdminShifts } from "./admin/Shifts";
@@ -138,6 +139,7 @@ export default function App() {
         <Route path="inventory" element={<AdminInventory />} />
         <Route path="low-stock" element={<AdminLowStock />} />
         <Route path="shifts" element={<AdminShifts />} />
+        <Route path="activity" element={<AdminActivityLog />} />
         <Route path="stock" element={<AdminStock />} />
         <Route path="shop-products" element={<AdminShopProducts />} />
         <Route path="preorders" element={<AdminPreorders />} />

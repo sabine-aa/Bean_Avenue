@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin, requireStaff } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { consumeShopForOrder } from "../lib/consumption";
 import { genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 
@@ -151,7 +152,11 @@ shopRouter.patch("/preorders/:id", requireAdmin, async (req, res) => {
     const p = String(req.body.paymentStatus).toUpperCase();
     if (["UNPAID", "DEPOSIT", "PAID"].includes(p)) data.paymentStatus = p;
   }
+  const beforePre = await prisma.preorder.findUnique({ where: { id: Number(req.params.id) } });
   const pre = await prisma.preorder.update({ where: { id: Number(req.params.id) }, data });
+  if (beforePre && "status" in data && beforePre.status !== pre.status) {
+    await audit(actorCtx(req), { section: "Preorders", action: "preorder_status_changed", description: `Preorder ${pre.number} ${beforePre.status} → ${pre.status}`, entity: "Preorder", entityId: pre.id, entityName: pre.number, orderNumber: pre.number, oldValue: { status: beforePre.status }, newValue: { status: pre.status } });
+  }
   res.json(pre);
 });
 

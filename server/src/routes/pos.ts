@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { requireStaff, signToken } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { earnBeans, genNumber, getOrCreateCustomer, round2 } from "../lib/helpers";
 import { notify } from "../lib/notify";
 import { consumeForOrder, consumeShopForOrder } from "../lib/consumption";
@@ -108,6 +109,7 @@ posRouter.post("/shift/open", async (req, res) => {
   const shift = await prisma.shift.create({
     data: { staffId: req.staffId!, staffName: req.staffName ?? "Staff", terminal, openingFloat, status: "OPEN" },
   });
+  await audit(actorCtx(req), { section: "Register", action: "shift_opened", description: `Opened ${terminal} with $${openingFloat.toFixed(2)} float`, entity: "Shift", entityId: shift.id, entityName: terminal, newValue: { openingFloat } });
   res.status(201).json(await withTotals(shift));
 });
 
@@ -129,6 +131,13 @@ posRouter.post("/shift/close", async (req, res) => {
       note: String(req.body?.note ?? "").trim().slice(0, 300) || null,
     },
   });
+  const diffWord = Math.abs(difference) < 0.005 ? "balanced" : difference < 0 ? `short $${Math.abs(difference).toFixed(2)}` : `over $${difference.toFixed(2)}`;
+  await audit(actorCtx(req), {
+    section: "Register", action: "shift_closed",
+    description: `Closed ${shift.terminal}. Expected $${t.expectedCash.toFixed(2)}, counted $${countedCash.toFixed(2)} — ${diffWord}`,
+    entity: "Shift", entityId: shift.id, entityName: shift.terminal,
+    oldValue: { expected: t.expectedCash }, newValue: { counted: countedCash, difference },
+  });
   res.json({ ...(await withTotals(closed)), difference });
 });
 
@@ -145,6 +154,7 @@ posRouter.post("/cash", async (req, res) => {
     where: { id: shift.id },
     data: type === "PAYIN" ? { cashPayIns: { increment: amount } } : { cashPayOuts: { increment: amount } },
   });
+  await audit(actorCtx(req), { section: "Register", action: type === "PAYIN" ? "cash_in" : "cash_out", description: `${type === "PAYIN" ? "Cash in" : "Cash out"} $${amount.toFixed(2)} on ${shift.terminal}${reason ? ` (${reason})` : ""}`, entity: "Shift", entityId: shift.id, entityName: shift.terminal, newValue: { type, amount, reason } });
   res.json(await withTotals((await openShift(terminalOf(req)))!));
 });
 
@@ -293,6 +303,16 @@ posRouter.post("/sale", async (req, res) => {
   if (customer) await awardOrderBeans(order.id);
   await consumeForOrder(body.items ?? [], { orderId: order.id, staffName: req.staffName ?? "Staff" });
   if (shopConsume.length) await consumeShopForOrder(shopConsume, { orderId: order.id, staffName: req.staffName ?? "Staff" });
+
+  // Audit the accountability-sensitive parts of a sale: discounts + staff tabs.
+  const actor = actorCtx(req);
+  if (isTab) {
+    await audit(actor, { section: "POS", action: "charge_to_salary", description: `${staffPurchaseName} charged $${total.toFixed(2)} to their salary tab on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { staff: staffPurchaseName, amount: total, discount } });
+  } else if (staffPurchaseId) {
+    await audit(actor, { section: "POS", action: "staff_discount", description: `Staff discount (${pos.staffDiscount}%, −$${discount.toFixed(2)}) for ${staffPurchaseName} on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { staff: staffPurchaseName, discount } });
+  } else if (discount > 0) {
+    await audit(actor, { section: "POS", action: "discount_applied", description: `Discount −$${discount.toFixed(2)} on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { discount } });
+  }
 
   res.status(201).json(outOrder(order));
 });

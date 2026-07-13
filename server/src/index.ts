@@ -6,6 +6,7 @@ setDefaultResultOrder("ipv4first");
 import cors from "cors";
 import express from "express";
 import { signToken } from "./auth";
+import { activityRouter } from "./routes/activity";
 import { addonsRouter } from "./routes/addons";
 import { addressesRouter } from "./routes/addresses";
 import { bannersRouter } from "./routes/banners";
@@ -61,6 +62,7 @@ app.post("/api/auth/login", (req, res) => {
 // Customer OTP auth (phone/email) + method linking — kept separate from admin auth.
 app.use("/api/auth", customerAuthRouter);
 
+app.use("/api/activity", activityRouter);
 app.use("/api/menu", menuRouter);
 app.use("/api/doughnuts", doughnutsRouter);
 app.use("/api/featured", featuredRouter);

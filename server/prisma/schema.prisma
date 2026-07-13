@@ -414,13 +414,26 @@ model Payment {
 // An audit trail for sensitive admin actions (refunds, cash collection, driver
 // assignment, zone/settings changes) — records who did what and when.
 model AdminActivityLog {
-  id        Int      @id @default(autoincrement())
-  actor     String   // admin name/email
-  action    String   // REFUND | RECORD_CASH | ASSIGN_DRIVER | ZONE_SAVE | SETTINGS_SAVE | STATUS_CHANGE | CANCEL
-  entity    String?  // order | payment | zone | settings
-  entityId  String?  // order number / payment txn / zone id
-  detail    String   @default("")
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  actorId     Int? // staffId for POS actions, null for admin/system
+  actor       String   // admin name/email or staff name
+  actorRole   String   @default("Manager") // Manager | Cashier | System …
+  source      String   @default("Admin") // Admin | POS | Website | KDS | System
+  section     String   @default("System") // POS | Orders | Menu | Inventory | Hanson | Shop | Preorders | Staff | Rooms | Loyalty | Payments | Register
+  action      String   // price_changed | stock_received | discount_applied | shift_closed …
+  entity      String?  // MenuItem | Order | InventoryItem | Shift | Staff …
+  entityId    String?  // id of the affected record
+  entityName  String?  // human name (product / order number / item)
+  detail      String   @default("")
+  oldValue    String? // JSON snapshot of the previous value
+  newValue    String? // JSON snapshot of the new value
+  orderNumber String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([section])
+  @@index([action])
+  @@index([actorId])
 }
 
 model OrderItem {

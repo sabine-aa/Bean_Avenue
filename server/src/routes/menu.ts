@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { DOUGHNUT_CATEGORY } from "../lib/constants";
 import { outMenuItem, toJson } from "../lib/serialize";
 
@@ -73,6 +74,7 @@ menuRouter.post("/", requireAdmin, async (req, res) => {
       sortOrder: (max._max.sortOrder ?? 0) + 1,
     },
   });
+  await audit(actorCtx(req), { section: "Menu", action: "product_created", description: `Created ${item.name} (${item.category}) at $${item.price.toFixed(2)}`, entity: "MenuItem", entityId: item.id, entityName: item.name, newValue: { price: item.price, category: item.category } });
   res.status(201).json(outMenuItem(item));
 });
 
@@ -91,7 +93,21 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
   if ("imageFit" in b) data.imageFit = b.imageFit === "contain" ? "contain" : "cover";
   if ("focalX" in b) data.focalX = clampPct(b.focalX);
   if ("focalY" in b) data.focalY = clampPct(b.focalY);
+  const before = await prisma.menuItem.findUnique({ where: { id } });
   const item = await prisma.menuItem.update({ where: { id }, data });
+
+  const actor = actorCtx(req);
+  if (before && "price" in data && before.price !== item.price) {
+    await audit(actor, { section: "Menu", action: "price_changed", description: `${item.name} price $${before.price.toFixed(2)} → $${item.price.toFixed(2)}`, entity: "MenuItem", entityId: item.id, entityName: item.name, oldValue: { price: before.price }, newValue: { price: item.price } });
+  }
+  if (before && "inStock" in data && before.inStock !== item.inStock) {
+    await audit(actor, { section: "Menu", action: item.inStock ? "marked_available" : "marked_sold_out", description: `${item.name} marked ${item.inStock ? "available" : "sold out"}`, entity: "MenuItem", entityId: item.id, entityName: item.name });
+  }
+  const priceOrStock = ("price" in data && before && before.price !== item.price) || ("inStock" in data && before && before.inStock !== item.inStock);
+  if (!priceOrStock) {
+    const fields = Object.keys(data).filter((k) => !["focalX", "focalY"].includes(k));
+    if (fields.length) await audit(actor, { section: "Menu", action: "product_edited", description: `${item.name} edited (${fields.join(", ")})`, entity: "MenuItem", entityId: item.id, entityName: item.name });
+  }
   res.json(outMenuItem(item));
 });
 
@@ -99,10 +115,12 @@ menuRouter.patch("/:id", requireAdmin, async (req, res) => {
 menuRouter.delete("/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   try {
+    const doomed = await prisma.menuItem.findUnique({ where: { id } });
     // Recipe components reference the item by plain id (no cascade) — tidy them up
     // so a deleted product leaves no orphan recipe rows.
     await prisma.recipeComponent.deleteMany({ where: { menuItemId: id } });
     await prisma.menuItem.delete({ where: { id } });
+    if (doomed) await audit(actorCtx(req), { section: "Menu", action: "product_deleted", description: `Deleted ${doomed.name} (${doomed.category})`, entity: "MenuItem", entityId: id, entityName: doomed.name });
     res.json({ ok: true });
   } catch {
     res.status(400).json({ error: "Couldn't delete this product. Try hiding it instead." });

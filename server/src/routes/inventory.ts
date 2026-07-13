@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
+
+const ADJUST_ACTION: Record<string, string> = { RECEIVE: "stock_received", WASTE: "stock_wasted", COUNT: "stock_recount", ADJUST: "stock_adjusted" };
 
 export const inventoryRouter = Router();
 inventoryRouter.use(requireAdmin);
@@ -75,6 +78,13 @@ inventoryRouter.post("/:id/adjust", async (req, res) => {
   });
   await prisma.stockMovement.create({
     data: { menuItemId: id, delta, balance, type, reason, staffName: "Admin" },
+  });
+  await audit(actorCtx(req), {
+    section: "Inventory",
+    action: ADJUST_ACTION[type] ?? "stock_adjusted",
+    description: `${item.name}: ${delta >= 0 ? "+" : ""}${delta} → ${balance} on hand${reason ? ` (${reason})` : ""}`,
+    entity: "MenuItem", entityId: id, entityName: item.name,
+    oldValue: { stockQty: item.stockQty }, newValue: { stockQty: balance },
   });
   res.json({ id: updated.id, trackStock: updated.trackStock, stockQty: updated.stockQty, lowStockAt: updated.lowStockAt });
 });

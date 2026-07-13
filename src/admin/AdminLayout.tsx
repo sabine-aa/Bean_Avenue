@@ -95,6 +95,13 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/shifts", label: "Shifts / Cash Drawer" },
     ],
   },
+  {
+    title: "System",
+    icon: "🛡",
+    items: [
+      { to: "/admin/activity", label: "Activity Log" },
+    ],
+  },
 ];
 
 // Most-used one-tap actions, kept out of the grouped list so it stays clean.

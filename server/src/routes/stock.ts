@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { genNumber } from "../lib/helpers";
 
 export const stockRouter = Router();
@@ -9,6 +10,7 @@ stockRouter.use(requireAdmin);
 const round = (n: number) => Math.round((Number(n) || 0) * 1000) / 1000;
 // Manual movement types available in Phase 1 (SALE / REFUND_REVERSAL come from orders).
 const ADJUST_TYPES = ["RECEIVE", "WASTE", "EXPIRED", "DAMAGED", "COUNT", "ADJUST"];
+const STOCK_ACTION: Record<string, string> = { RECEIVE: "stock_received", WASTE: "stock_wasted", EXPIRED: "stock_expired", DAMAGED: "stock_damaged", COUNT: "stock_recount", ADJUST: "stock_adjusted" };
 
 // GET /api/stock — all stock items + a headline summary (incl. total stock value).
 stockRouter.get("/", async (_req, res) => {
@@ -176,6 +178,11 @@ stockRouter.post("/restock", async (req, res) => {
     return header;
   });
 
+  await audit(actorCtx(req), {
+    section: "Inventory", action: "stock_received",
+    description: `Received ${restock.itemCount} item${restock.itemCount === 1 ? "" : "s"} from ${restock.supplierName || "supplier"}${restock.invoiceNo ? ` (invoice #${restock.invoiceNo})` : ""} — total $${restock.totalCost.toFixed(2)}`,
+    entity: "Restock", entityId: restock.id, entityName: restock.number, newValue: { itemCount: restock.itemCount, totalCost: restock.totalCost, supplier: restock.supplierName },
+  });
   res.status(201).json(restock);
 });
 
@@ -319,6 +326,14 @@ stockRouter.post("/:id/adjust", async (req, res) => {
       invoiceNo: type === "RECEIVE" ? String(req.body?.invoiceNo ?? "").trim() || null : null,
       costPerUnit: type === "RECEIVE" && req.body?.costPerUnit !== undefined ? Math.max(0, round(Number(req.body.costPerUnit))) : null,
     },
+  });
+  const invoiceNo = type === "RECEIVE" ? String(req.body?.invoiceNo ?? "").trim() : "";
+  await audit(actorCtx(req), {
+    section: "Inventory",
+    action: STOCK_ACTION[type] ?? "stock_adjusted",
+    description: `${item.name}: ${delta >= 0 ? "+" : ""}${delta}${item.unit ? ` ${item.unit}` : ""} → ${balance} on hand${invoiceNo ? ` (invoice #${invoiceNo})` : reason ? ` (${reason})` : ""}`,
+    entity: "InventoryItem", entityId: item.id, entityName: item.name,
+    oldValue: { quantity: item.quantity }, newValue: { quantity: balance },
   });
   res.json(updated);
 });

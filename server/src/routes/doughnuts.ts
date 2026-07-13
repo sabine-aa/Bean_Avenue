@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { DOUGHNUT_CATEGORY } from "../lib/constants";
 import { hansonMap, hansonToday } from "../lib/hanson";
 import { outMenuItem } from "../lib/serialize";
@@ -127,6 +128,8 @@ doughnutsRouter.post("/production/close", requireAdmin, async (req, res) => {
     if (!LEFTOVER_ACTIONS.includes(action)) action = "WASTED";
     await prisma.hansonProduction.update({ where: { id: p.id }, data: { wasted: leftover, leftoverAction: action, closed: true } });
   }
+  const totalWaste = prod.reduce((n, p) => n + Math.max(0, p.made - p.sold), 0);
+  await audit(actorCtx(req), { section: "Hanson", action: "day_closed", description: `End of day ${date} closed — ${prod.length} doughnut lines, ${totalWaste} leftover recorded`, entity: "HansonProduction", entityName: date, newValue: { lines: prod.length, leftover: totalWaste } });
   res.json({ ok: true, date, closed: prod.length });
 });
 
@@ -220,6 +223,7 @@ doughnutsRouter.post("/production", requireAdmin, async (req, res) => {
   const date = String(req.body?.date || "").trim() || hansonToday();
   const entries = Array.isArray(req.body?.entries) ? req.body.entries : [];
   const createdBy = String(req.body?.createdBy ?? "Admin").trim() || "Admin";
+  const changed: { id: number; made: number }[] = [];
   for (const e of entries) {
     const menuItemId = Number(e.menuItemId);
     if (!menuItemId) continue;
@@ -229,6 +233,12 @@ doughnutsRouter.post("/production", requireAdmin, async (req, res) => {
       create: { menuItemId, date, made, sold: 0, createdBy },
       update: { made },
     });
+    changed.push({ id: menuItemId, made });
+  }
+  if (changed.length) {
+    const names = new Map((await prisma.menuItem.findMany({ where: { id: { in: changed.map((c) => c.id) } }, select: { id: true, name: true } })).map((m) => [m.id, m.name]));
+    const summary = changed.map((c) => `${names.get(c.id) ?? `#${c.id}`} ${c.made}`).join(", ");
+    await audit(actorCtx(req), { section: "Hanson", action: "production_entered", description: `Daily production for ${date}: ${summary}`, entity: "HansonProduction", entityName: date, newValue: changed });
   }
   res.json({ ok: true, date });
 });

@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { round2 } from "../lib/helpers";
 
 export const staffRouter = Router();
@@ -112,6 +113,7 @@ staffRouter.post("/", async (req, res) => {
   if (!name) return res.status(400).json({ error: "Name is required." });
   if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: "PIN must be 4–6 digits." });
   const staff = await prisma.staffUser.create({ data: { name, pinHash: await bcrypt.hash(pin, 8), role } });
+  await audit(actorCtx(req), { section: "Staff", action: "staff_created", description: `Created staff ${staff.name} (${role})`, entity: "Staff", entityId: staff.id, entityName: staff.name, newValue: { role } });
   res.status(201).json(publicStaff(staff));
 });
 
@@ -127,7 +129,18 @@ staffRouter.patch("/:id", async (req, res) => {
     if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: "PIN must be 4–6 digits." });
     data.pinHash = await bcrypt.hash(pin, 8);
   }
+  const before = await prisma.staffUser.findUnique({ where: { id } });
   const staff = await prisma.staffUser.update({ where: { id }, data });
+  const actor = actorCtx(req);
+  if (before && "role" in data && before.role !== staff.role) {
+    await audit(actor, { section: "Staff", action: "role_changed", description: `${staff.name} role ${before.role} → ${staff.role}`, entity: "Staff", entityId: id, entityName: staff.name, oldValue: { role: before.role }, newValue: { role: staff.role } });
+  }
+  if ("pinHash" in data) {
+    await audit(actor, { section: "Staff", action: "pin_changed", description: `PIN changed for ${staff.name}`, entity: "Staff", entityId: id, entityName: staff.name });
+  }
+  if (before && "isActive" in data && before.isActive !== staff.isActive) {
+    await audit(actor, { section: "Staff", action: staff.isActive ? "staff_enabled" : "staff_disabled", description: `${staff.name} ${staff.isActive ? "enabled" : "disabled"}`, entity: "Staff", entityId: id, entityName: staff.name });
+  }
   res.json(publicStaff(staff));
 });
 

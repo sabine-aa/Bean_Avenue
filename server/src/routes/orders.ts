@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { isAdminRequest, optionalCustomer, requireAdmin, requireCustomer } from "../auth";
 import { prisma } from "../db";
-import { actorFrom, logActivity } from "../lib/activity";
+import { actorFrom, audit, logActivity } from "../lib/activity";
 import { quoteDelivery } from "../lib/delivery";
 import { genNumber, getOrCreateCustomer, promoDiscount, round2 } from "../lib/helpers";
 import { consumeForOrder, reverseForOrder } from "../lib/consumption";
@@ -330,6 +330,10 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
   });
   await reverseOrderBeans(order.id);
   await reverseForOrder(order.id);
+  await audit(
+    { actorId: null, actorName: order.customerName || "Customer", actorRole: "Customer", source: "Website" },
+    { section: "Orders", action: "order_cancelled", description: `${order.number} cancelled by customer${refunded ? " (refunded)" : ""} — ${reason}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { reason, refunded } }
+  );
 
   await notify(order.customerId, {
     type: "ORDER",
