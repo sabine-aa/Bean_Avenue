@@ -17,6 +17,16 @@ const SECTION_COLOR: Record<string, string> = {
   Rooms: "bg-sage/20 text-sage-dark", Loyalty: "bg-sage/20 text-sage-dark", Payments: "bg-terracotta/15 text-terracotta-dark",
 };
 const label = (a: string) => a.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+const csvCell = (v: string) => `"${(v ?? "").replace(/"/g, '""')}"`;
+function toCsv(rows: Row[]): string {
+  const head = ["Date/time", "User", "Role", "Source", "Section", "Action", "Description", "Entity", "Item / Order", "Old value", "New value"];
+  const body = rows.map((r) => [
+    formatDateTime(r.createdAt), r.actor, r.actorRole, r.source, r.section, label(r.action), r.detail,
+    r.entity ?? "", r.entityName ?? r.orderNumber ?? "", r.oldValue ?? "", r.newValue ?? "",
+  ].map(csvCell).join(","));
+  return [head.map(csvCell).join(","), ...body].join("\r\n");
+}
 const prettyJson = (s: string | null) => {
   if (!s) return null;
   try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; }
@@ -69,11 +79,37 @@ export function AdminActivityLog() {
   const anyFilter = from || to || section || action || source || actor || order || q;
   const sel = "rounded-lg border border-oat bg-white px-3 py-2 text-sm";
 
+  const [exporting, setExporting] = useState(false);
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      // Pull the full filtered set (not just the page's default cap) so the export matches the filters.
+      const data = await api.get<{ rows: Row[] }>(`/api/activity?${query ? `${query}&` : ""}limit=5000`);
+      const csv = "﻿" + toCsv(data.rows); // BOM → Excel reads UTF-8 correctly
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `activity-log-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-display text-3xl font-bold text-espresso">Activity log</h1>
-        <p className="mt-1 text-sm text-charcoal/60">Who changed what, when, and from where — prices, stock, discounts, voids, shifts, staff and more.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-espresso">Activity log</h1>
+            <p className="mt-1 text-sm text-charcoal/60">Who changed what, when, and from where — prices, stock, add-ons, rooms, rewards, shifts and more.</p>
+          </div>
+          <button onClick={exportCsv} disabled={exporting || rows.length === 0} className="rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream transition hover:bg-mocha disabled:opacity-50">
+            {exporting ? "Exporting…" : "⬇ Export CSV"}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}

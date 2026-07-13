@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
+import { actorCtx, audit } from "../lib/activity";
 import { tierFor } from "../lib/helpers";
 import { notify } from "../lib/notify";
 import { outBooking } from "../lib/serialize";
@@ -67,6 +68,13 @@ customersRouter.post("/:id/adjust-beans", async (req, res) => {
   });
   await prisma.loyaltyTransaction.create({
     data: { customerId: id, type: "ADJUST", amount, balanceAfter, source: "Manual adjustment", note },
+  });
+  await audit(actorCtx(req), {
+    section: "Loyalty",
+    action: amount > 0 ? "loyalty_points_added" : "loyalty_points_removed",
+    description: `${amount > 0 ? "+" : ""}${amount} beans ${amount > 0 ? "to" : "from"} ${customer.name || customer.phone} — ${note} (balance ${balanceAfter})`,
+    entity: "Customer", entityId: id, entityName: customer.name || customer.phone,
+    oldValue: { beanBalance: customer.beanBalance }, newValue: { beanBalance: balanceAfter, note },
   });
   await notify(id, {
     type: "POINTS",

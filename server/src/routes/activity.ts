@@ -35,7 +35,7 @@ activityRouter.get("/", async (req, res) => {
     ];
   }
 
-  const limit = Math.min(500, Math.max(1, Number(q.limit) || 200));
+  const limit = Math.min(5000, Math.max(1, Number(q.limit) || 200));
   const rows = await prisma.adminActivityLog.findMany({ where, orderBy: { createdAt: "desc" }, take: limit });
   res.json({ rows, count: rows.length });
 });

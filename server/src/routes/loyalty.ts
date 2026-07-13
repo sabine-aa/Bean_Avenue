@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin, requireCustomer } from "../auth";
 import { prisma } from "../db";
+import { audit } from "../lib/activity";
 import { accountResponse } from "../lib/account";
 import {
   activeWindow,
@@ -206,6 +207,10 @@ loyaltyRouter.post("/redeem", requireCustomer, async (req, res) => {
     }),
   ]);
 
+  await audit(
+    { actorId: null, actorName: customer.name || customer.phone || "Customer", actorRole: "Customer", source: "Website" },
+    { section: "Loyalty", action: "reward_redeemed", description: `${customer.name || customer.phone} redeemed ${reward.name} for ${reward.cost} beans (${code})`, entity: "Redemption", entityId: code, entityName: reward.name, newValue: { cost: reward.cost, balanceAfter } }
+  );
   await notify(customer.id, {
     type: "REWARD",
     title: "Reward redeemed",

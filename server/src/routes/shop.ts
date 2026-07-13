@@ -214,18 +214,40 @@ shopRouter.post("/", requireAdmin, async (req, res) => {
   if (created.quantity !== 0) {
     await prisma.shopStockMovement.create({ data: { productId: created.id, delta: created.quantity, balance: created.quantity, type: "COUNT", reason: "Opening stock", staffName: "Admin" } });
   }
+  await audit(actorCtx(req), { section: "Shop", action: "shop_product_created", description: `Created shop product ${created.name} (${created.category}) at $${created.price.toFixed(2)}`, entity: "ShopProduct", entityId: created.id, entityName: created.name, newValue: { price: created.price, category: created.category } });
   res.status(201).json(outProduct(created));
 });
 
 shopRouter.patch("/:id", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
   const data = cleanProduct(req.body);
   delete data.quantity; // quantity only moves through /adjust for a clean audit
-  const p = await prisma.shopProduct.update({ where: { id: Number(req.params.id) }, data });
+  const before = await prisma.shopProduct.findUnique({ where: { id } });
+  const p = await prisma.shopProduct.update({ where: { id }, data });
+  const actor = actorCtx(req);
+  if (before) {
+    if ("price" in data && before.price !== p.price)
+      await audit(actor, { section: "Shop", action: "shop_price_changed", description: `${p.name} price $${before.price.toFixed(2)} → $${p.price.toFixed(2)}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { price: before.price }, newValue: { price: p.price } });
+    if ("allowPreorder" in data && before.allowPreorder !== p.allowPreorder)
+      await audit(actor, { section: "Shop", action: p.allowPreorder ? "shop_preorder_on" : "shop_preorder_off", description: `${p.name} marked ${p.allowPreorder ? "preorder available" : "preorder off"}`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
+    if (("availableOnline" in data && before.availableOnline !== p.availableOnline) || ("availablePos" in data && before.availablePos !== p.availablePos) || ("isHidden" in data && before.isHidden !== p.isHidden))
+      await audit(actor, { section: "Shop", action: "shop_availability_changed", description: `${p.name} availability updated (online ${p.availableOnline ? "on" : "off"}, POS ${p.availablePos ? "on" : "off"}${p.isHidden ? ", hidden" : ""})`, entity: "ShopProduct", entityId: p.id, entityName: p.name, newValue: { availableOnline: p.availableOnline, availablePos: p.availablePos, isHidden: p.isHidden } });
+    if ("category" in data && before.category !== p.category)
+      await audit(actor, { section: "Shop", action: "shop_category_changed", description: `${p.name} category ${before.category || "—"} → ${p.category || "—"}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { category: before.category }, newValue: { category: p.category } });
+    if ("images" in data && before.images !== p.images)
+      await audit(actor, { section: "Shop", action: "shop_image_changed", description: `${p.name} image updated`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
+    const otherFields = Object.keys(data).filter((k) => !["price", "allowPreorder", "availableOnline", "availablePos", "isHidden", "category", "images", "sortOrder"].includes(k));
+    if (otherFields.length)
+      await audit(actor, { section: "Shop", action: "shop_product_edited", description: `${p.name} edited (${otherFields.join(", ")})`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
+  }
   res.json(outProduct(p));
 });
 
 shopRouter.delete("/:id", requireAdmin, async (req, res) => {
-  await prisma.shopProduct.delete({ where: { id: Number(req.params.id) } }).catch(() => {});
+  const id = Number(req.params.id);
+  const doomed = await prisma.shopProduct.findUnique({ where: { id } });
+  await prisma.shopProduct.delete({ where: { id } }).catch(() => {});
+  if (doomed) await audit(actorCtx(req), { section: "Shop", action: "shop_product_deleted", description: `Deleted shop product ${doomed.name} (${doomed.category})`, entity: "ShopProduct", entityId: id, entityName: doomed.name });
   res.json({ ok: true });
 });
 
@@ -242,8 +264,10 @@ shopRouter.post("/:id/adjust", requireAdmin, async (req, res) => {
   else delta = amount; // ADJUST: signed
   const balance = round(Math.max(0, p.quantity + delta));
   const updated = await prisma.shopProduct.update({ where: { id: p.id }, data: { quantity: balance } });
+  const adjReason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
   await prisma.shopStockMovement.create({
-    data: { productId: p.id, delta, balance, type, reason: String(req.body?.reason ?? "").trim().slice(0, 200) || null, staffName: "Admin" },
+    data: { productId: p.id, delta, balance, type, reason: adjReason, staffName: "Admin" },
   });
+  await audit(actorCtx(req), { section: "Shop", action: type === "RECEIVE" ? "shop_stock_received" : type === "COUNT" ? "shop_stock_recount" : "shop_stock_adjusted", description: `${p.name}: ${delta >= 0 ? "+" : ""}${delta} → ${balance} in stock${adjReason ? ` (${adjReason})` : ""}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { quantity: p.quantity }, newValue: { quantity: balance } });
   res.json(outProduct(updated));
 });
