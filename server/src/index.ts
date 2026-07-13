@@ -37,16 +37,13 @@ import { rewardsRouter } from "./routes/rewards";
 import { roomsRouter } from "./routes/rooms";
 import { subscribersRouter } from "./routes/subscribers";
 import { suggestionsRouter } from "./routes/suggestions";
-import { uploadsRouter, UPLOADS_DIR } from "./routes/uploads";
+import { uploadsRouter } from "./routes/uploads";
 import { votingRouter } from "./routes/voting";
 
 const app = express();
 app.use(cors());
 // Raised limit so base64 image uploads (admin photos) fit in the JSON body.
 app.use(express.json({ limit: "12mb" }));
-
-// Serve uploaded images (GET); the POST upload route is mounted just after.
-app.use("/api/uploads", express.static(UPLOADS_DIR));
 
 // Admin login — checks credentials from .env and returns a token.
 app.post("/api/auth/login", (req, res) => {

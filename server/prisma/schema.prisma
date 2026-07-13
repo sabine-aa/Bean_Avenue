@@ -847,3 +847,14 @@ model RecipeComponent {
   @@index([menuItemId])
   @@index([addonId])
 }
+
+// Admin-uploaded images, stored IN the database so they survive redeploys and
+// free-tier spin-downs (Render's local disk is ephemeral). Served at
+// /api/uploads/<name>.
+model Upload {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  mime      String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
