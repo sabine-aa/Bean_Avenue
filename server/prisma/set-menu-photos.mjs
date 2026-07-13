@@ -26,6 +26,10 @@ const SLUG = {
   viaglasswater033l: "via-glass-water",
   water05l: "water-05l",
   whitemochafrappe: "white-mocha-frappe",
+  // Restored after the /api/uploads disk wipe (local source files existed):
+  americano: "americano",
+  saltedcaramellatte: "salted-caramel-latte",
+  icedsaltedcaramellatte: "iced-salted-caramel-latte",
 };
 
 const items = await prisma.menuItem.findMany({ select: { id: true, name: true, photo: true } });
