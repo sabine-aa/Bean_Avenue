@@ -12,6 +12,46 @@ function readDataUrl(file: File): Promise<string> {
   });
 }
 
+/** Load a File into an <img> element (fallback for browsers without createImageBitmap). */
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't read the image.")); };
+    img.src = url;
+  });
+}
+
+/**
+ * Shrink + compress a photo in the browser before upload: cap the longest side
+ * at `maxDim` and re-encode as JPEG. A phone photo (3–8 MB) becomes ~50–150 KB,
+ * so uploads are fast and the image loads quickly afterwards. Transparent areas
+ * are flattened onto white (product photos don't need transparency).
+ */
+async function downscaleToDataUrl(file: File, maxDim = 1000, quality = 0.82): Promise<string> {
+  let width: number, height: number;
+  let source: CanvasImageSource;
+  try {
+    const bmp = await createImageBitmap(file);
+    width = bmp.width; height = bmp.height; source = bmp;
+  } catch {
+    const img = await loadImage(file);
+    width = img.naturalWidth; height = img.naturalHeight; source = img;
+  }
+  const scale = Math.min(1, maxDim / Math.max(width, height));
+  const w = Math.max(1, Math.round(width * scale));
+  const h = Math.max(1, Math.round(height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return readDataUrl(file); // no canvas → send original
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(source, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 /**
  * An image picker for the admin: upload a file from the device OR paste a URL.
  * Uploads go to /api/uploads and the returned URL is stored in the field.
@@ -35,11 +75,12 @@ export function ImageField({
     setBusy(true);
     setError("");
     try {
-      const dataUrl = await readDataUrl(file);
+      // Shrink in the browser first so the upload is small and fast.
+      const dataUrl = await downscaleToDataUrl(file).catch(() => readDataUrl(file));
       const { url } = await api.post<{ url: string }>("/api/uploads", { dataUrl });
       onChange(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(err instanceof Error ? err.message : "Upload failed. Please try again in a moment.");
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
