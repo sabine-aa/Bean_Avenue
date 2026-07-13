@@ -15,6 +15,8 @@ import { AdminEvents } from "./admin/EventsManager";
 import { AdminEventSuggestions } from "./admin/EventSuggestions";
 import { AdminFeatured } from "./admin/FeaturedManager";
 import { AdminInventory } from "./admin/Inventory";
+import { AdminLowStock } from "./admin/LowStock";
+import { AdminShifts } from "./admin/Shifts";
 import { AdminLogin } from "./admin/Login";
 import { AdminLoyalty } from "./admin/LoyaltyLedger";
 import { AdminMenuManager } from "./admin/MenuManager";
@@ -134,6 +136,8 @@ export default function App() {
         <Route path="suggestions" element={<AdminSuggestions />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="inventory" element={<AdminInventory />} />
+        <Route path="low-stock" element={<AdminLowStock />} />
+        <Route path="shifts" element={<AdminShifts />} />
         <Route path="stock" element={<AdminStock />} />
         <Route path="shop-products" element={<AdminShopProducts />} />
         <Route path="preorders" element={<AdminPreorders />} />

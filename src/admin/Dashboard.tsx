@@ -29,10 +29,11 @@ export function AdminDashboard() {
     const load = () => {
       api.get<DashboardData>("/api/reports/dashboard").then(setData).catch((e) => setError(e.message));
       // Extra at-a-glance counts (best-effort — never block the dashboard).
-      api
-        .get<{ summary: { low: number; out: number } }>("/api/inventory")
-        .then((r) => setLowStock(r.summary.low + r.summary.out))
-        .catch(() => {});
+      // Low stock = restockable inventory (café products + ingredients).
+      Promise.all([
+        api.get<{ summary: { low: number; out: number } }>("/api/inventory").then((r) => r.summary.low + r.summary.out).catch(() => 0),
+        api.get<{ summary: { low: number; out: number } }>("/api/stock").then((r) => r.summary.low + r.summary.out).catch(() => 0),
+      ]).then(([a, b]) => setLowStock(a + b));
       api
         .get<{ soldOut?: boolean; tracked?: boolean }[]>("/api/doughnuts")
         .then((r) => setHansonOut(r.filter((d) => d.tracked && d.soldOut).length))
@@ -58,7 +59,7 @@ export function AdminDashboard() {
           ["Today's orders", String(data.openOrders.length), "/admin/orders", data.openOrders.length > 0],
           ["Today's sales", money(data.revenueToday), "/admin/reports", false],
           ["Room bookings", String(data.todaysBookings.length), "/admin/bookings", false],
-          ["Low stock", lowLabel, "/admin/inventory", (lowStock ?? 0) > 0],
+          ["Low stock", lowLabel, "/admin/low-stock", (lowStock ?? 0) > 0],
           ["Hanson availability", hansonLabel, "/admin/hanson-production", (hansonOut ?? 0) > 0],
           ["New sign-ups", String(data.newCustomersToday), "/admin/customers", false],
         ].map(([label, value, to, alert]) => (

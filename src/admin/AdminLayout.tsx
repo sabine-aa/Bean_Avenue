@@ -73,6 +73,7 @@ const GROUPS: NavGroup[] = [
       { to: "/admin/restock", label: "Restock / Receiving" },
       { to: "/admin/suppliers", label: "Suppliers" },
       { to: "/admin/recipes", label: "Recipes" },
+      { to: "/admin/low-stock", label: "Low Stock Alerts" },
     ],
   },
   {
@@ -91,6 +92,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { to: "/admin/staff", label: "Staff & PINs" },
       { to: "/admin/timesheets", label: "Staff Timesheets" },
+      { to: "/admin/shifts", label: "Shifts / Cash Drawer" },
     ],
   },
 ];
