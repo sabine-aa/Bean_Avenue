@@ -34,6 +34,7 @@ import { AdminSuppliers } from "./admin/Suppliers";
 import { AdminSuggestions } from "./admin/Suggestions";
 import { AdminTimesheets } from "./admin/Timesheets";
 import { Layout } from "./components/Layout";
+import { ScrollToTop } from "./components/ScrollToTop";
 import { About } from "./pages/About";
 import { Account } from "./pages/Account";
 import { Doughnuts } from "./pages/Doughnuts";
@@ -82,6 +83,7 @@ export default function App() {
   return (
     <>
       <ManifestSwitcher />
+      <ScrollToTop />
       <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />

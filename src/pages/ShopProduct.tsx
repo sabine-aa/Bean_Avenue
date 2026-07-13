@@ -42,7 +42,6 @@ export function ShopProduct() {
 
   useEffect(() => {
     setProduct(null); setNotFound(false); setImg(0); setShowPre(false); setPoDone(null);
-    window.scrollTo(0, 0);
     customerApi.get<Product>(`/api/shop/${id}`).then((p) => {
       setProduct(p);
       customerApi.get<{ products: Product[] }>("/api/shop").then((r) => setRelated(r.products.filter((x) => x.category === p.category && x.id !== p.id).slice(0, 6))).catch(() => {});
