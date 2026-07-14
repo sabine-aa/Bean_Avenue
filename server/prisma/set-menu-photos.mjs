@@ -30,6 +30,13 @@ const SLUG = {
   americano: "americano",
   saltedcaramellatte: "salted-caramel-latte",
   icedsaltedcaramellatte: "iced-salted-caramel-latte",
+  // Protein Drinks — cropped from the two promo posters:
+  pinkavenue: "pink-avenue",
+  mvpshake: "mvp-shake",
+  dessertfuel: "dessert-fuel",
+  chocolateshred: "chocolate-shred",
+  vanillashred: "vanilla-shred",
+  pbbananasblast: "pb-bananas-blast",
 };
 
 const items = await prisma.menuItem.findMany({ select: { id: true, name: true, photo: true } });
