@@ -56,8 +56,7 @@ export async function getBirthdaySettings(): Promise<BirthdaySettings> {
 }
 
 export async function saveBirthdaySettings(patch: Partial<BirthdaySettings>) {
-  const set = (key: string, value: string) =>
-    prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  const set = (key: string, value: string) => prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
   const ops: Promise<unknown>[] = [];
   if ("enabled" in patch) ops.push(set(KEYS.enabled, patch.enabled ? "true" : "false"));
   if ("daysBefore" in patch) ops.push(set(KEYS.daysBefore, String(Math.max(0, Math.round(patch.daysBefore!)))));

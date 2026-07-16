@@ -60,10 +60,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       loading,
       requestOtp: (target) => customerApi.post<OtpRequestResult>("/api/auth/otp/request", target),
       verifyOtp: async (target, code) => {
-        const res = await customerApi.post<{ token: string; account: LoyaltyAccount }>(
-          "/api/auth/otp/verify",
-          { ...target, code }
-        );
+        const res = await customerApi.post<{ token: string; account: LoyaltyAccount }>("/api/auth/otp/verify", { ...target, code });
         setCustomerToken(res.token);
         setAccount(res.account);
       },
@@ -83,7 +80,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       },
       refresh,
     }),
-    [account, loading, refresh]
+    [account, loading, refresh],
   );
 
   return <CustomerAuthContext.Provider value={value}>{children}</CustomerAuthContext.Provider>;

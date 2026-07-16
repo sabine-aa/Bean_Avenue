@@ -38,8 +38,7 @@ categoriesRouter.post("/", requireAdmin, async (req, res) => {
 categoriesRouter.delete("/:name", requireAdmin, async (req, res) => {
   const name = req.params.name;
   const inUse = await prisma.menuItem.count({ where: { category: name } });
-  if (inUse > 0)
-    return res.status(400).json({ error: `${inUse} item${inUse === 1 ? "" : "s"} still use this category — move or delete them first.` });
+  if (inUse > 0) return res.status(400).json({ error: `${inUse} item${inUse === 1 ? "" : "s"} still use this category — move or delete them first.` });
   await prisma.category.deleteMany({ where: { name } });
   res.json({ ok: true });
 });
@@ -53,8 +52,8 @@ categoriesRouter.patch("/order", requireAdmin, async (req, res) => {
         where: { name },
         create: { name, sortOrder: index },
         update: { sortOrder: index },
-      })
-    )
+      }),
+    ),
   );
   res.json({ ok: true });
 });

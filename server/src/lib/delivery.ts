@@ -63,8 +63,7 @@ export interface DeliveryQuote {
   freeApplied: boolean;
 }
 
-const UNAVAILABLE_MSG =
-  "Delivery is not currently available to this location. You can still place the order for pickup.";
+const UNAVAILABLE_MSG = "Delivery is not currently available to this location. You can still place the order for pickup.";
 
 /**
  * The authoritative delivery quote: availability, matched zone, fee (after the
@@ -78,7 +77,10 @@ export async function quoteDelivery(addr: AddressLike, subtotal: number, cfg?: S
   if (!config.delivery.enabled) return { ...base, reason: "Delivery is currently turned off. You can still order for pickup." };
   if (config.delivery.paused) return { ...base, reason: "Delivery is paused right now because we're busy. You can still order for pickup." };
   if (!config.delivery.hoursOpen)
-    return { ...base, reason: `Delivery is outside operating hours (${config.delivery.hours.start}–${config.delivery.hours.end}). You can still order for pickup.` };
+    return {
+      ...base,
+      reason: `Delivery is outside operating hours (${config.delivery.hours.start}–${config.delivery.hours.end}). You can still order for pickup.`,
+    };
 
   const zones = await prisma.deliveryZone.findMany({ orderBy: { sortOrder: "asc" } });
   const zone = pickZone(zones, addr);

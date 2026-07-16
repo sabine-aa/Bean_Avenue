@@ -8,8 +8,7 @@ const LEGACY_ALIAS: Record<string, OrderStatus> = {
   PICKED_UP: "COMPLETED",
 };
 
-export const normalizeStatus = (s: OrderStatus | string): OrderStatus =>
-  (LEGACY_ALIAS[s as string] ?? s) as OrderStatus;
+export const normalizeStatus = (s: OrderStatus | string): OrderStatus => (LEGACY_ALIAS[s as string] ?? s) as OrderStatus;
 
 // The linear flows. CANCELLED / AWAITING_PAYMENT sit outside the flow.
 export const PICKUP_FLOW: OrderStatus[] = ["RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "COMPLETED"];
@@ -91,18 +90,15 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
   PICKED_UP: { label: "Completed", description: "Enjoy! Thanks for visiting.", badge: "bg-espresso/10 text-espresso", icon: "🎉" },
 };
 
-export const statusMeta = (s: OrderStatus | string): StatusMeta =>
-  ORDER_STATUS_META[normalizeStatus(s)] ?? ORDER_STATUS_META.RECEIVED;
+export const statusMeta = (s: OrderStatus | string): StatusMeta => ORDER_STATUS_META[normalizeStatus(s)] ?? ORDER_STATUS_META.RECEIVED;
 
 export const statusLabel = (s: OrderStatus | string): string => statusMeta(s).label;
 
 /** Index of a status within its fulfillment flow, or -1 when outside it. */
-export const statusStep = (s: OrderStatus | string, f: Fulfillment): number =>
-  flowFor(f).indexOf(normalizeStatus(s));
+export const statusStep = (s: OrderStatus | string, f: Fulfillment): number => flowFor(f).indexOf(normalizeStatus(s));
 
 /** True once the order has reached a terminal (done/cancelled) state. */
-export const isTerminal = (s: OrderStatus | string): boolean =>
-  ["COMPLETED", "DELIVERED", "CANCELLED"].includes(normalizeStatus(s));
+export const isTerminal = (s: OrderStatus | string): boolean => ["COMPLETED", "DELIVERED", "CANCELLED"].includes(normalizeStatus(s));
 
 /** Friendly time estimate per status. */
 export function timeEstimate(s: OrderStatus | string, f: Fulfillment): string | null {
@@ -138,8 +134,7 @@ export const PAYMENT_STATUS_META: Record<string, { label: string; badge: string 
   CASH_COLLECTED: { label: "Cash collected", badge: "bg-green-100 text-green-700" },
 };
 
-export const paymentStatusMeta = (s: string) =>
-  PAYMENT_STATUS_META[s] ?? { label: s, badge: "bg-gray-100 text-gray-600" };
+export const paymentStatusMeta = (s: string) => PAYMENT_STATUS_META[s] ?? { label: s, badge: "bg-gray-100 text-gray-600" };
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   ONLINE: "Card (online)",

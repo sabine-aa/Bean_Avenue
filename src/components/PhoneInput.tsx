@@ -7,17 +7,7 @@ import { COUNTRIES, COUNTRY_BY_ISO, countryFromPhone } from "../lib/countries";
  * with flag + name + dial code) so it stays compact while covering everywhere.
  * Fully syncs when the parent prefills the value (e.g. from the saved account).
  */
-export function PhoneInput({
-  value,
-  onChange,
-  required,
-  id,
-}: {
-  value: string;
-  onChange: (combined: string) => void;
-  required?: boolean;
-  id?: string;
-}) {
+export function PhoneInput({ value, onChange, required, id }: { value: string; onChange: (combined: string) => void; required?: boolean; id?: string }) {
   const [iso, setIso] = useState(() => countryFromPhone(value).iso);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -70,7 +60,7 @@ export function PhoneInput({
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex h-full items-center gap-1 rounded-xl border border-oat bg-white px-3 py-2.5 text-sm font-semibold text-espresso"
+          className="border-oat text-espresso flex h-full items-center gap-1 rounded-xl border bg-white px-3 py-2.5 text-sm font-semibold"
           aria-haspopup="listbox"
           aria-expanded={open}
         >
@@ -80,27 +70,27 @@ export function PhoneInput({
         </button>
 
         {open && (
-          <div className="menu-in absolute left-0 z-30 mt-1 w-72 max-w-[80vw] rounded-2xl border border-oat bg-white p-2 shadow-xl">
+          <div className="menu-in border-oat absolute left-0 z-30 mt-1 w-72 max-w-[80vw] rounded-2xl border bg-white p-2 shadow-xl">
             <input
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search country or code…"
-              className="w-full rounded-xl border border-oat bg-cream/50 px-3 py-2 text-sm"
+              className="border-oat bg-cream/50 w-full rounded-xl border px-3 py-2 text-sm"
             />
             <ul role="listbox" className="mt-1 max-h-64 overflow-y-auto">
-              {filtered.length === 0 && <li className="px-3 py-2 text-sm text-charcoal/50">No matches.</li>}
+              {filtered.length === 0 && <li className="text-charcoal/50 px-3 py-2 text-sm">No matches.</li>}
               {filtered.map((c) => (
                 <li key={c.iso}>
                   <button
                     type="button"
                     onClick={() => pick(c.iso)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-oat/60 ${
+                    className={`hover:bg-oat/60 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
                       c.iso === iso ? "bg-oat/40 font-semibold" : ""
                     }`}
                   >
                     <span className="text-base leading-none">{c.flag}</span>
-                    <span className="flex-1 truncate text-espresso">{c.name}</span>
+                    <span className="text-espresso flex-1 truncate">{c.name}</span>
                     <span className="text-charcoal/50">{c.dial}</span>
                   </button>
                 </li>
@@ -119,7 +109,7 @@ export function PhoneInput({
         value={localNumber}
         onChange={(e) => emit(country.dial, e.target.value.replace(/[^\d]/g, ""))}
         placeholder="3 478 323"
-        className="min-w-0 flex-1 rounded-xl border border-oat bg-white px-4 py-2.5 text-sm"
+        className="border-oat min-w-0 flex-1 rounded-xl border bg-white px-4 py-2.5 text-sm"
       />
     </div>
   );

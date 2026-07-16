@@ -4,7 +4,10 @@ import { prisma } from "../db";
 
 export const votingRouter = Router();
 
-const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
+const str = (v: unknown, max: number) =>
+  String(v ?? "")
+    .trim()
+    .slice(0, max);
 
 function cleanBody(body: Record<string, unknown>) {
   const data: Record<string, unknown> = {};
@@ -26,8 +29,7 @@ function cleanBody(body: Record<string, unknown>) {
   return data;
 }
 
-const isClosed = (o: { status: string; closesAt: Date | null }) =>
-  o.status !== "OPEN" || (o.closesAt != null && o.closesAt.getTime() < Date.now());
+const isClosed = (o: { status: string; closesAt: Date | null }) => o.status !== "OPEN" || (o.closesAt != null && o.closesAt.getTime() < Date.now());
 
 // ---- Public / customer ----
 
@@ -52,7 +54,7 @@ votingRouter.get("/", optionalCustomer, async (req, res) => {
       ...o,
       voteCount: _count.votes,
       hasVoted: mine.has(o.id),
-    }))
+    })),
   );
 });
 
@@ -98,9 +100,7 @@ votingRouter.get("/all", requireAdmin, async (_req, res) => {
 // PATCH /api/voting/reorder  — declared before "/:id"
 votingRouter.patch("/reorder", requireAdmin, async (req, res) => {
   const ids: number[] = req.body.ids ?? [];
-  await prisma.$transaction(
-    ids.map((id, index) => prisma.votingOption.update({ where: { id }, data: { sortOrder: index } }))
-  );
+  await prisma.$transaction(ids.map((id, index) => prisma.votingOption.update({ where: { id }, data: { sortOrder: index } })));
   res.json({ ok: true });
 });
 

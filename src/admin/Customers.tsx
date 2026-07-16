@@ -11,8 +11,7 @@ export function AdminCustomers() {
   const [adjustAmount, setAdjustAmount] = useState(0);
   const [adjustNote, setAdjustNote] = useState("");
 
-  const load = () =>
-    api.get<Customer[]>(`/api/customers?search=${encodeURIComponent(search)}`).then(setCustomers);
+  const load = () => api.get<Customer[]>(`/api/customers?search=${encodeURIComponent(search)}`).then(setCustomers);
 
   useEffect(() => {
     load();
@@ -53,21 +52,21 @@ export function AdminCustomers() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-espresso">Customers & Loyalty</h1>
+      <h1 className="font-display text-espresso text-3xl font-bold">Customers & Loyalty</h1>
 
       <input
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search name or phone…"
-        className="mt-4 w-full rounded-full border border-oat bg-white px-4 py-2 text-sm sm:w-72"
+        className="border-oat mt-4 w-full rounded-full border bg-white px-4 py-2 text-sm sm:w-72"
       />
 
       <div className="mt-5 grid gap-6 lg:grid-cols-2">
         <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-oat text-left text-xs uppercase tracking-wide text-charcoal/50">
+              <tr className="border-oat text-charcoal/50 border-b text-left text-xs tracking-wide uppercase">
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Beans</th>
@@ -78,7 +77,7 @@ export function AdminCustomers() {
             <tbody>
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-charcoal/60">
+                  <td colSpan={5} className="text-charcoal/60 px-4 py-8 text-center">
                     No customers yet.
                   </td>
                 </tr>
@@ -86,21 +85,17 @@ export function AdminCustomers() {
               {customers.map((c) => (
                 <tr
                   key={c.id}
-                  className={`cursor-pointer border-b border-oat/60 hover:bg-oat/30 ${selected?.id === c.id ? "bg-oat/40" : ""}`}
+                  className={`border-oat/60 hover:bg-oat/30 cursor-pointer border-b ${selected?.id === c.id ? "bg-oat/40" : ""}`}
                   onClick={() => openDetail(c.id)}
                 >
-                  <td className="px-4 py-3 font-semibold text-espresso">
+                  <td className="text-espresso px-4 py-3 font-semibold">
                     {c.name} {c.isVip && "⭐"}
-                    {c.noShowCount > 0 && (
-                      <span className="ml-1 text-xs text-terracotta-dark">({c.noShowCount} no-shows)</span>
-                    )}
+                    {c.noShowCount > 0 && <span className="text-terracotta-dark ml-1 text-xs">({c.noShowCount} no-shows)</span>}
                   </td>
                   <td className="px-4 py-3">{c.phone}</td>
-                  <td className="px-4 py-3 font-semibold text-sage-dark">{c.beanBalance}</td>
+                  <td className="text-sage-dark px-4 py-3 font-semibold">{c.beanBalance}</td>
                   <td className="px-4 py-3">{c.tier}</td>
-                  <td className="px-4 py-3 text-xs text-charcoal/50">
-                    {c._count ? `${c._count.orders} orders · ${c._count.bookings} bookings` : ""}
-                  </td>
+                  <td className="text-charcoal/50 px-4 py-3 text-xs">{c._count ? `${c._count.orders} orders · ${c._count.bookings} bookings` : ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -111,72 +106,64 @@ export function AdminCustomers() {
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="font-display text-xl font-bold text-espresso">
+                <h2 className="font-display text-espresso text-xl font-bold">
                   {selected.name} {selected.isVip && "⭐"}
                 </h2>
-                <p className="text-sm text-charcoal/60">
+                <p className="text-charcoal/60 text-sm">
                   {selected.phone} · joined {formatDate(selected.createdAt)}
                 </p>
               </div>
-              <button
-                onClick={() => toggleVip(selected)}
-                className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream"
-              >
+              <button onClick={() => toggleVip(selected)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 text-xs font-semibold">
                 {selected.isVip ? "Remove VIP" : "Flag VIP"}
               </button>
             </div>
 
             <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <div className="rounded-xl bg-oat/50 p-3">
-                <p className="font-display text-2xl font-bold text-espresso">{selected.beanBalance}</p>
-                <p className="text-xs text-charcoal/60">beans</p>
+              <div className="bg-oat/50 rounded-xl p-3">
+                <p className="font-display text-espresso text-2xl font-bold">{selected.beanBalance}</p>
+                <p className="text-charcoal/60 text-xs">beans</p>
               </div>
-              <div className="rounded-xl bg-oat/50 p-3">
-                <p className="font-display text-2xl font-bold text-espresso">{selected.tier}</p>
-                <p className="text-xs text-charcoal/60">tier</p>
+              <div className="bg-oat/50 rounded-xl p-3">
+                <p className="font-display text-espresso text-2xl font-bold">{selected.tier}</p>
+                <p className="text-charcoal/60 text-xs">tier</p>
               </div>
-              <div className="rounded-xl bg-oat/50 p-3">
-                <p className="font-display text-2xl font-bold text-espresso">
-                  {money(selected.lifetimeValue ?? 0)}
-                </p>
-                <p className="text-xs text-charcoal/60">lifetime value</p>
+              <div className="bg-oat/50 rounded-xl p-3">
+                <p className="font-display text-espresso text-2xl font-bold">{money(selected.lifetimeValue ?? 0)}</p>
+                <p className="text-charcoal/60 text-xs">lifetime value</p>
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-oat p-3">
-              <label className="text-xs font-semibold text-espresso">
+            <div className="border-oat mt-4 flex flex-wrap items-end gap-2 rounded-xl border p-3">
+              <label className="text-espresso text-xs font-semibold">
                 Adjust beans (±)
                 <input
                   type="number"
                   value={adjustAmount}
                   onChange={(e) => setAdjustAmount(Number(e.target.value))}
-                  className="mt-1 block w-28 rounded-lg border border-oat px-3 py-1.5 font-normal"
+                  className="border-oat mt-1 block w-28 rounded-lg border px-3 py-1.5 font-normal"
                 />
               </label>
-              <label className="flex-1 text-xs font-semibold text-espresso">
+              <label className="text-espresso flex-1 text-xs font-semibold">
                 Reason <span className="text-terracotta-dark">(required)</span>
                 <input
                   value={adjustNote}
                   onChange={(e) => setAdjustNote(e.target.value)}
                   placeholder="e.g. complaint goodwill / cancelled order"
-                  className="mt-1 block w-full rounded-lg border border-oat px-3 py-1.5 font-normal"
+                  className="border-oat mt-1 block w-full rounded-lg border px-3 py-1.5 font-normal"
                 />
               </label>
-              <button
-                onClick={adjustBeans}
-                className="rounded-full bg-espresso px-4 py-1.5 text-sm font-semibold text-cream hover:bg-mocha"
-              >
+              <button onClick={adjustBeans} className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-1.5 text-sm font-semibold">
                 Apply
               </button>
             </div>
 
-            <h3 className="mt-5 text-sm font-bold text-espresso">Points history</h3>
+            <h3 className="text-espresso mt-5 text-sm font-bold">Points history</h3>
             <ul className="mt-2 max-h-56 space-y-1.5 overflow-y-auto text-sm">
               {selected.transactions?.map((t) => (
-                <li key={`t${t.id}`} className="flex justify-between gap-2 rounded-lg bg-oat/30 px-3 py-2">
+                <li key={`t${t.id}`} className="bg-oat/30 flex justify-between gap-2 rounded-lg px-3 py-2">
                   <span>
                     {t.note ?? (t.type === "EARN" ? `Earned on ${t.refId ?? t.source}` : t.source)}
-                    <span className="block text-xs text-charcoal/50">
+                    <span className="text-charcoal/50 block text-xs">
                       {formatDateTime(t.createdAt)} · balance {t.balanceAfter}
                     </span>
                   </span>
@@ -186,34 +173,32 @@ export function AdminCustomers() {
                   </span>
                 </li>
               ))}
-              {!selected.transactions?.length && (
-                <li className="text-charcoal/60">No points activity yet.</li>
-              )}
+              {!selected.transactions?.length && <li className="text-charcoal/60">No points activity yet.</li>}
             </ul>
 
-            <h3 className="mt-5 text-sm font-bold text-espresso">Orders &amp; bookings</h3>
+            <h3 className="text-espresso mt-5 text-sm font-bold">Orders &amp; bookings</h3>
             <ul className="mt-2 max-h-48 space-y-1.5 overflow-y-auto text-sm">
               {selected.orders?.map((o) => (
-                <li key={`o${o.id}`} className="flex justify-between rounded-lg bg-oat/30 px-3 py-2">
-                  <span>🛍 {o.number} · {formatDateTime(o.createdAt)}</span>
+                <li key={`o${o.id}`} className="bg-oat/30 flex justify-between rounded-lg px-3 py-2">
+                  <span>
+                    🛍 {o.number} · {formatDateTime(o.createdAt)}
+                  </span>
                   <span className="font-semibold">{money(o.total)}</span>
                 </li>
               ))}
               {selected.bookings?.map((b) => (
-                <li key={`b${b.id}`} className="flex justify-between rounded-lg bg-oat/30 px-3 py-2">
-                  <span>🚪 {b.number} · {b.room?.name} · {formatDateTime(b.startTime)}</span>
+                <li key={`b${b.id}`} className="bg-oat/30 flex justify-between rounded-lg px-3 py-2">
+                  <span>
+                    🚪 {b.number} · {b.room?.name} · {formatDateTime(b.startTime)}
+                  </span>
                   <span className="font-semibold">{money(b.total)}</span>
                 </li>
               ))}
-              {!selected.orders?.length && !selected.bookings?.length && (
-                <li className="text-charcoal/60">No orders or bookings yet.</li>
-              )}
+              {!selected.orders?.length && !selected.bookings?.length && <li className="text-charcoal/60">No orders or bookings yet.</li>}
             </ul>
           </div>
         ) : (
-          <p className="rounded-2xl bg-white p-8 text-center text-charcoal/60 shadow-sm">
-            Select a customer to see their story.
-          </p>
+          <p className="text-charcoal/60 rounded-2xl bg-white p-8 text-center shadow-sm">Select a customer to see their story.</p>
         )}
       </div>
     </div>

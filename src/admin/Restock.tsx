@@ -6,15 +6,38 @@ import { api, money } from "../lib/api";
 type Supplier = { id: number; name: string; phone: string | null };
 type StockItem = { id: number; name: string; unit: string; category: string; costPerUnit: number };
 type RestockRow = {
-  id: number; number: string; supplierName: string; invoiceNo: string | null;
-  deliveryDate: string; receivedBy: string | null; notes: string | null; itemCount: number; totalCost: number;
-  voidedAt: string | null; voidReason: string | null;
+  id: number;
+  number: string;
+  supplierName: string;
+  invoiceNo: string | null;
+  deliveryDate: string;
+  receivedBy: string | null;
+  notes: string | null;
+  itemCount: number;
+  totalCost: number;
+  voidedAt: string | null;
+  voidReason: string | null;
 };
 type RestockLine = {
-  id: number; inventoryItemId: number; itemName: string; quantity: number; unit: string; costPerUnit: number;
-  totalCost: number; expiryDate: string | null; batchNo: string | null; notes: string | null;
+  id: number;
+  inventoryItemId: number;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  costPerUnit: number;
+  totalCost: number;
+  expiryDate: string | null;
+  batchNo: string | null;
+  notes: string | null;
 };
-type RestockDetail = RestockRow & { supplierId: number | null; supplierPhone: string | null; invoicePhoto: string | null; createdBy: string | null; voidedBy: string | null; lines: RestockLine[] };
+type RestockDetail = RestockRow & {
+  supplierId: number | null;
+  supplierPhone: string | null;
+  invoicePhoto: string | null;
+  createdBy: string | null;
+  voidedBy: string | null;
+  lines: RestockLine[];
+};
 
 type Line = {
   key: number;
@@ -31,8 +54,16 @@ type Line = {
 
 let LINE_KEY = 1;
 const blankLine = (): Line => ({
-  key: LINE_KEY++, mode: "existing", inventoryItemId: "", unit: "", quantity: "", costPerUnit: "",
-  expiryDate: "", batchNo: "", notes: "", newItem: { name: "", category: "", unit: "pcs", minQty: "" },
+  key: LINE_KEY++,
+  mode: "existing",
+  inventoryItemId: "",
+  unit: "",
+  quantity: "",
+  costPerUnit: "",
+  expiryDate: "",
+  batchNo: "",
+  notes: "",
+  newItem: { name: "", category: "", unit: "pcs", minQty: "" },
 });
 
 export function AdminRestock() {
@@ -56,19 +87,36 @@ export function AdminRestock() {
   const [lines, setLines] = useState<Line[]>([blankLine()]);
 
   const loadRefs = () => {
-    api.get<Supplier[]>("/api/suppliers").then(setSuppliers).catch(() => {});
-    api.get<{ items: StockItem[] }>("/api/stock").then((r) => setStockItems(r.items)).catch(() => {});
+    api
+      .get<Supplier[]>("/api/suppliers")
+      .then(setSuppliers)
+      .catch(() => {});
+    api
+      .get<{ items: StockItem[] }>("/api/stock")
+      .then((r) => setStockItems(r.items))
+      .catch(() => {});
   };
-  const loadHistory = () => api.get<RestockRow[]>("/api/stock/restocks").then(setHistory).catch(() => {});
-  useEffect(() => { loadRefs(); loadHistory(); }, []);
+  const loadHistory = () =>
+    api
+      .get<RestockRow[]>("/api/stock/restocks")
+      .then(setHistory)
+      .catch(() => {});
+  useEffect(() => {
+    loadRefs();
+    loadHistory();
+  }, []);
 
   function chooseSupplier(val: string) {
     setSupplierId(val);
     if (val && val !== "manual") {
       const s = suppliers.find((x) => String(x.id) === val);
-      if (s) { setSupplierName(s.name); setSupplierPhone(s.phone ?? ""); }
+      if (s) {
+        setSupplierName(s.name);
+        setSupplierPhone(s.phone ?? "");
+      }
     } else if (val === "manual") {
-      setSupplierName(""); setSupplierPhone("");
+      setSupplierName("");
+      setSupplierPhone("");
     }
   }
 
@@ -76,10 +124,14 @@ export function AdminRestock() {
     setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
   function pickItem(key: number, val: string) {
-    if (val === "new") { updateLine(key, { mode: "new", inventoryItemId: "" }); return; }
+    if (val === "new") {
+      updateLine(key, { mode: "new", inventoryItemId: "" });
+      return;
+    }
     const item = stockItems.find((i) => String(i.id) === val);
     updateLine(key, {
-      mode: "existing", inventoryItemId: val,
+      mode: "existing",
+      inventoryItemId: val,
       unit: item?.unit ?? "",
       costPerUnit: item && item.costPerUnit > 0 ? String(item.costPerUnit) : "",
     });
@@ -94,8 +146,15 @@ export function AdminRestock() {
   }, [lines]);
 
   function resetForm() {
-    setSupplierId(""); setSupplierName(""); setSupplierPhone(""); setInvoiceNo(""); setInvoicePhoto("");
-    setDeliveryDate(new Date().toISOString().slice(0, 10)); setReceivedBy(""); setNotes(""); setLines([blankLine()]);
+    setSupplierId("");
+    setSupplierName("");
+    setSupplierPhone("");
+    setInvoiceNo("");
+    setInvoicePhoto("");
+    setDeliveryDate(new Date().toISOString().slice(0, 10));
+    setReceivedBy("");
+    setNotes("");
+    setLines([blankLine()]);
   }
 
   async function save() {
@@ -107,21 +166,43 @@ export function AdminRestock() {
     if (validLines.some((l) => l.mode === "existing" && !l.inventoryItemId)) return toast("Pick an item for every line (or add a new one).", "error");
     const payloadLines = validLines.map((l) =>
       l.mode === "new"
-        ? { newItem: { name: l.newItem.name, category: l.newItem.category, unit: l.newItem.unit, minQty: Number(l.newItem.minQty) || 0 }, unit: l.newItem.unit, quantity: Number(l.quantity), costPerUnit: Number(l.costPerUnit) || 0, expiryDate: l.expiryDate || undefined, batchNo: l.batchNo || undefined, notes: l.notes || undefined }
-        : { inventoryItemId: Number(l.inventoryItemId), quantity: Number(l.quantity), costPerUnit: Number(l.costPerUnit) || 0, expiryDate: l.expiryDate || undefined, batchNo: l.batchNo || undefined, notes: l.notes || undefined }
+        ? {
+            newItem: { name: l.newItem.name, category: l.newItem.category, unit: l.newItem.unit, minQty: Number(l.newItem.minQty) || 0 },
+            unit: l.newItem.unit,
+            quantity: Number(l.quantity),
+            costPerUnit: Number(l.costPerUnit) || 0,
+            expiryDate: l.expiryDate || undefined,
+            batchNo: l.batchNo || undefined,
+            notes: l.notes || undefined,
+          }
+        : {
+            inventoryItemId: Number(l.inventoryItemId),
+            quantity: Number(l.quantity),
+            costPerUnit: Number(l.costPerUnit) || 0,
+            expiryDate: l.expiryDate || undefined,
+            batchNo: l.batchNo || undefined,
+            notes: l.notes || undefined,
+          },
     );
 
     setSaving(true);
     try {
       const r = await api.post<RestockRow>("/api/stock/restock", {
         supplierId: supplierId && supplierId !== "manual" ? Number(supplierId) : undefined,
-        supplierName: supplierName.trim(), supplierPhone: supplierPhone.trim() || undefined,
-        invoiceNo: invoiceNo.trim() || undefined, invoicePhoto: invoicePhoto || undefined,
-        deliveryDate, receivedBy: receivedBy.trim() || undefined, notes: notes.trim() || undefined,
+        supplierName: supplierName.trim(),
+        supplierPhone: supplierPhone.trim() || undefined,
+        invoiceNo: invoiceNo.trim() || undefined,
+        invoicePhoto: invoicePhoto || undefined,
+        deliveryDate,
+        receivedBy: receivedBy.trim() || undefined,
+        notes: notes.trim() || undefined,
         lines: payloadLines,
       });
       toast(`Restock ${r.number} saved · inventory updated.`);
-      resetForm(); loadRefs(); loadHistory(); setTab("history");
+      resetForm();
+      loadRefs();
+      loadHistory();
+      setTab("history");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't save the restock.", "error");
     } finally {
@@ -130,36 +211,55 @@ export function AdminRestock() {
   }
 
   function openDetail(id: number) {
-    api.get<RestockDetail>(`/api/stock/restocks/${id}`).then(setDetail).catch(() => {});
+    api
+      .get<RestockDetail>(`/api/stock/restocks/${id}`)
+      .then(setDetail)
+      .catch(() => {});
   }
 
   function prefillFrom(d: RestockDetail) {
     const known = d.supplierId && suppliers.some((s) => s.id === d.supplierId);
     setSupplierId(known ? String(d.supplierId) : "manual");
-    setSupplierName(d.supplierName); setSupplierPhone(d.supplierPhone ?? "");
-    setInvoiceNo(d.invoiceNo ?? ""); setInvoicePhoto(d.invoicePhoto ?? "");
+    setSupplierName(d.supplierName);
+    setSupplierPhone(d.supplierPhone ?? "");
+    setInvoiceNo(d.invoiceNo ?? "");
+    setInvoicePhoto(d.invoicePhoto ?? "");
     setDeliveryDate(d.deliveryDate ? new Date(d.deliveryDate).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
-    setReceivedBy(d.receivedBy ?? ""); setNotes(d.notes ?? "");
-    setLines(d.lines.map((li) => ({
-      key: LINE_KEY++, mode: "existing" as const, inventoryItemId: String(li.inventoryItemId), unit: li.unit,
-      quantity: String(li.quantity), costPerUnit: String(li.costPerUnit),
-      expiryDate: li.expiryDate ? new Date(li.expiryDate).toISOString().slice(0, 10) : "",
-      batchNo: li.batchNo ?? "", notes: li.notes ?? "",
-      newItem: { name: "", category: "", unit: "pcs", minQty: "" },
-    })));
+    setReceivedBy(d.receivedBy ?? "");
+    setNotes(d.notes ?? "");
+    setLines(
+      d.lines.map((li) => ({
+        key: LINE_KEY++,
+        mode: "existing" as const,
+        inventoryItemId: String(li.inventoryItemId),
+        unit: li.unit,
+        quantity: String(li.quantity),
+        costPerUnit: String(li.costPerUnit),
+        expiryDate: li.expiryDate ? new Date(li.expiryDate).toISOString().slice(0, 10) : "",
+        batchNo: li.batchNo ?? "",
+        notes: li.notes ?? "",
+        newItem: { name: "", category: "", unit: "pcs", minQty: "" },
+      })),
+    );
   }
 
   async function voidRestock(d: RestockDetail, reEnter: boolean) {
     const reason = window.prompt(
-      reEnter ? `Correcting ${d.number} — this voids the original (reversing its stock), then re-opens it for editing. Reason:` : `Void ${d.number}? This reverses the stock it added. Reason:`,
-      reEnter ? "Correction" : ""
+      reEnter
+        ? `Correcting ${d.number} — this voids the original (reversing its stock), then re-opens it for editing. Reason:`
+        : `Void ${d.number}? This reverses the stock it added. Reason:`,
+      reEnter ? "Correction" : "",
     );
     if (reason === null) return;
     try {
       await api.post(`/api/stock/restocks/${d.id}/void`, { reason });
       toast(`${d.number} voided · stock reversed.`);
-      loadRefs(); loadHistory();
-      if (reEnter) { prefillFrom(d); setTab("new"); }
+      loadRefs();
+      loadHistory();
+      if (reEnter) {
+        prefillFrom(d);
+        setTab("new");
+      }
       setDetail(null);
     } catch (err) {
       toast(err instanceof Error ? err.message : "Couldn't void the restock.", "error");
@@ -173,12 +273,22 @@ export function AdminRestock() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-bold text-espresso">Restock / Receive Stock</h1>
-          <p className="mt-1 text-sm text-charcoal/60">Record a supplier delivery — inventory updates automatically.</p>
+          <h1 className="font-display text-espresso text-3xl font-bold">Restock / Receive Stock</h1>
+          <p className="text-charcoal/60 mt-1 text-sm">Record a supplier delivery — inventory updates automatically.</p>
         </div>
-        <div className="flex gap-1 rounded-full bg-oat p-1">
-          <button onClick={() => setTab("new")} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === "new" ? "bg-espresso text-cream" : "text-espresso"}`}>New Restock</button>
-          <button onClick={() => setTab("history")} className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === "history" ? "bg-espresso text-cream" : "text-espresso"}`}>History</button>
+        <div className="bg-oat flex gap-1 rounded-full p-1">
+          <button
+            onClick={() => setTab("new")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === "new" ? "bg-espresso text-cream" : "text-espresso"}`}
+          >
+            New Restock
+          </button>
+          <button
+            onClick={() => setTab("history")}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === "history" ? "bg-espresso text-cream" : "text-espresso"}`}
+          >
+            History
+          </button>
         </div>
       </div>
 
@@ -186,13 +296,17 @@ export function AdminRestock() {
         <div className="mt-5 space-y-5">
           {/* Supplier & delivery details */}
           <section className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Supplier & delivery</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Supplier & delivery</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className={label}>Supplier *</label>
                 <select value={supplierId} onChange={(e) => chooseSupplier(e.target.value)} className={`mt-1 ${field}`}>
                   <option value="">— Choose supplier —</option>
-                  {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
                   <option value="manual">✏️ Type a supplier name…</option>
                 </select>
               </div>
@@ -231,35 +345,76 @@ export function AdminRestock() {
 
           {/* Received items */}
           <section className="rounded-2xl bg-white p-4 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Received items</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Received items</h2>
             <div className="mt-3 space-y-3">
               {lines.map((l) => (
-                <div key={l.key} className="rounded-xl border border-oat p-3">
+                <div key={l.key} className="border-oat rounded-xl border p-3">
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <div className="lg:col-span-2">
                       <label className={label}>Item</label>
-                      <select value={l.mode === "new" ? "new" : l.inventoryItemId} onChange={(e) => pickItem(l.key, e.target.value)} className={`mt-1 ${field}`}>
+                      <select
+                        value={l.mode === "new" ? "new" : l.inventoryItemId}
+                        onChange={(e) => pickItem(l.key, e.target.value)}
+                        className={`mt-1 ${field}`}
+                      >
                         <option value="">— Choose item —</option>
-                        {stockItems.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
+                        {stockItems.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} ({i.unit})
+                          </option>
+                        ))}
                         <option value="new">➕ New item…</option>
                       </select>
                     </div>
                     <div>
                       <label className={label}>Quantity</label>
-                      <input value={l.quantity} onChange={(e) => updateLine(l.key, { quantity: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" className={`mt-1 ${field}`} placeholder="0" />
+                      <input
+                        value={l.quantity}
+                        onChange={(e) => updateLine(l.key, { quantity: e.target.value.replace(/[^0-9.]/g, "") })}
+                        inputMode="decimal"
+                        className={`mt-1 ${field}`}
+                        placeholder="0"
+                      />
                     </div>
                     <div>
                       <label className={label}>Cost / unit ($)</label>
-                      <input value={l.costPerUnit} onChange={(e) => updateLine(l.key, { costPerUnit: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" className={`mt-1 ${field}`} placeholder="0.00" />
+                      <input
+                        value={l.costPerUnit}
+                        onChange={(e) => updateLine(l.key, { costPerUnit: e.target.value.replace(/[^0-9.]/g, "") })}
+                        inputMode="decimal"
+                        className={`mt-1 ${field}`}
+                        placeholder="0.00"
+                      />
                     </div>
                   </div>
 
                   {l.mode === "new" && (
-                    <div className="mt-2 grid gap-2 rounded-lg bg-oat/40 p-2 sm:grid-cols-2 lg:grid-cols-4">
-                      <input value={l.newItem.name} onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, name: e.target.value } })} placeholder="New item name *" className={field} />
-                      <input value={l.newItem.category} onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, category: e.target.value } })} placeholder="Category (Dairy, Coffee…)" className={field} />
-                      <input value={l.newItem.unit} onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, unit: e.target.value } })} placeholder="Unit (L, kg, pcs)" className={field} />
-                      <input value={l.newItem.minQty} onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, minQty: e.target.value.replace(/[^0-9.]/g, "") } })} inputMode="decimal" placeholder="Min stock level" className={field} />
+                    <div className="bg-oat/40 mt-2 grid gap-2 rounded-lg p-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <input
+                        value={l.newItem.name}
+                        onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, name: e.target.value } })}
+                        placeholder="New item name *"
+                        className={field}
+                      />
+                      <input
+                        value={l.newItem.category}
+                        onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, category: e.target.value } })}
+                        placeholder="Category (Dairy, Coffee…)"
+                        className={field}
+                      />
+                      <input
+                        value={l.newItem.unit}
+                        onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, unit: e.target.value } })}
+                        placeholder="Unit (L, kg, pcs)"
+                        className={field}
+                      />
+                      <input
+                        value={l.newItem.minQty}
+                        onChange={(e) => updateLine(l.key, { newItem: { ...l.newItem, minQty: e.target.value.replace(/[^0-9.]/g, "") } })}
+                        inputMode="decimal"
+                        placeholder="Min stock level"
+                        className={field}
+                      />
                     </div>
                   )}
 
@@ -277,23 +432,33 @@ export function AdminRestock() {
                       <input value={l.notes} onChange={(e) => updateLine(l.key, { notes: e.target.value })} className={`mt-1 ${field}`} />
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm"><span className="text-charcoal/50">Line total </span><span className="font-bold text-espresso">{money(lineTotal(l))}</span></span>
-                      <button onClick={() => removeLine(l.key)} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+                      <span className="text-sm">
+                        <span className="text-charcoal/50">Line total </span>
+                        <span className="text-espresso font-bold">{money(lineTotal(l))}</span>
+                      </span>
+                      <button onClick={() => removeLine(l.key)} className="text-charcoal/40 hover:text-terracotta rounded-full px-2 py-1 text-xs font-semibold">
+                        Remove
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-3 rounded-full border border-dashed border-oat px-4 py-2 text-sm font-semibold text-charcoal/70 hover:border-espresso">+ Add another item</button>
+            <button
+              onClick={addLine}
+              className="border-oat text-charcoal/70 hover:border-espresso mt-3 rounded-full border border-dashed px-4 py-2 text-sm font-semibold"
+            >
+              + Add another item
+            </button>
           </section>
 
           {/* Totals & save */}
-          <section className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-espresso p-4 text-cream shadow-lg">
+          <section className="bg-espresso text-cream sticky bottom-0 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4 shadow-lg">
             <div className="text-sm">
-              <span className="font-semibold">{totals.count}</span> item{totals.count === 1 ? "" : "s"} ·
-              <span className="ml-1">Total invoice cost </span><span className="text-lg font-bold">{money(totals.cost)}</span>
+              <span className="font-semibold">{totals.count}</span> item{totals.count === 1 ? "" : "s"} ·<span className="ml-1">Total invoice cost </span>
+              <span className="text-lg font-bold">{money(totals.cost)}</span>
             </div>
-            <button onClick={save} disabled={saving} className="btn-3d rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream disabled:opacity-60">
+            <button onClick={save} disabled={saving} className="btn-3d bg-terracotta text-cream rounded-full px-6 py-2.5 font-semibold disabled:opacity-60">
               {saving ? "Saving…" : "Save restock & update inventory"}
             </button>
           </section>
@@ -303,21 +468,27 @@ export function AdminRestock() {
       {tab === "history" && (
         <div className="mt-5 space-y-2">
           {history.map((r) => (
-            <button key={r.id} onClick={() => openDetail(r.id)} className="flex w-full flex-wrap items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm hover:ring-2 hover:ring-oat">
+            <button
+              key={r.id}
+              onClick={() => openDetail(r.id)}
+              className="hover:ring-oat flex w-full flex-wrap items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm hover:ring-2"
+            >
               <div className="flex-1">
-                <p className="font-semibold text-espresso">
+                <p className="text-espresso font-semibold">
                   {r.number} · {r.supplierName}
-                  {r.voidedAt && <span className="ml-2 rounded-full bg-terracotta/15 px-2 py-0.5 text-xs font-semibold text-terracotta-dark">VOIDED</span>}
+                  {r.voidedAt && <span className="bg-terracotta/15 text-terracotta-dark ml-2 rounded-full px-2 py-0.5 text-xs font-semibold">VOIDED</span>}
                 </p>
-                <p className="text-xs text-charcoal/55">
-                  {new Date(r.deliveryDate).toLocaleDateString()}{r.invoiceNo ? ` · Inv #${r.invoiceNo}` : ""}{r.receivedBy ? ` · by ${r.receivedBy}` : ""} · {r.itemCount} item{r.itemCount === 1 ? "" : "s"}
+                <p className="text-charcoal/55 text-xs">
+                  {new Date(r.deliveryDate).toLocaleDateString()}
+                  {r.invoiceNo ? ` · Inv #${r.invoiceNo}` : ""}
+                  {r.receivedBy ? ` · by ${r.receivedBy}` : ""} · {r.itemCount} item{r.itemCount === 1 ? "" : "s"}
                 </p>
               </div>
               <span className={`font-bold ${r.voidedAt ? "text-charcoal/40 line-through" : "text-terracotta"}`}>{money(r.totalCost)}</span>
-              <span className="text-xs font-semibold text-charcoal/40">View →</span>
+              <span className="text-charcoal/40 text-xs font-semibold">View →</span>
             </button>
           ))}
-          {history.length === 0 && <p className="rounded-2xl bg-white p-6 text-center text-charcoal/50 shadow-sm">No restocks recorded yet.</p>}
+          {history.length === 0 && <p className="text-charcoal/50 rounded-2xl bg-white p-6 text-center shadow-sm">No restocks recorded yet.</p>}
         </div>
       )}
 
@@ -326,47 +497,74 @@ export function AdminRestock() {
           <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-display text-xl font-bold text-espresso">{detail.number}</h3>
-                <p className="text-sm text-charcoal/60">{detail.supplierName}{detail.supplierPhone ? ` · ${detail.supplierPhone}` : ""}</p>
-                <p className="text-xs text-charcoal/50">
-                  {new Date(detail.deliveryDate).toLocaleString()}{detail.invoiceNo ? ` · Invoice #${detail.invoiceNo}` : ""}{detail.receivedBy ? ` · received by ${detail.receivedBy}` : ""}
+                <h3 className="font-display text-espresso text-xl font-bold">{detail.number}</h3>
+                <p className="text-charcoal/60 text-sm">
+                  {detail.supplierName}
+                  {detail.supplierPhone ? ` · ${detail.supplierPhone}` : ""}
+                </p>
+                <p className="text-charcoal/50 text-xs">
+                  {new Date(detail.deliveryDate).toLocaleString()}
+                  {detail.invoiceNo ? ` · Invoice #${detail.invoiceNo}` : ""}
+                  {detail.receivedBy ? ` · received by ${detail.receivedBy}` : ""}
                 </p>
               </div>
-              <button onClick={() => setDetail(null)} className="text-charcoal/40 hover:text-charcoal">✕</button>
+              <button onClick={() => setDetail(null)} className="text-charcoal/40 hover:text-charcoal">
+                ✕
+              </button>
             </div>
-            {detail.notes && <p className="mt-2 rounded-lg bg-oat/40 px-3 py-2 text-sm text-charcoal/70">{detail.notes}</p>}
+            {detail.notes && <p className="bg-oat/40 text-charcoal/70 mt-2 rounded-lg px-3 py-2 text-sm">{detail.notes}</p>}
             <div className="mt-3 space-y-1.5">
               {detail.lines.map((li) => (
-                <div key={li.id} className="flex items-center justify-between border-b border-oat/60 py-1.5 text-sm">
+                <div key={li.id} className="border-oat/60 flex items-center justify-between border-b py-1.5 text-sm">
                   <div>
-                    <span className="font-semibold text-espresso">{li.quantity} {li.unit} · {li.itemName}</span>
-                    <span className="block text-xs text-charcoal/45">
-                      {money(li.costPerUnit)}/{li.unit}{li.expiryDate ? ` · exp ${new Date(li.expiryDate).toLocaleDateString()}` : ""}{li.batchNo ? ` · batch ${li.batchNo}` : ""}
+                    <span className="text-espresso font-semibold">
+                      {li.quantity} {li.unit} · {li.itemName}
+                    </span>
+                    <span className="text-charcoal/45 block text-xs">
+                      {money(li.costPerUnit)}/{li.unit}
+                      {li.expiryDate ? ` · exp ${new Date(li.expiryDate).toLocaleDateString()}` : ""}
+                      {li.batchNo ? ` · batch ${li.batchNo}` : ""}
                     </span>
                   </div>
-                  <span className="font-semibold text-charcoal/70">{money(li.totalCost)}</span>
+                  <span className="text-charcoal/70 font-semibold">{money(li.totalCost)}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center justify-between text-base font-bold text-espresso">
-              <span>Total</span><span className="text-terracotta">{money(detail.totalCost)}</span>
+            <div className="text-espresso mt-3 flex items-center justify-between text-base font-bold">
+              <span>Total</span>
+              <span className="text-terracotta">{money(detail.totalCost)}</span>
             </div>
             {detail.invoicePhoto && (
-              <a href={detail.invoicePhoto} target="_blank" rel="noreferrer" className="mt-3 block text-sm font-semibold text-terracotta hover:underline">🧾 View invoice photo</a>
+              <a href={detail.invoicePhoto} target="_blank" rel="noreferrer" className="text-terracotta mt-3 block text-sm font-semibold hover:underline">
+                🧾 View invoice photo
+              </a>
             )}
 
             {detail.voidedAt ? (
-              <div className="mt-4 rounded-xl bg-terracotta/10 px-3 py-2 text-sm text-terracotta-dark">
-                🚫 <span className="font-semibold">Voided</span> {detail.voidedBy ? `by ${detail.voidedBy}` : ""} on {new Date(detail.voidedAt).toLocaleString()}. Stock was reversed.
+              <div className="bg-terracotta/10 text-terracotta-dark mt-4 rounded-xl px-3 py-2 text-sm">
+                🚫 <span className="font-semibold">Voided</span> {detail.voidedBy ? `by ${detail.voidedBy}` : ""} on{" "}
+                {new Date(detail.voidedAt).toLocaleString()}. Stock was reversed.
                 {detail.voidReason && <span className="block text-xs">Reason: {detail.voidReason}</span>}
               </div>
             ) : (
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-oat pt-3">
-                <button onClick={() => voidRestock(detail, true)} className="rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha">✏️ Correct (void &amp; re-enter)</button>
-                <button onClick={() => voidRestock(detail, false)} className="rounded-full border border-terracotta px-4 py-2 text-sm font-semibold text-terracotta-dark hover:bg-terracotta/10">🗑 Void (reverse stock)</button>
+              <div className="border-oat mt-4 flex flex-wrap gap-2 border-t pt-3">
+                <button
+                  onClick={() => voidRestock(detail, true)}
+                  className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-2 text-sm font-semibold"
+                >
+                  ✏️ Correct (void &amp; re-enter)
+                </button>
+                <button
+                  onClick={() => voidRestock(detail, false)}
+                  className="border-terracotta text-terracotta-dark hover:bg-terracotta/10 rounded-full border px-4 py-2 text-sm font-semibold"
+                >
+                  🗑 Void (reverse stock)
+                </button>
               </div>
             )}
-            <p className="mt-2 text-xs text-charcoal/45">Voiding reverses this delivery's stock and is fully logged in the inventory movements — nothing changes silently.</p>
+            <p className="text-charcoal/45 mt-2 text-xs">
+              Voiding reverses this delivery's stock and is fully logged in the inventory movements — nothing changes silently.
+            </p>
           </div>
         </div>
       )}

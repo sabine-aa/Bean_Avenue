@@ -9,7 +9,10 @@ import { deductRecipes, restoreRecipes, type ConsumptionLine } from "./recipe";
 const round = (n: number) => Math.round((Number(n) || 0) * 1000) / 1000;
 
 /** Deduct retail (shop) product stock for a sale — simple quantity, no recipe. */
-export async function consumeShopForOrder(items: { shopProductId: number; quantity: number }[], opts: { orderId?: number; staffName?: string } = {}): Promise<void> {
+export async function consumeShopForOrder(
+  items: { shopProductId: number; quantity: number }[],
+  opts: { orderId?: number; staffName?: string } = {},
+): Promise<void> {
   for (const it of items) {
     const qty = Math.max(0, round(it.quantity));
     if (!qty) continue;
@@ -17,7 +20,9 @@ export async function consumeShopForOrder(items: { shopProductId: number; quanti
     if (!p) continue;
     const balance = round(p.quantity - qty);
     await prisma.shopProduct.update({ where: { id: p.id }, data: { quantity: balance } });
-    await prisma.shopStockMovement.create({ data: { productId: p.id, delta: -qty, balance, type: "SALE", reason: "Sale", staffName: opts.staffName ?? "Staff", orderId: opts.orderId } });
+    await prisma.shopStockMovement.create({
+      data: { productId: p.id, delta: -qty, balance, type: "SALE", reason: "Sale", staffName: opts.staffName ?? "Staff", orderId: opts.orderId },
+    });
   }
 }
 
@@ -32,16 +37,16 @@ export async function reverseShopForOrder(orderId: number): Promise<void> {
     const restore = -s.delta; // SALE delta is negative
     const balance = round(p.quantity + restore);
     await prisma.shopProduct.update({ where: { id: p.id }, data: { quantity: balance } });
-    await prisma.shopStockMovement.create({ data: { productId: p.id, delta: restore, balance, type: "ADJUST", reason: `Reversal of sale (order ${orderId})`, staffName: "System", orderId } });
+    await prisma.shopStockMovement.create({
+      data: { productId: p.id, delta: restore, balance, type: "ADJUST", reason: `Reversal of sale (order ${orderId})`, staffName: "System", orderId },
+    });
   }
 }
 
 export async function consumeForOrder(items: ConsumptionLine[], opts: { orderId?: number; staffName?: string } = {}): Promise<void> {
   // Recipes take precedence; whatever they cover is excluded from finished-goods.
   const recipeItemIds = await deductRecipes(items, opts);
-  const rest: SaleLine[] = items
-    .filter((i) => !recipeItemIds.has(Number(i.menuItemId)))
-    .map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity }));
+  const rest: SaleLine[] = items.filter((i) => !recipeItemIds.has(Number(i.menuItemId))).map((i) => ({ menuItemId: i.menuItemId, quantity: i.quantity }));
   await recordStockSale(rest, opts);
   await consumeHansonForOrder(items, opts); // Hanson doughnuts: decrement today's stock
 }

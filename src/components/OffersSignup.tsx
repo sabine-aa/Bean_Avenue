@@ -26,18 +26,16 @@ export function OffersSignup() {
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl bg-espresso p-8 text-cream shadow-lg sm:p-10">
+    <section className="bg-espresso text-cream overflow-hidden rounded-3xl p-8 shadow-lg sm:p-10">
       <h2 className="font-display text-3xl font-bold sm:text-4xl">Get Bean Avenue offers and updates</h2>
-      <p className="mt-3 max-w-2xl text-lg text-oat">
-        Sign up to hear about special offers, new drinks, and events — straight to your phone.
-      </p>
+      <p className="text-oat mt-3 max-w-2xl text-lg">Sign up to hear about special offers, new drinks, and events — straight to your phone.</p>
 
       {done ? (
-        <div className="mt-6 flex items-center gap-3 rounded-2xl bg-sage/25 p-5 text-cream">
+        <div className="bg-sage/25 text-cream mt-6 flex items-center gap-3 rounded-2xl p-5">
           <span className="text-2xl">✅</span>
           <div>
             <p className="text-lg font-bold">You're on the list!</p>
-            <p className="text-sm text-oat">We'll be in touch with the good stuff. No spam, promise.</p>
+            <p className="text-oat text-sm">We'll be in touch with the good stuff. No spam, promise.</p>
           </div>
         </div>
       ) : (
@@ -47,12 +45,10 @@ export function OffersSignup() {
             onChange={(e) => setName(e.target.value)}
             placeholder="Name (optional)"
             autoComplete="name"
-            className="w-full rounded-full border-0 bg-white px-5 py-3.5 text-base text-charcoal placeholder:text-charcoal/50 sm:w-48"
+            className="text-charcoal placeholder:text-charcoal/50 w-full rounded-full border-0 bg-white px-5 py-3.5 text-base sm:w-48"
           />
           <div className="flex w-full flex-1 items-center overflow-hidden rounded-full bg-white">
-            <span className="select-none border-r border-oat py-3.5 pl-5 pr-3 text-base font-semibold text-charcoal/70">
-              +961
-            </span>
+            <span className="border-oat text-charcoal/70 border-r py-3.5 pr-3 pl-5 text-base font-semibold select-none">+961</span>
             <input
               required
               type="tel"
@@ -61,13 +57,13 @@ export function OffersSignup() {
               onChange={(e) => setPhone(e.target.value)}
               placeholder="70 123 456"
               autoComplete="tel"
-              className="w-full border-0 bg-transparent px-3 py-3.5 text-base text-charcoal placeholder:text-charcoal/40 focus:outline-none"
+              className="text-charcoal placeholder:text-charcoal/40 w-full border-0 bg-transparent px-3 py-3.5 text-base focus:outline-none"
             />
           </div>
           <button
             type="submit"
             disabled={sending || !phone.trim()}
-            className="btn-3d rounded-full bg-terracotta px-8 py-3.5 text-base font-semibold text-cream transition hover:bg-terracotta-dark disabled:opacity-60"
+            className="btn-3d bg-terracotta text-cream hover:bg-terracotta-dark rounded-full px-8 py-3.5 text-base font-semibold transition disabled:opacity-60"
           >
             {sending ? "…" : "Sign me up"}
           </button>

@@ -130,55 +130,60 @@ export function VotingManager() {
     <div className="mt-10">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="font-display text-2xl font-bold text-espresso">Vote for What's Next</h2>
-          <p className="mt-1 text-sm text-charcoal/60">
-            Publish ideas for customers to vote on, then select a winner to spin up an event draft.
-          </p>
+          <h2 className="font-display text-espresso text-2xl font-bold">Vote for What's Next</h2>
+          <p className="text-charcoal/60 mt-1 text-sm">Publish ideas for customers to vote on, then select a winner to spin up an event draft.</p>
         </div>
-        <button onClick={startNew} className="shrink-0 rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark">
+        <button onClick={startNew} className="bg-terracotta text-cream hover:bg-terracotta-dark shrink-0 rounded-full px-5 py-2 font-semibold">
           + New option
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={save} className="mt-4 grid gap-4 rounded-2xl bg-white p-6 shadow-md sm:grid-cols-2">
-          <h3 className="font-display text-lg font-bold text-espresso sm:col-span-2">
-            {editingId ? "Edit voting option" : "New voting option"}
-          </h3>
-          <label className="text-sm font-semibold text-espresso">
+          <h3 className="font-display text-espresso text-lg font-bold sm:col-span-2">{editingId ? "Edit voting option" : "New voting option"}</h3>
+          <label className="text-espresso text-sm font-semibold">
             Title
             <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={cls} />
           </label>
-          <label className="text-sm font-semibold text-espresso">
+          <label className="text-espresso text-sm font-semibold">
             Category
             <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={cls} list="vote-cats" />
-            <datalist id="vote-cats">{EVENT_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
+            <datalist id="vote-cats">
+              {EVENT_CATEGORIES.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </label>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
             Description
             <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={cls} />
           </label>
-          <label className="text-sm font-semibold text-espresso">
-            Possible date / time <span className="font-normal text-charcoal/50">(freeform, optional)</span>
-            <input value={form.possibleDate} onChange={(e) => setForm({ ...form, possibleDate: e.target.value })} placeholder="e.g. A Saturday in August" className={cls} />
+          <label className="text-espresso text-sm font-semibold">
+            Possible date / time <span className="text-charcoal/50 font-normal">(freeform, optional)</span>
+            <input
+              value={form.possibleDate}
+              onChange={(e) => setForm({ ...form, possibleDate: e.target.value })}
+              placeholder="e.g. A Saturday in August"
+              className={cls}
+            />
           </label>
-          <label className="text-sm font-semibold text-espresso">
-            Voting closes <span className="font-normal text-charcoal/50">(optional)</span>
+          <label className="text-espresso text-sm font-semibold">
+            Voting closes <span className="text-charcoal/50 font-normal">(optional)</span>
             <input type="datetime-local" value={form.closesAt} onChange={(e) => setForm({ ...form, closesAt: e.target.value })} className={cls} />
           </label>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
-            Image URL <span className="font-normal text-charcoal/50">(optional)</span>
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
+            Image URL <span className="text-charcoal/50 font-normal">(optional)</span>
             <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className={cls} />
           </label>
-          <label className="flex items-center gap-2 text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso flex items-center gap-2 text-sm font-semibold sm:col-span-2">
             <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm({ ...form, isPublished: e.target.checked })} />
             Published (open for customer voting)
           </label>
           <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" className="rounded-full bg-espresso px-6 py-2 font-semibold text-cream hover:bg-mocha">
+            <button type="submit" className="bg-espresso text-cream hover:bg-mocha rounded-full px-6 py-2 font-semibold">
               {editingId ? "Save changes" : "Create"}
             </button>
-            <button type="button" onClick={closeForm} className="rounded-full px-6 py-2 font-semibold text-charcoal/60 hover:text-terracotta">
+            <button type="button" onClick={closeForm} className="text-charcoal/60 hover:text-terracotta rounded-full px-6 py-2 font-semibold">
               Cancel
             </button>
           </div>
@@ -187,44 +192,83 @@ export function VotingManager() {
 
       <div className="mt-4 space-y-2">
         {options.length === 0 && (
-          <p className="rounded-2xl bg-white p-6 text-center text-charcoal/60 shadow-sm">
+          <p className="text-charcoal/60 rounded-2xl bg-white p-6 text-center shadow-sm">
             No voting options yet. Create one, or convert a customer suggestion above.
           </p>
         )}
         {options.map((o, idx) => (
           <div key={o.id} className={`flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${!o.isPublished ? "opacity-70" : ""}`}>
             <div className="flex flex-col">
-              <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Move up" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▲</button>
-              <button onClick={() => move(idx, 1)} disabled={idx === options.length - 1} aria-label="Move down" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▼</button>
+              <button
+                onClick={() => move(idx, -1)}
+                disabled={idx === 0}
+                aria-label="Move up"
+                className="text-charcoal/40 hover:text-espresso px-1 disabled:opacity-30"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => move(idx, 1)}
+                disabled={idx === options.length - 1}
+                aria-label="Move down"
+                className="text-charcoal/40 hover:text-espresso px-1 disabled:opacity-30"
+              >
+                ▼
+              </button>
             </div>
-            {o.image && <Img src={o.image} alt={o.title} className="aspect-[16/10] h-14 shrink-0 rounded-lg bg-oat/30" />}
+            {o.image && <Img src={o.image} alt={o.title} className="bg-oat/30 aspect-[16/10] h-14 shrink-0 rounded-lg" />}
             <div className="min-w-[10rem] flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold text-espresso">{o.title}</p>
+                <p className="text-espresso font-semibold">{o.title}</p>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_CLS[o.status]}`}>{o.status}</span>
-                {!o.isPublished && <span className="rounded-full bg-oat px-2 py-0.5 text-xs font-bold text-charcoal/60">Draft</span>}
-                <span className="rounded-full bg-sage/20 px-2 py-0.5 text-xs font-bold text-sage-dark">{o.voteCount} votes</span>
+                {!o.isPublished && <span className="bg-oat text-charcoal/60 rounded-full px-2 py-0.5 text-xs font-bold">Draft</span>}
+                <span className="bg-sage/20 text-sage-dark rounded-full px-2 py-0.5 text-xs font-bold">{o.voteCount} votes</span>
               </div>
-              <p className="text-xs text-charcoal/60">
+              <p className="text-charcoal/60 text-xs">
                 {o.category && `${o.category} · `}
                 {o.closesAt ? `closes ${formatDate(o.closesAt)}` : "no deadline"}
                 {o.convertedEventId && ` · → event draft #${o.convertedEventId}`}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
-              <button onClick={() => startEdit(o)} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">Edit</button>
-              <button onClick={() => update(o, { isPublished: !o.isPublished })} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">
+              <button onClick={() => startEdit(o)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold">
+                Edit
+              </button>
+              <button
+                onClick={() => update(o, { isPublished: !o.isPublished })}
+                className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold"
+              >
                 {o.isPublished ? "Unpublish" : "Publish"}
               </button>
               {o.status === "OPEN" ? (
-                <button onClick={() => update(o, { status: "CLOSED" })} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">Close voting</button>
+                <button
+                  onClick={() => update(o, { status: "CLOSED" })}
+                  className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold"
+                >
+                  Close voting
+                </button>
               ) : o.status === "CLOSED" ? (
-                <button onClick={() => update(o, { status: "OPEN" })} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">Reopen</button>
+                <button
+                  onClick={() => update(o, { status: "OPEN" })}
+                  className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold"
+                >
+                  Reopen
+                </button>
               ) : null}
               {o.status !== "SELECTED" && (
-                <button onClick={() => selectWinner(o)} className="rounded-full bg-terracotta/15 px-3 py-1 font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">Select winner</button>
+                <button
+                  onClick={() => selectWinner(o)}
+                  className="bg-terracotta/15 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full px-3 py-1 font-semibold"
+                >
+                  Select winner
+                </button>
               )}
-              <button onClick={() => remove(o)} className="rounded-full bg-terracotta/15 px-3 py-1 font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">Delete</button>
+              <button
+                onClick={() => remove(o)}
+                className="bg-terracotta/15 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full px-3 py-1 font-semibold"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}

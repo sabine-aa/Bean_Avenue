@@ -141,9 +141,7 @@ customerAuthRouter.post("/otp/verify", async (req, res) => {
   } else {
     customer = await prisma.customer.create({
       data:
-        target.channel === "PHONE"
-          ? { name: "", phone: target.identifier, phoneVerified: true }
-          : { name: "", email: target.identifier, emailVerified: true },
+        target.channel === "PHONE" ? { name: "", phone: target.identifier, phoneVerified: true } : { name: "", email: target.identifier, emailVerified: true },
     });
   }
 
@@ -160,7 +158,9 @@ customerAuthRouter.post("/otp/verify", async (req, res) => {
   }
 
   // Save the first/last name captured on the sign-up form.
-  const providedName = String(req.body.name ?? "").trim().slice(0, 80);
+  const providedName = String(req.body.name ?? "")
+    .trim()
+    .slice(0, 80);
   if (providedName && providedName !== customer.name) {
     customer = await prisma.customer.update({ where: { id: customer.id }, data: { name: providedName } });
   }
@@ -200,10 +200,7 @@ customerAuthRouter.post("/link/verify", requireCustomer, async (req, res) => {
 
   await prisma.customer.update({
     where: { id: req.customerId! },
-    data:
-      target.channel === "PHONE"
-        ? { phone: target.identifier, phoneVerified: true }
-        : { email: target.identifier, emailVerified: true },
+    data: target.channel === "PHONE" ? { phone: target.identifier, phoneVerified: true } : { email: target.identifier, emailVerified: true },
   });
   res.json(await accountResponse(req.customerId!));
 });

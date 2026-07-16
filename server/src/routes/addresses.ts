@@ -7,7 +7,10 @@ export const addressesRouter = Router();
 const LABELS = ["Home", "Work", "Other"];
 
 function cleanAddress(body: Record<string, unknown>) {
-  const str = (v: unknown, max = 200) => String(v ?? "").trim().slice(0, max);
+  const str = (v: unknown, max = 200) =>
+    String(v ?? "")
+      .trim()
+      .slice(0, max);
   const label = LABELS.includes(String(body.label)) ? String(body.label) : "Home";
   const numOrNull = (v: unknown) => {
     const n = Number(v);

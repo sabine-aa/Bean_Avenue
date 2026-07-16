@@ -61,13 +61,17 @@ inventoryRouter.post("/:id/adjust", async (req, res) => {
   if (!item) return res.status(404).json({ error: "Item not found." });
 
   const amount = Math.round(Number(req.body?.amount) || 0);
-  const reason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
+  const reason =
+    String(req.body?.reason ?? "")
+      .trim()
+      .slice(0, 200) || null;
 
   // Resolve the signed delta + the resulting balance for each adjustment type.
   let delta: number;
   if (type === "RECEIVE") delta = Math.max(0, amount);
   else if (type === "WASTE") delta = -Math.min(Math.max(0, amount), item.stockQty);
-  else if (type === "COUNT") delta = amount - item.stockQty; // set on-hand to `amount`
+  else if (type === "COUNT")
+    delta = amount - item.stockQty; // set on-hand to `amount`
   else delta = amount; // ADJUST: signed
   const balance = Math.max(0, item.stockQty + delta);
 
@@ -83,8 +87,11 @@ inventoryRouter.post("/:id/adjust", async (req, res) => {
     section: "Inventory",
     action: ADJUST_ACTION[type] ?? "stock_adjusted",
     description: `${item.name}: ${delta >= 0 ? "+" : ""}${delta} → ${balance} on hand${reason ? ` (${reason})` : ""}`,
-    entity: "MenuItem", entityId: id, entityName: item.name,
-    oldValue: { stockQty: item.stockQty }, newValue: { stockQty: balance },
+    entity: "MenuItem",
+    entityId: id,
+    entityName: item.name,
+    oldValue: { stockQty: item.stockQty },
+    newValue: { stockQty: balance },
   });
   res.json({ id: updated.id, trackStock: updated.trackStock, stockQty: updated.stockQty, lowStockAt: updated.lowStockAt });
 });

@@ -78,16 +78,18 @@ export function PaymentModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal>
       <div className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-xl sm:rounded-3xl">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold text-espresso">Secure payment</h2>
-          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal" aria-label="Close">✕</button>
+          <h2 className="font-display text-espresso text-xl font-bold">Secure payment</h2>
+          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal" aria-label="Close">
+            ✕
+          </button>
         </div>
-        <p className="mt-1 text-sm text-charcoal/60">
-          Order {orderNumber} · <span className="font-semibold text-espresso">{money(amount)}</span>
+        <p className="text-charcoal/60 mt-1 text-sm">
+          Order {orderNumber} · <span className="text-espresso font-semibold">{money(amount)}</span>
         </p>
 
         {step === "card" ? (
           <form onSubmit={pay} className="mt-4 space-y-3">
-            <label className="block text-sm font-semibold text-espresso">
+            <label className="text-espresso block text-sm font-semibold">
               Card number
               <input
                 value={card}
@@ -95,28 +97,41 @@ export function PaymentModal({
                 inputMode="numeric"
                 placeholder="4242 4242 4242 4242"
                 required
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-base"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-base"
               />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-sm font-semibold text-espresso">
+              <label className="text-espresso block text-sm font-semibold">
                 Expiry
-                <input value={expiry} onChange={(e) => setExpiry(e.target.value)} placeholder="MM/YY" required className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-base" />
+                <input
+                  value={expiry}
+                  onChange={(e) => setExpiry(e.target.value)}
+                  placeholder="MM/YY"
+                  required
+                  className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-base"
+                />
               </label>
-              <label className="block text-sm font-semibold text-espresso">
+              <label className="text-espresso block text-sm font-semibold">
                 CVV
-                <input value={cvv} onChange={(e) => setCvv(e.target.value)} inputMode="numeric" placeholder="123" required className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-base" />
+                <input
+                  value={cvv}
+                  onChange={(e) => setCvv(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="123"
+                  required
+                  className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-base"
+                />
               </label>
             </div>
-            {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
+            {error && <p className="bg-terracotta/10 text-terracotta-dark rounded-lg px-3 py-2 text-sm font-medium">{error}</p>}
             <button
               type="submit"
               disabled={busy}
-              className="btn-3d w-full rounded-full bg-terracotta px-6 py-3.5 text-base font-semibold text-cream disabled:cursor-wait disabled:opacity-60"
+              className="btn-3d bg-terracotta text-cream w-full rounded-full px-6 py-3.5 text-base font-semibold disabled:cursor-wait disabled:opacity-60"
             >
               {busy ? "Processing…" : `Pay ${money(amount)}`}
             </button>
-            <p className="text-center text-[11px] leading-relaxed text-charcoal/45">
+            <p className="text-charcoal/45 text-center text-[11px] leading-relaxed">
               🔒 Payments are processed securely by our gateway. We never store your full card number.
               <br />
               <span className="text-charcoal/35">Test cards — pay: 4242…, decline: …0002, 3D Secure: …3155 (OTP 123456)</span>
@@ -124,10 +139,8 @@ export function PaymentModal({
           </form>
         ) : (
           <form onSubmit={confirm} className="mt-4 space-y-3">
-            <div className="rounded-xl bg-oat/50 p-3 text-sm text-charcoal/70">
-              🔐 Your bank requires verification. Enter the one-time code sent to you.
-            </div>
-            <label className="block text-sm font-semibold text-espresso">
+            <div className="bg-oat/50 text-charcoal/70 rounded-xl p-3 text-sm">🔐 Your bank requires verification. Enter the one-time code sent to you.</div>
+            <label className="text-espresso block text-sm font-semibold">
               Verification code
               <input
                 value={otp}
@@ -135,11 +148,15 @@ export function PaymentModal({
                 inputMode="numeric"
                 placeholder="6-digit code"
                 autoFocus
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-center text-lg tracking-widest"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-center text-lg tracking-widest"
               />
             </label>
-            {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
-            <button type="submit" disabled={busy} className="btn-3d w-full rounded-full bg-espresso px-6 py-3.5 text-base font-semibold text-cream disabled:opacity-60">
+            {error && <p className="bg-terracotta/10 text-terracotta-dark rounded-lg px-3 py-2 text-sm font-medium">{error}</p>}
+            <button
+              type="submit"
+              disabled={busy}
+              className="btn-3d bg-espresso text-cream w-full rounded-full px-6 py-3.5 text-base font-semibold disabled:opacity-60"
+            >
               {busy ? "Verifying…" : "Verify & pay"}
             </button>
           </form>

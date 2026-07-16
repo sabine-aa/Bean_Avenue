@@ -36,9 +36,7 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
 }
 
 /** Build a Google Maps link from coordinates (works without an API key). */
-export const mapsLinkFromCoords = (lat: number, lng: number) =>
-  `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+export const mapsLinkFromCoords = (lat: number, lng: number) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 
 /** Build a Google Maps search link from a free-text address. */
-export const mapsLinkFromText = (text: string) =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text)}`;
+export const mapsLinkFromText = (text: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(text)}`;

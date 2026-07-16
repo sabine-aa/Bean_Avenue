@@ -8,7 +8,10 @@ export function HomeBanner() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    api.get<Banner | null>("/api/banners/active").then(setBanner).catch(() => {});
+    api
+      .get<Banner | null>("/api/banners/active")
+      .then(setBanner)
+      .catch(() => {});
   }, []);
 
   if (!banner || dismissed) return null;
@@ -28,31 +31,28 @@ export function HomeBanner() {
         )}
         <div className="min-w-0 flex-1">
           <p className="font-display font-bold">{banner.title}</p>
-          {banner.text && <p className="text-sm text-oat">{banner.text}</p>}
+          {banner.text && <p className="text-oat text-sm">{banner.text}</p>}
         </div>
-        {banner.buttonText && banner.buttonLink && (
-          isExternal ? (
+        {banner.buttonText &&
+          banner.buttonLink &&
+          (isExternal ? (
             <a
               href={banner.buttonLink}
               target="_blank"
               rel="noreferrer"
-              className="btn-3d shrink-0 rounded-full bg-terracotta px-5 py-2 text-sm font-semibold text-cream"
+              className="btn-3d bg-terracotta text-cream shrink-0 rounded-full px-5 py-2 text-sm font-semibold"
             >
               {banner.buttonText}
             </a>
           ) : (
-            <Link
-              to={banner.buttonLink}
-              className="btn-3d shrink-0 rounded-full bg-terracotta px-5 py-2 text-sm font-semibold text-cream"
-            >
+            <Link to={banner.buttonLink} className="btn-3d bg-terracotta text-cream shrink-0 rounded-full px-5 py-2 text-sm font-semibold">
               {banner.buttonText}
             </Link>
-          )
-        )}
+          ))}
         <button
           onClick={() => setDismissed(true)}
           aria-label="Dismiss announcement"
-          className="shrink-0 rounded-full px-2 text-lg text-oat/70 hover:text-cream"
+          className="text-oat/70 hover:text-cream shrink-0 rounded-full px-2 text-lg"
         >
           ✕
         </button>

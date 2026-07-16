@@ -99,9 +99,7 @@ const GROUPS: NavGroup[] = [
   {
     title: "System",
     icon: "🛡",
-    items: [
-      { to: "/admin/activity", label: "Activity Log" },
-    ],
+    items: [{ to: "/admin/activity", label: "Activity Log" }],
   },
 ];
 
@@ -113,8 +111,7 @@ const QUICK = [
 ];
 
 const itemIsActive = (pathname: string, to: string) => pathname === to || pathname.startsWith(to + "/");
-const activeGroupTitle = (pathname: string) =>
-  GROUPS.find((g) => g.items.some((i) => itemIsActive(pathname, i.to)))?.title ?? null;
+const activeGroupTitle = (pathname: string) => GROUPS.find((g) => g.items.some((i) => itemIsActive(pathname, i.to)))?.title ?? null;
 
 // The sidebar body — shared by the desktop rail and the mobile drawer.
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -131,23 +128,34 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   }, [pathname]);
 
   const linkCls = ({ isActive }: { isActive: boolean }) =>
-    `block rounded-lg px-3 py-2 text-sm font-medium transition ${
-      isActive ? "bg-mocha text-cream" : "text-oat hover:bg-mocha/60"
-    }`;
+    `block rounded-lg px-3 py-2 text-sm font-medium transition ${isActive ? "bg-mocha text-cream" : "text-oat hover:bg-mocha/60"}`;
 
   return (
     <>
       {/* Quick actions */}
       <div className="mb-3 space-y-2">
-        <Link to="/pos" onClick={onNavigate} className="block rounded-lg bg-terracotta px-3 py-2.5 text-center text-sm font-bold text-cream transition hover:bg-terracotta-dark">
+        <Link
+          to="/pos"
+          onClick={onNavigate}
+          className="bg-terracotta text-cream hover:bg-terracotta-dark block rounded-lg px-3 py-2.5 text-center text-sm font-bold transition"
+        >
           🧾 Open Register
         </Link>
-        <Link to="/kds" onClick={onNavigate} className="block rounded-lg bg-mocha px-3 py-2 text-center text-sm font-bold text-cream transition hover:bg-mocha/80">
+        <Link
+          to="/kds"
+          onClick={onNavigate}
+          className="bg-mocha text-cream hover:bg-mocha/80 block rounded-lg px-3 py-2 text-center text-sm font-bold transition"
+        >
           🍳 Kitchen Display
         </Link>
         <div className="flex flex-wrap gap-1.5">
           {QUICK.map((q) => (
-            <Link key={q.label} to={q.to} onClick={onNavigate} className="rounded-full border border-oat/30 px-2.5 py-1 text-xs font-semibold text-oat transition hover:bg-mocha/60">
+            <Link
+              key={q.label}
+              to={q.to}
+              onClick={onNavigate}
+              className="border-oat/30 text-oat hover:bg-mocha/60 rounded-full border px-2.5 py-1 text-xs font-semibold transition"
+            >
               {q.label}
             </Link>
           ))}
@@ -168,7 +176,7 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
             <div key={g.title}>
               <button
                 onClick={() => setOpen((o) => ({ ...o, [g.title]: !o[g.title] }))}
-                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide transition hover:bg-mocha/40 ${
+                className={`hover:bg-mocha/40 flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-bold tracking-wide uppercase transition ${
                   hasActive ? "text-cream" : "text-oat/60"
                 }`}
                 aria-expanded={isOpen}
@@ -176,12 +184,12 @@ function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                 <span className="flex items-center gap-2">
                   <span className="text-sm">{g.icon}</span>
                   {g.title}
-                  {hasActive && !isOpen && <span className="h-1.5 w-1.5 rounded-full bg-terracotta" />}
+                  {hasActive && !isOpen && <span className="bg-terracotta h-1.5 w-1.5 rounded-full" />}
                 </span>
                 <span className={`text-base leading-none transition-transform ${isOpen ? "rotate-90" : ""}`}>›</span>
               </button>
               {isOpen && (
-                <div className="mb-1 ml-2 space-y-0.5 border-l border-mocha/50 pl-2">
+                <div className="border-mocha/50 mb-1 ml-2 space-y-0.5 border-l pl-2">
                   {g.items.map((i) => (
                     <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} className={linkCls}>
                       {i.label}
@@ -208,9 +216,9 @@ export function AdminLayout() {
   if (!isAuthed) return <Navigate to="/admin/login" replace />;
 
   return (
-    <div className="flex min-h-screen bg-oat/40">
+    <div className="bg-oat/40 flex min-h-screen">
       {/* Desktop rail — sticky, internally scrollable */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-espresso text-cream md:flex">
+      <aside className="bg-espresso text-cream sticky top-0 hidden h-screen w-60 shrink-0 flex-col md:flex">
         <Link to="/" className="flex items-center gap-2 px-5 py-4">
           <img src="/bean.png" alt="" className="h-7 w-7 brightness-0 invert" />
           <span className="font-display text-xl font-bold">Bean Avenue</span>
@@ -218,26 +226,23 @@ export function AdminLayout() {
         <div className="flex-1 overflow-y-auto px-3 pb-3">
           <AdminNav />
         </div>
-        <button
-          onClick={logout}
-          className="m-3 rounded-lg border-t border-mocha/50 px-3 py-2 text-left text-sm text-oat hover:bg-mocha/60"
-        >
+        <button onClick={logout} className="border-mocha/50 text-oat hover:bg-mocha/60 m-3 rounded-lg border-t px-3 py-2 text-left text-sm">
           Sign out
         </button>
       </aside>
 
       <div className="min-w-0 flex-1">
         {/* Mobile top bar */}
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-oat bg-cream px-4 py-3 md:hidden">
+        <header className="border-oat bg-cream sticky top-0 z-30 flex items-center justify-between border-b px-4 py-3 md:hidden">
           <button
             onClick={() => setMobileOpen(true)}
-            className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-espresso hover:bg-oat/60"
+            className="text-espresso hover:bg-oat/60 flex items-center gap-2 rounded-lg px-2 py-1.5"
             aria-label="Open admin menu"
           >
             <span className="text-xl leading-none">☰</span>
             <span className="font-display text-lg font-bold">Admin</span>
           </button>
-          <button onClick={logout} className="text-sm font-medium text-terracotta">
+          <button onClick={logout} className="text-terracotta text-sm font-medium">
             Sign out
           </button>
         </header>
@@ -246,18 +251,30 @@ export function AdminLayout() {
         {mobileOpen && (
           <div className="fixed inset-0 z-50 md:hidden">
             <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-espresso text-cream shadow-2xl">
+            <div className="bg-espresso text-cream absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col shadow-2xl">
               <div className="flex items-center justify-between px-5 py-4">
                 <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
                   <img src="/bean.png" alt="" className="h-7 w-7 brightness-0 invert" />
                   <span className="font-display text-xl font-bold">Bean Avenue</span>
                 </Link>
-                <button onClick={() => setMobileOpen(false)} className="rounded-lg p-1.5 text-xl leading-none text-oat hover:bg-mocha/60" aria-label="Close menu">✕</button>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="text-oat hover:bg-mocha/60 rounded-lg p-1.5 text-xl leading-none"
+                  aria-label="Close menu"
+                >
+                  ✕
+                </button>
               </div>
               <div className="flex-1 overflow-y-auto px-3 pb-3">
                 <AdminNav onNavigate={() => setMobileOpen(false)} />
               </div>
-              <button onClick={() => { setMobileOpen(false); logout(); }} className="m-3 rounded-lg border-t border-mocha/50 px-3 py-2 text-left text-sm text-oat hover:bg-mocha/60">
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  logout();
+                }}
+                className="border-mocha/50 text-oat hover:bg-mocha/60 m-3 rounded-lg border-t px-3 py-2 text-left text-sm"
+              >
                 Sign out
               </button>
             </div>

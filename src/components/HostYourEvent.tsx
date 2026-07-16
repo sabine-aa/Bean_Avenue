@@ -20,13 +20,7 @@ const SPACES = [
   {
     type: "CONFERENCE",
     name: "Conference Room",
-    suited: [
-      "Business meetings",
-      "Workshops",
-      "Presentations",
-      "Team sessions",
-      "Small private events",
-    ],
+    suited: ["Business meetings", "Workshops", "Presentations", "Team sessions", "Small private events"],
     button: "View Conference Room",
   },
 ];
@@ -36,15 +30,18 @@ export function HostYourEvent() {
   const [rooms, setRooms] = useState<Room[]>([]);
 
   useEffect(() => {
-    api.get<Room[]>("/api/rooms").then(setRooms).catch(() => setRooms([]));
+    api
+      .get<Room[]>("/api/rooms")
+      .then(setRooms)
+      .catch(() => setRooms([]));
   }, []);
 
   return (
-    <section className="rounded-3xl bg-espresso px-6 py-12 text-cream sm:px-12">
+    <section className="bg-espresso text-cream rounded-3xl px-6 py-12 sm:px-12">
       <h2 className="font-display text-3xl font-bold sm:text-4xl">Host Your Event at Bean Avenue</h2>
-      <p className="mt-3 max-w-2xl text-lg text-cream/80">
-        Looking for a comfortable place to organize a meeting, workshop, study session,
-        presentation, or small private gathering? Our spaces can be booked by the hour.
+      <p className="text-cream/80 mt-3 max-w-2xl text-lg">
+        Looking for a comfortable place to organize a meeting, workshop, study session, presentation, or small private gathering? Our spaces can be booked by
+        the hour.
       </p>
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
@@ -52,42 +49,30 @@ export function HostYourEvent() {
           const room = rooms.find((r) => r.type === s.type);
           const photo = room?.images?.[0] ?? ROOM_PHOTOS[s.type];
           return (
-            <div
-              key={s.type}
-              className="flex flex-col overflow-hidden rounded-2xl border border-cream/15 bg-cream text-charcoal shadow-xl"
-            >
-              <Img src={photo} alt={s.name} className="aspect-[16/9] w-full bg-oat" />
+            <div key={s.type} className="border-cream/15 bg-cream text-charcoal flex flex-col overflow-hidden rounded-2xl border shadow-xl">
+              <Img src={photo} alt={s.name} className="bg-oat aspect-[16/9] w-full" />
               <div className="flex flex-1 flex-col p-6">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="font-display text-2xl font-bold text-espresso">{s.name}</h3>
-                  {room && (
-                    <span className="rounded-full bg-terracotta px-3 py-1 text-sm font-bold text-cream">
-                      {money(room.pricePerHour)}/hr
-                    </span>
-                  )}
+                  <h3 className="font-display text-espresso text-2xl font-bold">{s.name}</h3>
+                  {room && <span className="bg-terracotta text-cream rounded-full px-3 py-1 text-sm font-bold">{money(room.pricePerHour)}/hr</span>}
                 </div>
                 {room && (
-                  <p className="mt-1 text-sm font-semibold text-charcoal/60">
+                  <p className="text-charcoal/60 mt-1 text-sm font-semibold">
                     Seats {room.capacityMin}–{room.capacityMax} people
                   </p>
                 )}
 
-                <p className="mt-4 text-xs font-bold uppercase tracking-wide text-charcoal/40">
-                  Suitable for
-                </p>
-                <ul className="mt-2 flex-1 space-y-1.5 text-charcoal/80">
+                <p className="text-charcoal/40 mt-4 text-xs font-bold tracking-wide uppercase">Suitable for</p>
+                <ul className="text-charcoal/80 mt-2 flex-1 space-y-1.5">
                   {s.suited.map((u) => (
                     <li key={u} className="flex items-start gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-terracotta" />
+                      <span className="bg-terracotta mt-2 h-1.5 w-1.5 shrink-0 rounded-full" />
                       {u}
                     </li>
                   ))}
                 </ul>
 
-                <Link
-                  to="/rooms"
-                  className="btn-3d mt-6 inline-block rounded-full bg-espresso px-6 py-3 text-center text-base font-semibold text-cream"
-                >
+                <Link to="/rooms" className="btn-3d bg-espresso text-cream mt-6 inline-block rounded-full px-6 py-3 text-center text-base font-semibold">
                   {s.button}
                 </Link>
               </div>

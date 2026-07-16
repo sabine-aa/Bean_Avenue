@@ -24,5 +24,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         </AdminAuthProvider>
       </ToastProvider>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

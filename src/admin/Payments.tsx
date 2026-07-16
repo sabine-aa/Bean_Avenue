@@ -105,8 +105,10 @@ export function AdminPayments() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-bold text-espresso">Payments</h1>
-        <button onClick={exportCsv} className="rounded-full border border-oat bg-white px-5 py-2 text-sm font-semibold text-espresso hover:bg-oat">⬇ Export CSV</button>
+        <h1 className="font-display text-espresso text-3xl font-bold">Payments</h1>
+        <button onClick={exportCsv} className="border-oat text-espresso hover:bg-oat rounded-full border bg-white px-5 py-2 text-sm font-semibold">
+          ⬇ Export CSV
+        </button>
       </div>
 
       {/* Summary */}
@@ -123,7 +125,11 @@ export function AdminPayments() {
 
       <div className="flex gap-2">
         {(["transactions", "cash", "log"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === t ? "bg-espresso text-cream" : "bg-white text-espresso shadow-sm"}`}>
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-full px-4 py-2 text-sm font-semibold ${tab === t ? "bg-espresso text-cream" : "text-espresso bg-white shadow-sm"}`}
+          >
             {t === "transactions" ? "Transactions" : t === "cash" ? `Cash due (${cashDue.length})` : "Activity log"}
           </button>
         ))}
@@ -133,35 +139,56 @@ export function AdminPayments() {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {STATUSES.map((s) => (
-              <button key={s} onClick={() => setStatus(s)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${status === s ? "bg-espresso text-cream" : "bg-white text-espresso shadow-sm"}`}>
+              <button
+                key={s}
+                onClick={() => setStatus(s)}
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${status === s ? "bg-espresso text-cream" : "text-espresso bg-white shadow-sm"}`}
+              >
                 {s === "ALL" ? "All" : paymentStatusMeta(s).label}
               </button>
             ))}
-            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search order, customer, txn…" className="ml-auto w-full rounded-full border border-oat bg-white px-4 py-2 text-sm sm:w-60" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search order, customer, txn…"
+              className="border-oat ml-auto w-full rounded-full border bg-white px-4 py-2 text-sm sm:w-60"
+            />
           </div>
 
           <div className="mt-4 space-y-2">
-            {payments.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-charcoal/60 shadow-sm">No transactions.</p>}
+            {payments.length === 0 && <p className="text-charcoal/60 rounded-xl bg-white p-6 text-center shadow-sm">No transactions.</p>}
             {payments.map((p) => {
               const canRefund = (p.status === "PAID" || p.status === "PARTIALLY_REFUNDED") && p.refundedAmount < p.amount;
               return (
                 <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
                   <div className="min-w-0">
-                    <p className="font-semibold text-espresso">
+                    <p className="text-espresso font-semibold">
                       {p.order?.number ?? "—"} · {p.order?.customerName ?? "—"}
-                      <span className="ml-2 text-xs font-normal text-charcoal/50">{p.method === "CARD" ? `${p.cardBrand ?? "Card"} ****${p.cardLast4 ?? "????"}` : "Cash"}</span>
+                      <span className="text-charcoal/50 ml-2 text-xs font-normal">
+                        {p.method === "CARD" ? `${p.cardBrand ?? "Card"} ****${p.cardLast4 ?? "????"}` : "Cash"}
+                      </span>
                     </p>
-                    <p className="text-xs text-charcoal/50">{p.transactionId} · {p.provider} · {formatDateTime(p.createdAt)}</p>
-                    {p.failureReason && <p className="text-xs text-terracotta-dark">{p.failureReason}</p>}
+                    <p className="text-charcoal/50 text-xs">
+                      {p.transactionId} · {p.provider} · {formatDateTime(p.createdAt)}
+                    </p>
+                    {p.failureReason && <p className="text-terracotta-dark text-xs">{p.failureReason}</p>}
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="font-display font-bold text-espresso">{money(p.amount)}</p>
+                      <p className="font-display text-espresso font-bold">{money(p.amount)}</p>
                       {p.refundedAmount > 0 && <p className="text-xs text-blue-700">−{money(p.refundedAmount)} refunded</p>}
                     </div>
-                    <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${paymentStatusMeta(p.status).badge}`}>{paymentStatusMeta(p.status).label}</span>
+                    <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${paymentStatusMeta(p.status).badge}`}>
+                      {paymentStatusMeta(p.status).label}
+                    </span>
                     {canRefund && (
-                      <button onClick={() => refund(p)} className="rounded-full border border-blue-300 px-4 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">Refund</button>
+                      <button
+                        onClick={() => refund(p)}
+                        className="rounded-full border border-blue-300 px-4 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                      >
+                        Refund
+                      </button>
                     )}
                   </div>
                 </div>
@@ -173,16 +200,25 @@ export function AdminPayments() {
 
       {tab === "cash" && (
         <div className="space-y-2">
-          {cashDue.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-charcoal/60 shadow-sm">No cash payments due.</p>}
+          {cashDue.length === 0 && <p className="text-charcoal/60 rounded-xl bg-white p-6 text-center shadow-sm">No cash payments due.</p>}
           {cashDue.map((o) => (
             <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
               <div>
-                <p className="font-semibold text-espresso">{o.fulfillment === "DELIVERY" ? "🛵" : "🏪"} {o.number} · {o.customerName}</p>
-                <p className="text-xs text-charcoal/50">{o.phone} · {formatDateTime(o.createdAt)}</p>
+                <p className="text-espresso font-semibold">
+                  {o.fulfillment === "DELIVERY" ? "🛵" : "🏪"} {o.number} · {o.customerName}
+                </p>
+                <p className="text-charcoal/50 text-xs">
+                  {o.phone} · {formatDateTime(o.createdAt)}
+                </p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-display font-bold text-espresso">{money(o.total)}</span>
-                <button onClick={() => collectCash(o)} className="rounded-full border border-sage px-4 py-1.5 text-sm font-semibold text-sage-dark hover:bg-sage hover:text-cream">Mark collected</button>
+                <span className="font-display text-espresso font-bold">{money(o.total)}</span>
+                <button
+                  onClick={() => collectCash(o)}
+                  className="border-sage text-sage-dark hover:bg-sage hover:text-cream rounded-full border px-4 py-1.5 text-sm font-semibold"
+                >
+                  Mark collected
+                </button>
               </div>
             </div>
           ))}
@@ -191,13 +227,15 @@ export function AdminPayments() {
 
       {tab === "log" && (
         <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-          {log.length === 0 && <p className="p-6 text-center text-charcoal/60">No activity recorded yet.</p>}
-          <ul className="divide-y divide-oat">
+          {log.length === 0 && <p className="text-charcoal/60 p-6 text-center">No activity recorded yet.</p>}
+          <ul className="divide-oat divide-y">
             {log.map((l) => (
               <li key={l.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <span>
-                  <span className="font-semibold text-espresso">{l.action}</span> · {l.detail}
-                  <span className="block text-xs text-charcoal/50">{l.actor} · {formatDateTime(l.createdAt)}</span>
+                  <span className="text-espresso font-semibold">{l.action}</span> · {l.detail}
+                  <span className="text-charcoal/50 block text-xs">
+                    {l.actor} · {formatDateTime(l.createdAt)}
+                  </span>
                 </span>
               </li>
             ))}
@@ -211,8 +249,8 @@ export function AdminPayments() {
 function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
     <div className={`rounded-xl bg-white p-3 shadow-sm ${accent ? "ring-1 ring-amber-200" : ""}`}>
-      <p className="text-xs text-charcoal/50">{label}</p>
-      <p className="mt-0.5 font-display text-lg font-bold text-espresso">{value}</p>
+      <p className="text-charcoal/50 text-xs">{label}</p>
+      <p className="font-display text-espresso mt-0.5 text-lg font-bold">{value}</p>
     </div>
   );
 }

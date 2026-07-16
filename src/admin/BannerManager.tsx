@@ -99,42 +99,40 @@ export function AdminBanners() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-espresso">Homepage Banner</h1>
-      <p className="mt-1 text-sm text-charcoal/60">
-        Control the announcement bar at the top of the homepage. The newest visible banner within its
-        date range is shown.
+      <h1 className="font-display text-espresso text-3xl font-bold">Homepage Banner</h1>
+      <p className="text-charcoal/60 mt-1 text-sm">
+        Control the announcement bar at the top of the homepage. The newest visible banner within its date range is shown.
       </p>
 
       <div className="mt-5 grid gap-6 lg:grid-cols-2">
         <div className="space-y-3">
-          {banners.length === 0 && (
-            <p className="rounded-2xl bg-white p-8 text-center text-charcoal/60 shadow-sm">
-              No banners yet.
-            </p>
-          )}
+          {banners.length === 0 && <p className="text-charcoal/60 rounded-2xl bg-white p-8 text-center shadow-sm">No banners yet.</p>}
           {banners.map((b) => (
             <div key={b.id} className={`rounded-2xl bg-white p-4 shadow-sm ${b.isVisible ? "" : "opacity-60"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-espresso">
+                  <p className="text-espresso font-semibold">
                     {b.title}
-                    {!b.isVisible && <span className="ml-2 text-xs text-terracotta-dark">hidden</span>}
+                    {!b.isVisible && <span className="text-terracotta-dark ml-2 text-xs">hidden</span>}
                   </p>
-                  {b.text && <p className="text-xs text-charcoal/60">{b.text}</p>}
+                  {b.text && <p className="text-charcoal/60 text-xs">{b.text}</p>}
                   {(b.startDate || b.endDate) && (
-                    <p className="mt-1 text-xs text-charcoal/40">
+                    <p className="text-charcoal/40 mt-1 text-xs">
                       {toDateInput(b.startDate) || "always"} → {toDateInput(b.endDate) || "always"}
                     </p>
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col gap-1.5 text-xs">
-                  <button onClick={() => startEdit(b)} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">
+                  <button onClick={() => startEdit(b)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold">
                     Edit
                   </button>
-                  <button onClick={() => toggleVisible(b)} className="rounded-full bg-oat px-3 py-1 font-semibold hover:bg-espresso hover:text-cream">
+                  <button onClick={() => toggleVisible(b)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 font-semibold">
                     {b.isVisible ? "Hide" : "Show"}
                   </button>
-                  <button onClick={() => remove(b)} className="rounded-full bg-terracotta/15 px-3 py-1 font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">
+                  <button
+                    onClick={() => remove(b)}
+                    className="bg-terracotta/15 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full px-3 py-1 font-semibold"
+                  >
                     Delete
                   </button>
                 </div>
@@ -144,49 +142,54 @@ export function AdminBanners() {
         </div>
 
         <form onSubmit={save} className="h-fit rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="font-display text-lg font-bold text-espresso">{editingId ? "Edit banner" : "New banner"}</h2>
-          <label className="mt-3 block text-xs font-semibold text-espresso">
+          <h2 className="font-display text-espresso text-lg font-bold">{editingId ? "Edit banner" : "New banner"}</h2>
+          <label className="text-espresso mt-3 block text-xs font-semibold">
             Title
             <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={field} />
           </label>
-          <label className="mt-3 block text-xs font-semibold text-espresso">
+          <label className="text-espresso mt-3 block text-xs font-semibold">
             Short text
             <input value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} className={field} />
           </label>
-          <label className="mt-3 block text-xs font-semibold text-espresso">
-            Image URL <span className="font-normal text-charcoal/50">(optional)</span>
+          <label className="text-espresso mt-3 block text-xs font-semibold">
+            Image URL <span className="text-charcoal/50 font-normal">(optional)</span>
             <input value={form.image} placeholder="/photos/… or https://…" onChange={(e) => setForm({ ...form, image: e.target.value })} className={field} />
           </label>
           <div className="mt-3 flex gap-3">
-            <label className="flex-1 text-xs font-semibold text-espresso">
+            <label className="text-espresso flex-1 text-xs font-semibold">
               Button text
               <input value={form.buttonText} onChange={(e) => setForm({ ...form, buttonText: e.target.value })} className={field} />
             </label>
-            <label className="flex-1 text-xs font-semibold text-espresso">
+            <label className="text-espresso flex-1 text-xs font-semibold">
               Button link
-              <input value={form.buttonLink} placeholder="/loyalty or https://…" onChange={(e) => setForm({ ...form, buttonLink: e.target.value })} className={field} />
+              <input
+                value={form.buttonLink}
+                placeholder="/loyalty or https://…"
+                onChange={(e) => setForm({ ...form, buttonLink: e.target.value })}
+                className={field}
+              />
             </label>
           </div>
           <div className="mt-3 flex gap-3">
-            <label className="flex-1 text-xs font-semibold text-espresso">
+            <label className="text-espresso flex-1 text-xs font-semibold">
               Start date
               <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className={field} />
             </label>
-            <label className="flex-1 text-xs font-semibold text-espresso">
+            <label className="text-espresso flex-1 text-xs font-semibold">
               End date
               <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className={field} />
             </label>
           </div>
-          <label className="mt-3 flex items-center gap-2 text-xs font-semibold text-espresso">
+          <label className="text-espresso mt-3 flex items-center gap-2 text-xs font-semibold">
             <input type="checkbox" checked={form.isVisible} onChange={(e) => setForm({ ...form, isVisible: e.target.checked })} />
             Show this banner
           </label>
           <div className="mt-4 flex gap-2">
-            <button type="submit" className="flex-1 rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha">
+            <button type="submit" className="bg-espresso text-cream hover:bg-mocha flex-1 rounded-full px-4 py-2 text-sm font-semibold">
               {editingId ? "Save changes" : "Create banner"}
             </button>
             {editingId && (
-              <button type="button" onClick={startNew} className="rounded-full bg-oat px-4 py-2 text-sm font-semibold">
+              <button type="button" onClick={startNew} className="bg-oat rounded-full px-4 py-2 text-sm font-semibold">
                 Cancel
               </button>
             )}

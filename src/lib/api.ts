@@ -5,14 +5,11 @@ const POS_TERMINAL_KEY = "bean-avenue-pos-terminal";
 
 // In dev the Vite proxy forwards /api to the local backend; in production the
 // frontend (Cloudflare) calls the deployed API directly.
-const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined) ??
-  (import.meta.env.DEV ? "" : "https://beanavenue-api.onrender.com");
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? (import.meta.env.DEV ? "" : "https://beanavenue-api.onrender.com");
 
 /** Resolve a possibly-relative "/api/..." path (e.g. uploaded images) to an
  *  absolute URL against the API host. Full URLs and non-/api paths pass through. */
-export const resolveApiUrl = (path: string): string =>
-  path && path.startsWith("/api/") ? API_BASE + path : path;
+export const resolveApiUrl = (path: string): string => (path && path.startsWith("/api/") ? API_BASE + path : path);
 
 function readToken(key: string): string | null {
   try {
@@ -60,11 +57,7 @@ export const isPosTokenValid = () => !isExpired(getPosToken());
 // to the login screen (only from inside the admin area).
 function handleAdminUnauthorized() {
   setToken(null);
-  if (
-    typeof window !== "undefined" &&
-    window.location.pathname.startsWith("/admin") &&
-    !window.location.pathname.includes("/admin/login")
-  ) {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin") && !window.location.pathname.includes("/admin/login")) {
     window.location.assign("/admin/login");
   }
 }
@@ -108,12 +101,9 @@ function makeApi(tokenGetter: () => string | null, onUnauthorized?: () => void) 
   const request = makeRequest(tokenGetter, onUnauthorized);
   return {
     get: <T>(path: string) => request<T>(path),
-    post: <T>(path: string, body: unknown) =>
-      request<T>(path, { method: "POST", body: JSON.stringify(body) }),
-    put: <T>(path: string, body: unknown) =>
-      request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
-    patch: <T>(path: string, body: unknown) =>
-      request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+    post: <T>(path: string, body: unknown) => request<T>(path, { method: "POST", body: JSON.stringify(body) }),
+    put: <T>(path: string, body: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
+    patch: <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
     delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   };
 }
@@ -141,8 +131,6 @@ export const formatDateTime = (iso: string) =>
     minute: "2-digit",
   });
 
-export const formatDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+export const formatDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
-export const formatTime = (iso: string) =>
-  new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+export const formatTime = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });

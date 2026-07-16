@@ -98,7 +98,14 @@ class MockProvider implements PaymentProvider {
     if (otp.trim() === "123456") {
       return { provider: this.name, transactionId, outcome: "PAID", cardBrand: held.brand, cardLast4: held.last4 };
     }
-    return { provider: this.name, transactionId, outcome: "FAILED", cardBrand: held.brand, cardLast4: held.last4, failureReason: "3D Secure verification failed." };
+    return {
+      provider: this.name,
+      transactionId,
+      outcome: "FAILED",
+      cardBrand: held.brand,
+      cardLast4: held.last4,
+      failureReason: "3D Secure verification failed.",
+    };
   }
 
   async refund(_transactionId: string, amount: number, alreadyRefunded: number, originalAmount: number): Promise<RefundResult> {

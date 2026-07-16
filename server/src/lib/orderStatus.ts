@@ -27,9 +27,7 @@ export const PICKUP_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PRE
 export const DELIVERY_STATUSES = ["AWAITING_PAYMENT", "RECEIVED", "ACCEPTED", "PREPARING", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
 export const DONE_STATUSES = ["DELIVERED", "COMPLETED"];
 
-export type StatusResult =
-  | { ok: true; order: ReturnType<typeof outOrder> }
-  | { ok: false; code: number; error: string };
+export type StatusResult = { ok: true; order: ReturnType<typeof outOrder> } | { ok: false; code: number; error: string };
 
 /** Advance an order to `status`. Returns the serialized order or a coded error. */
 export async function applyOrderStatus(id: number, status: string, opts: { reason?: string; actor: string }): Promise<StatusResult> {
@@ -56,7 +54,10 @@ export async function applyOrderStatus(id: number, status: string, opts: { reaso
 
   // Loyalty: award on completion; reverse on cancel. Stock restored on cancel. All idempotent.
   if (DONE_STATUSES.includes(status)) await awardOrderBeans(id);
-  if (status === "CANCELLED") { await reverseOrderBeans(id); await reverseForOrder(id); }
+  if (status === "CANCELLED") {
+    await reverseOrderBeans(id);
+    await reverseForOrder(id);
+  }
 
   await logActivity(opts.actor, "STATUS_CHANGE", `Order ${order.number} → ${status}${reason ? ` (${reason})` : ""}`, "order", order.number);
 

@@ -26,16 +26,12 @@ export function Events() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <header className="text-center">
-        <h1 className="font-display text-4xl font-bold text-espresso sm:text-5xl">
-          Events &amp; Workshops
-        </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-charcoal/70">
-          Discover upcoming workshops, gatherings, and community experiences at Bean Avenue.
-        </p>
+        <h1 className="font-display text-espresso text-4xl font-bold sm:text-5xl">Events &amp; Workshops</h1>
+        <p className="text-charcoal/70 mx-auto mt-3 max-w-2xl">Discover upcoming workshops, gatherings, and community experiences at Bean Avenue.</p>
       </header>
 
       {loading ? (
-        <p className="mt-12 text-center text-charcoal/60">Loading events…</p>
+        <p className="text-charcoal/60 mt-12 text-center">Loading events…</p>
       ) : events.length === 0 ? (
         <EmptyState />
       ) : (
@@ -68,23 +64,20 @@ export function Events() {
 
 function EmptyState() {
   return (
-    <div className="mx-auto mt-10 max-w-3xl rounded-3xl border border-oat bg-white px-6 py-10 text-center shadow-sm sm:px-10">
-      <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-oat text-espresso">
+    <div className="border-oat mx-auto mt-10 max-w-3xl rounded-3xl border bg-white px-6 py-10 text-center shadow-sm sm:px-10">
+      <span className="bg-oat text-espresso mx-auto flex h-16 w-16 items-center justify-center rounded-2xl">
         <CalendarIcon className="h-9 w-9" />
       </span>
-      <h2 className="mt-5 font-display text-3xl font-bold text-espresso sm:text-4xl">
-        Something is brewing.
-      </h2>
-      <p className="mx-auto mt-3 max-w-xl text-lg text-charcoal/75">
-        We do not have any upcoming events announced yet. Follow Bean Avenue or check back soon
-        to see what is coming next.
+      <h2 className="font-display text-espresso mt-5 text-3xl font-bold sm:text-4xl">Something is brewing.</h2>
+      <p className="text-charcoal/75 mx-auto mt-3 max-w-xl text-lg">
+        We do not have any upcoming events announced yet. Follow Bean Avenue or check back soon to see what is coming next.
       </p>
       <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
         <a
           href={INSTAGRAM_URL}
           target="_blank"
           rel="noreferrer"
-          className="btn-3d inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-espresso px-7 py-3.5 text-base font-semibold text-cream sm:w-auto"
+          className="btn-3d bg-espresso text-cream inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-base font-semibold sm:w-auto"
         >
           <InstagramIcon className="h-5 w-5" />
           Follow Us on Instagram
@@ -93,7 +86,7 @@ function EmptyState() {
           href={WHATSAPP_URL}
           target="_blank"
           rel="noreferrer"
-          className="btn-3d inline-flex w-full items-center justify-center gap-2.5 rounded-full bg-sage px-7 py-3.5 text-base font-semibold text-cream sm:w-auto"
+          className="btn-3d bg-sage text-cream inline-flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-base font-semibold sm:w-auto"
         >
           <WhatsAppIcon className="h-5 w-5" />
           Contact Us on WhatsApp
@@ -112,47 +105,32 @@ function EventCard({ event: e }: { event: EventItem }) {
   return (
     <div className="card-lift flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm">
       <Link to={`/events/${e.id}`} className="relative block">
-        <Img src={e.image} alt={e.title} className="aspect-[16/10] w-full bg-oat/30" />
-        <span className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold ${meta.badge}`}>
-          {meta.label}
-        </span>
+        <Img src={e.image} alt={e.title} className="bg-oat/30 aspect-[16/10] w-full" />
+        <span className={`absolute top-3 right-3 rounded-full px-3 py-1 text-xs font-bold ${meta.badge}`}>{meta.label}</span>
       </Link>
       <div className="flex flex-1 flex-col p-5">
-        {e.category && (
-          <span className="text-xs font-bold uppercase tracking-wide text-terracotta">{e.category}</span>
-        )}
-        <Link
-          to={`/events/${e.id}`}
-          className="mt-1 font-display text-lg font-bold leading-tight text-espresso hover:text-terracotta"
-        >
+        {e.category && <span className="text-terracotta text-xs font-bold tracking-wide uppercase">{e.category}</span>}
+        <Link to={`/events/${e.id}`} className="font-display text-espresso hover:text-terracotta mt-1 text-lg leading-tight font-bold">
           {e.title}
         </Link>
-        <p className="mt-2 text-sm font-semibold text-charcoal/80">
-          🗓 {formatDate(e.startTime)}
-        </p>
-        <p className="text-sm text-charcoal/70">
+        <p className="text-charcoal/80 mt-2 text-sm font-semibold">🗓 {formatDate(e.startTime)}</p>
+        <p className="text-charcoal/70 text-sm">
           🕑 {formatTime(e.startTime)}
           {duration && ` · ${duration}`}
         </p>
-        {e.description && (
-          <p className="mt-2 line-clamp-2 flex-1 text-sm text-charcoal/70">{e.description}</p>
-        )}
+        {e.description && <p className="text-charcoal/70 mt-2 line-clamp-2 flex-1 text-sm">{e.description}</p>}
 
         <div className="mt-3 flex items-center justify-between">
-          <span className="rounded-full bg-oat px-3 py-1 text-sm font-bold text-espresso">
-            {e.price > 0 ? money(e.price) : "Free"}
-          </span>
+          <span className="bg-oat text-espresso rounded-full px-3 py-1 text-sm font-bold">{e.price > 0 ? money(e.price) : "Free"}</span>
           {e.spots != null && (
-            <span className="text-xs font-semibold text-charcoal/60">
-              {e.spots <= 0 ? "Fully booked" : `${e.spots} spot${e.spots === 1 ? "" : "s"} left`}
-            </span>
+            <span className="text-charcoal/60 text-xs font-semibold">{e.spots <= 0 ? "Fully booked" : `${e.spots} spot${e.spots === 1 ? "" : "s"} left`}</span>
           )}
         </div>
 
         <div className="mt-4 flex gap-2">
           <Link
             to={`/events/${e.id}`}
-            className="flex-1 rounded-full border border-oat px-4 py-2.5 text-center text-sm font-semibold text-espresso transition hover:bg-oat"
+            className="border-oat text-espresso hover:bg-oat flex-1 rounded-full border px-4 py-2.5 text-center text-sm font-semibold transition"
           >
             View Details
           </Link>
@@ -161,14 +139,12 @@ function EventCard({ event: e }: { event: EventItem }) {
               href={whatsappBookingLink(e.title)}
               target="_blank"
               rel="noreferrer"
-              className="btn-3d flex-1 rounded-full bg-terracotta px-4 py-2.5 text-center text-sm font-semibold text-cream"
+              className="btn-3d bg-terracotta text-cream flex-1 rounded-full px-4 py-2.5 text-center text-sm font-semibold"
             >
               Book
             </a>
           ) : (
-            <span className="flex-1 cursor-not-allowed rounded-full bg-oat px-4 py-2.5 text-center text-sm font-semibold text-charcoal/40">
-              {meta.label}
-            </span>
+            <span className="bg-oat text-charcoal/40 flex-1 cursor-not-allowed rounded-full px-4 py-2.5 text-center text-sm font-semibold">{meta.label}</span>
           )}
         </div>
       </div>

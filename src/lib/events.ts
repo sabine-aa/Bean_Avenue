@@ -1,15 +1,7 @@
 import type { EventItem } from "../types";
 
 // Categories shared by events and the (upcoming) "Suggest an Event" form.
-export const EVENT_CATEGORIES = [
-  "Workshop",
-  "Study Event",
-  "Social Gathering",
-  "Coffee Experience",
-  "Games",
-  "Business or Networking",
-  "Other",
-] as const;
+export const EVENT_CATEGORIES = ["Workshop", "Study Event", "Social Gathering", "Coffee Experience", "Games", "Business or Networking", "Other"] as const;
 
 export type EventStatus = "OPEN" | "ALMOST_FULL" | "SOLD_OUT" | "COMPLETED" | "CANCELLED";
 

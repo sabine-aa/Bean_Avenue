@@ -23,10 +23,7 @@ bannersRouter.get("/active", async (_req, res) => {
   const banner = await prisma.banner.findFirst({
     where: {
       isVisible: true,
-      AND: [
-        { OR: [{ startDate: null }, { startDate: { lte: now } }] },
-        { OR: [{ endDate: null }, { endDate: { gte: now } }] },
-      ],
+      AND: [{ OR: [{ startDate: null }, { startDate: { lte: now } }] }, { OR: [{ endDate: null }, { endDate: { gte: now } }] }],
     },
     orderBy: { createdAt: "desc" },
   });

@@ -10,7 +10,14 @@ stockRouter.use(requireAdmin);
 const round = (n: number) => Math.round((Number(n) || 0) * 1000) / 1000;
 // Manual movement types available in Phase 1 (SALE / REFUND_REVERSAL come from orders).
 const ADJUST_TYPES = ["RECEIVE", "WASTE", "EXPIRED", "DAMAGED", "COUNT", "ADJUST"];
-const STOCK_ACTION: Record<string, string> = { RECEIVE: "stock_received", WASTE: "stock_wasted", EXPIRED: "stock_expired", DAMAGED: "stock_damaged", COUNT: "stock_recount", ADJUST: "stock_adjusted" };
+const STOCK_ACTION: Record<string, string> = {
+  RECEIVE: "stock_received",
+  WASTE: "stock_wasted",
+  EXPIRED: "stock_expired",
+  DAMAGED: "stock_damaged",
+  COUNT: "stock_recount",
+  ADJUST: "stock_adjusted",
+};
 
 // GET /api/stock — all stock items + a headline summary (incl. total stock value).
 stockRouter.get("/", async (_req, res) => {
@@ -51,7 +58,10 @@ stockRouter.post("/restocks/:id/void", async (req, res) => {
   const restock = await prisma.restock.findUnique({ where: { id }, include: { lines: true } });
   if (!restock) return res.status(404).json({ error: "Restock not found." });
   if (restock.voidedAt) return res.status(400).json({ error: "This restock is already voided." });
-  const reason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
+  const reason =
+    String(req.body?.reason ?? "")
+      .trim()
+      .slice(0, 200) || null;
 
   await prisma.$transaction(async (tx) => {
     for (const line of restock.lines) {
@@ -63,9 +73,13 @@ stockRouter.post("/restocks/:id/void", async (req, res) => {
       await tx.inventoryItem.update({ where: { id: item.id }, data: { quantity: balance } });
       await tx.inventoryMovement.create({
         data: {
-          inventoryItemId: item.id, delta: -revert, balance, type: "ADJUST",
+          inventoryItemId: item.id,
+          delta: -revert,
+          balance,
+          type: "ADJUST",
           reason: `Void of restock ${restock.number}${reason ? ` — ${reason}` : ""}`,
-          staffName: "Admin", restockId: restock.id,
+          staffName: "Admin",
+          restockId: restock.id,
         },
       });
     }
@@ -97,7 +111,17 @@ stockRouter.post("/restock", async (req, res) => {
   const notes = String(b.notes ?? "").trim() || null;
   const deliveryDate = b.deliveryDate ? new Date(String(b.deliveryDate)) : new Date();
 
-  type Prepared = { itemId: number; itemName: string; unit: string; qty: number; cost: number; lineTotal: number; expiry: Date | null; batchNo: string | null; noteLine: string | null };
+  type Prepared = {
+    itemId: number;
+    itemName: string;
+    unit: string;
+    qty: number;
+    cost: number;
+    lineTotal: number;
+    expiry: Date | null;
+    batchNo: string | null;
+    noteLine: string | null;
+  };
   const prepared: Prepared[] = [];
   for (const l of rawLines) {
     const qty = round(Number(l.quantity));
@@ -111,17 +135,19 @@ stockRouter.post("/restock", async (req, res) => {
     if (!item && ni && String(ni.name ?? "").trim()) {
       const name = String(ni.name).trim();
       const existing = await prisma.inventoryItem.findUnique({ where: { name } });
-      item = existing ?? (await prisma.inventoryItem.create({
-        data: {
-          name,
-          category: String(ni.category ?? "").trim(),
-          unit: String(ni.unit ?? l.unit ?? "pcs").trim() || "pcs",
-          quantity: 0,
-          minQty: Math.max(0, round(Number(ni.minQty))),
-          costPerUnit: cost,
-          supplier: supplierName,
-        },
-      }));
+      item =
+        existing ??
+        (await prisma.inventoryItem.create({
+          data: {
+            name,
+            category: String(ni.category ?? "").trim(),
+            unit: String(ni.unit ?? l.unit ?? "pcs").trim() || "pcs",
+            quantity: 0,
+            minQty: Math.max(0, round(Number(ni.minQty))),
+            costPerUnit: cost,
+            supplier: supplierName,
+          },
+        }));
     }
     if (!item) return res.status(400).json({ error: "Each line needs an existing item or a new item name." });
 
@@ -145,8 +171,18 @@ stockRouter.post("/restock", async (req, res) => {
   const restock = await prisma.$transaction(async (tx) => {
     const header = await tx.restock.create({
       data: {
-        number, supplierId, supplierName, supplierPhone, invoiceNo, invoicePhoto,
-        deliveryDate, receivedBy, notes, itemCount: prepared.length, totalCost, createdBy: "Admin",
+        number,
+        supplierId,
+        supplierName,
+        supplierPhone,
+        invoiceNo,
+        invoicePhoto,
+        deliveryDate,
+        receivedBy,
+        notes,
+        itemCount: prepared.length,
+        totalCost,
+        createdBy: "Admin",
       },
     });
     for (const p of prepared) {
@@ -163,15 +199,29 @@ stockRouter.post("/restock", async (req, res) => {
       });
       await tx.inventoryMovement.create({
         data: {
-          inventoryItemId: p.itemId, delta: p.qty, balance, type: "RECEIVE",
+          inventoryItemId: p.itemId,
+          delta: p.qty,
+          balance,
+          type: "RECEIVE",
           reason: `Restock ${number} from ${supplierName}${invoiceNo ? `, Invoice #${invoiceNo}` : ""}`,
-          staffName: receivedBy || "Admin", invoiceNo, costPerUnit: p.cost || null, restockId: header.id,
+          staffName: receivedBy || "Admin",
+          invoiceNo,
+          costPerUnit: p.cost || null,
+          restockId: header.id,
         },
       });
       await tx.restockLine.create({
         data: {
-          restockId: header.id, inventoryItemId: p.itemId, itemName: p.itemName, quantity: p.qty,
-          unit: p.unit, costPerUnit: p.cost, totalCost: p.lineTotal, expiryDate: p.expiry, batchNo: p.batchNo, notes: p.noteLine,
+          restockId: header.id,
+          inventoryItemId: p.itemId,
+          itemName: p.itemName,
+          quantity: p.qty,
+          unit: p.unit,
+          costPerUnit: p.cost,
+          totalCost: p.lineTotal,
+          expiryDate: p.expiry,
+          batchNo: p.batchNo,
+          notes: p.noteLine,
         },
       });
     }
@@ -179,9 +229,13 @@ stockRouter.post("/restock", async (req, res) => {
   });
 
   await audit(actorCtx(req), {
-    section: "Inventory", action: "stock_received",
+    section: "Inventory",
+    action: "stock_received",
     description: `Received ${restock.itemCount} item${restock.itemCount === 1 ? "" : "s"} from ${restock.supplierName || "supplier"}${restock.invoiceNo ? ` (invoice #${restock.invoiceNo})` : ""} — total $${restock.totalCost.toFixed(2)}`,
-    entity: "Restock", entityId: restock.id, entityName: restock.number, newValue: { itemCount: restock.itemCount, totalCost: restock.totalCost, supplier: restock.supplierName },
+    entity: "Restock",
+    entityId: restock.id,
+    entityName: restock.number,
+    newValue: { itemCount: restock.itemCount, totalCost: restock.totalCost, supplier: restock.supplierName },
   });
   res.status(201).json(restock);
 });
@@ -214,14 +268,20 @@ stockRouter.get("/recipe/:menuItemId", async (req, res) => {
   try {
     const options = JSON.parse(menuItem.options || "[]") as { name: string; choices: { label: string }[] }[];
     sizes = options.find((g) => g.name.toLowerCase() === "size")?.choices.map((c) => c.label) ?? [];
-  } catch { /* no options */ }
+  } catch {
+    /* no options */
+  }
 
   const groups = await prisma.addonGroup.findMany({
     where: { isAvailable: true, assignments: { some: { OR: [{ menuItemId }, { category: menuItem.category }] } } },
     include: { addons: { where: { isAvailable: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } },
   });
   const addons = groups.flatMap((g) => g.addons.map((a) => ({ id: a.id, name: a.name, group: g.name })));
-  const stockItems = await prisma.inventoryItem.findMany({ where: { isActive: true }, orderBy: [{ category: "asc" }, { name: "asc" }], select: { id: true, name: true, unit: true } });
+  const stockItems = await prisma.inventoryItem.findMany({
+    where: { isActive: true },
+    orderBy: [{ category: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, unit: true },
+  });
   const components = await prisma.recipeComponent.findMany({ where: { menuItemId } });
   res.json({ menuItem: { id: menuItem.id, name: menuItem.name, category: menuItem.category, sizes }, addons, stockItems, components });
 });
@@ -240,10 +300,7 @@ stockRouter.put("/recipe/:menuItemId", async (req, res) => {
       quantity: round(Number(c.quantity)),
     }))
     .filter((c: { inventoryItemId: number; quantity: number }) => c.inventoryItemId && c.quantity > 0);
-  await prisma.$transaction([
-    prisma.recipeComponent.deleteMany({ where: { menuItemId } }),
-    prisma.recipeComponent.createMany({ data: clean }),
-  ]);
+  await prisma.$transaction([prisma.recipeComponent.deleteMany({ where: { menuItemId } }), prisma.recipeComponent.createMany({ data: clean })]);
   res.json({ ok: true, count: clean.length });
 });
 
@@ -269,7 +326,9 @@ stockRouter.post("/", async (req, res) => {
   const item = await prisma.inventoryItem.create({ data: data as never });
   // Record the opening quantity as a movement for the audit trail.
   if (item.quantity !== 0) {
-    await prisma.inventoryMovement.create({ data: { inventoryItemId: item.id, delta: item.quantity, balance: item.quantity, type: "COUNT", reason: "Opening stock", staffName: "Admin" } });
+    await prisma.inventoryMovement.create({
+      data: { inventoryItemId: item.id, delta: item.quantity, balance: item.quantity, type: "COUNT", reason: "Opening stock", staffName: "Admin" },
+    });
   }
   res.status(201).json(item);
 });
@@ -298,12 +357,16 @@ stockRouter.post("/:id/adjust", async (req, res) => {
   if (!item) return res.status(404).json({ error: "Stock item not found." });
 
   const amount = round(Number(req.body?.amount));
-  const reason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
+  const reason =
+    String(req.body?.reason ?? "")
+      .trim()
+      .slice(0, 200) || null;
 
   let delta: number;
   if (type === "RECEIVE") delta = Math.max(0, amount);
   else if (["WASTE", "EXPIRED", "DAMAGED"].includes(type)) delta = -Math.min(Math.max(0, amount), item.quantity);
-  else if (type === "COUNT") delta = round(amount - item.quantity); // set on-hand to `amount`
+  else if (type === "COUNT")
+    delta = round(amount - item.quantity); // set on-hand to `amount`
   else delta = amount; // ADJUST: signed
   const balance = round(Math.max(0, item.quantity + delta));
 
@@ -332,8 +395,11 @@ stockRouter.post("/:id/adjust", async (req, res) => {
     section: "Inventory",
     action: STOCK_ACTION[type] ?? "stock_adjusted",
     description: `${item.name}: ${delta >= 0 ? "+" : ""}${delta}${item.unit ? ` ${item.unit}` : ""} → ${balance} on hand${invoiceNo ? ` (invoice #${invoiceNo})` : reason ? ` (${reason})` : ""}`,
-    entity: "InventoryItem", entityId: item.id, entityName: item.name,
-    oldValue: { quantity: item.quantity }, newValue: { quantity: balance },
+    entity: "InventoryItem",
+    entityId: item.id,
+    entityName: item.name,
+    oldValue: { quantity: item.quantity },
+    newValue: { quantity: balance },
   });
   res.json(updated);
 });

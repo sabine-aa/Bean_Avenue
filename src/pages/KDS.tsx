@@ -26,13 +26,18 @@ function ticketAction(colKey: string, o: Order): { label: string; next: string }
 
 // Compact one-line description of an item's customizations for the line cook.
 function itemExtras(i: Order["items"][number]) {
-  return [...(i.selectedOptions ?? []).map((s) => s.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name))].filter(Boolean).join(", ");
+  return [...(i.selectedOptions ?? []).map((s) => s.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name))]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function KDS() {
   const [orders, setOrders] = useState<Order[]>([]);
   const load = useCallback(() => {
-    posApi.get<Order[]>("/api/pos/kds").then(setOrders).catch(() => {});
+    posApi
+      .get<Order[]>("/api/pos/kds")
+      .then(setOrders)
+      .catch(() => {});
   }, []);
   useEffect(() => {
     load();
@@ -53,54 +58,72 @@ export function KDS() {
   if (!isPosTokenValid()) return <Navigate to="/pos" replace />;
 
   return (
-    <div className="flex h-screen flex-col bg-espresso text-cream">
+    <div className="bg-espresso text-cream flex h-screen flex-col">
       <div className="flex items-center justify-between px-4 py-2">
         <span className="font-display text-lg font-bold">🍳 Kitchen — Bean Avenue</span>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-cream/60">{orders.length} active</span>
-          <Link to="/pos" className="rounded-full bg-mocha/60 px-3 py-1.5 font-semibold">Register</Link>
+          <Link to="/pos" className="bg-mocha/60 rounded-full px-3 py-1.5 font-semibold">
+            Register
+          </Link>
         </div>
       </div>
       <div className="grid min-h-0 flex-1 grid-cols-3 gap-2 p-2">
         {COLUMNS.map((col) => {
           const tickets = orders.filter((o) => (col.statuses as readonly string[]).includes(o.status));
           return (
-            <div key={col.key} className="flex min-h-0 flex-col rounded-xl bg-mocha/30">
+            <div key={col.key} className="bg-mocha/30 flex min-h-0 flex-col rounded-xl">
               <div className="px-3 py-2 font-bold">
                 {col.label} <span className="text-cream/50">({tickets.length})</span>
               </div>
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 pb-2">
                 {tickets.map((o) => {
                   const act = ticketAction(col.key, o);
-                  const kind = o.fulfillment === "DELIVERY" ? "🛵 Delivery" : o.tableNumber ? `🍽 Table ${o.tableNumber}` : o.orderType === "DINE_IN" ? "🍽 Dine-in" : "🥡 Takeaway";
+                  const kind =
+                    o.fulfillment === "DELIVERY"
+                      ? "🛵 Delivery"
+                      : o.tableNumber
+                        ? `🍽 Table ${o.tableNumber}`
+                        : o.orderType === "DINE_IN"
+                          ? "🍽 Dine-in"
+                          : "🥡 Takeaway";
                   return (
-                    <div key={o.id} className="rounded-lg bg-cream p-3 text-espresso">
+                    <div key={o.id} className="bg-cream text-espresso rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <span className="font-bold">{kind}</span>
-                        <span className="text-xs text-charcoal/50">{ago(o.createdAt)} · {o.channel === "ONLINE" ? "Online" : "POS"}</span>
+                        <span className="text-charcoal/50 text-xs">
+                          {ago(o.createdAt)} · {o.channel === "ONLINE" ? "Online" : "POS"}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-charcoal/40">{o.number}{o.channel === "ONLINE" && o.customerName ? ` · ${o.customerName}` : ""}</p>
+                      <p className="text-charcoal/40 text-[11px]">
+                        {o.number}
+                        {o.channel === "ONLINE" && o.customerName ? ` · ${o.customerName}` : ""}
+                      </p>
                       <ul className="mt-1.5 space-y-1.5 text-sm">
                         {o.items.map((i) => {
                           const extras = itemExtras(i);
                           return (
                             <li key={i.id} className="leading-tight">
-                              <span className="font-semibold">{i.quantity}× {i.name}</span>
-                              {extras ? <span className="block text-xs font-medium text-charcoal/60">{extras}</span> : null}
-                              {i.specialInstructions ? <span className="block text-xs font-semibold italic text-terracotta">↳ {i.specialInstructions}</span> : null}
+                              <span className="font-semibold">
+                                {i.quantity}× {i.name}
+                              </span>
+                              {extras ? <span className="text-charcoal/60 block text-xs font-medium">{extras}</span> : null}
+                              {i.specialInstructions ? (
+                                <span className="text-terracotta block text-xs font-semibold italic">↳ {i.specialInstructions}</span>
+                              ) : null}
                             </li>
                           );
                         })}
                       </ul>
                       {act && (
-                        <button onClick={() => advance(o, act.next)} className="btn-3d mt-2 w-full rounded-lg bg-espresso py-2 text-sm font-bold text-cream">
+                        <button onClick={() => advance(o, act.next)} className="btn-3d bg-espresso text-cream mt-2 w-full rounded-lg py-2 text-sm font-bold">
                           {act.label}
                         </button>
                       )}
                     </div>
                   );
                 })}
-                {tickets.length === 0 && <p className="p-4 text-center text-sm text-cream/30">—</p>}
+                {tickets.length === 0 && <p className="text-cream/30 p-4 text-center text-sm">—</p>}
               </div>
             </div>
           );

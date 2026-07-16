@@ -22,8 +22,7 @@ export function LinkMethod({ channel }: { channel: "phone" | "email" }) {
   const [busy, setBusy] = useState(false);
   const [devCode, setDevCode] = useState<string>();
 
-  const target: OtpTarget =
-    channel === "phone" ? { channel: "phone", countryCode, phone: input } : { channel: "email", email: input };
+  const target: OtpTarget = channel === "phone" ? { channel: "phone", countryCode, phone: input } : { channel: "email", email: input };
 
   function reset() {
     setOpen(false);
@@ -63,27 +62,25 @@ export function LinkMethod({ channel }: { channel: "phone" | "email" }) {
   }
 
   return (
-    <div className="rounded-xl border border-oat p-3">
+    <div className="border-oat rounded-xl border p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-charcoal/40">{label}</p>
-          <p className="truncate font-medium text-espresso">{value || "Not added"}</p>
+          <p className="text-charcoal/40 text-xs font-semibold tracking-wide uppercase">{label}</p>
+          <p className="text-espresso truncate font-medium">{value || "Not added"}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {value ? (
             verified ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-sage/20 px-2.5 py-0.5 text-xs font-bold text-sage-dark">
+              <span className="bg-sage/20 text-sage-dark inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold">
                 <CheckIcon className="h-3 w-3" /> Verified
               </span>
             ) : (
-              <span className="rounded-full bg-terracotta/15 px-2.5 py-0.5 text-xs font-bold text-terracotta-dark">
-                Not verified
-              </span>
+              <span className="bg-terracotta/15 text-terracotta-dark rounded-full px-2.5 py-0.5 text-xs font-bold">Not verified</span>
             )
           ) : null}
           <button
             onClick={() => (open ? reset() : setOpen(true))}
-            className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream"
+            className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 text-xs font-semibold"
           >
             {open ? "Cancel" : value ? "Change" : `Add ${label.toLowerCase()}`}
           </button>
@@ -91,13 +88,15 @@ export function LinkMethod({ channel }: { channel: "phone" | "email" }) {
       </div>
 
       {open && (
-        <div className="mt-3 border-t border-oat pt-3">
+        <div className="border-oat mt-3 border-t pt-3">
           {step === "enter" ? (
             <div className="flex flex-wrap items-end gap-2">
               {channel === "phone" && (
-                <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="rounded-lg border border-oat px-2 py-2 text-sm">
+                <select value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="border-oat rounded-lg border px-2 py-2 text-sm">
                   {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.code}</option>
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
                   ))}
                 </select>
               )}
@@ -107,16 +106,20 @@ export function LinkMethod({ channel }: { channel: "phone" | "email" }) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder={channel === "phone" ? "03 111 222" : "you@example.com"}
-                className="flex-1 rounded-lg border border-oat px-3 py-2 text-sm"
+                className="border-oat flex-1 rounded-lg border px-3 py-2 text-sm"
               />
-              <button onClick={send} disabled={busy || !input.trim()} className="rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream disabled:opacity-50">
+              <button
+                onClick={send}
+                disabled={busy || !input.trim()}
+                className="bg-espresso text-cream rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
+              >
                 {busy ? "Sending…" : "Send code"}
               </button>
             </div>
           ) : (
             <div>
               {devCode && (
-                <p className="mb-2 rounded-lg bg-oat/60 px-3 py-1.5 text-xs text-charcoal/70">
+                <p className="bg-oat/60 text-charcoal/70 mb-2 rounded-lg px-3 py-1.5 text-xs">
                   Dev code: <span className="font-mono font-bold">{devCode}</span>
                 </p>
               )}
@@ -128,12 +131,16 @@ export function LinkMethod({ channel }: { channel: "phone" | "email" }) {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                   placeholder="6-digit code"
-                  className="w-36 rounded-lg border border-oat px-3 py-2 text-center text-sm tracking-widest"
+                  className="border-oat w-36 rounded-lg border px-3 py-2 text-center text-sm tracking-widest"
                 />
-                <button onClick={verify} disabled={busy || code.length < 6} className="rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream disabled:opacity-50">
+                <button
+                  onClick={verify}
+                  disabled={busy || code.length < 6}
+                  className="bg-terracotta text-cream rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-50"
+                >
                   {busy ? "Verifying…" : "Verify"}
                 </button>
-                <button onClick={() => setStep("enter")} className="text-xs font-semibold text-charcoal/50 hover:text-espresso">
+                <button onClick={() => setStep("enter")} className="text-charcoal/50 hover:text-espresso text-xs font-semibold">
                   Change {label.toLowerCase()}
                 </button>
               </div>

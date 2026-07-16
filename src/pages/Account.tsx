@@ -47,7 +47,10 @@ export function Account() {
   // Pull a fresh copy (orders/bookings) when the page opens, and load the menu for reorder.
   useEffect(() => {
     refresh().catch(() => {});
-    customerApi.get<MenuItem[]>("/api/menu").then(setMenu).catch(() => {});
+    customerApi
+      .get<MenuItem[]>("/api/menu")
+      .then(setMenu)
+      .catch(() => {});
   }, [refresh]);
 
   async function cancelOrder(order: Order) {
@@ -69,7 +72,7 @@ export function Account() {
   }, [account]);
 
   if (loading) {
-    return <p className="mx-auto max-w-5xl px-4 py-16 text-charcoal/60">Loading your account…</p>;
+    return <p className="text-charcoal/60 mx-auto max-w-5xl px-4 py-16">Loading your account…</p>;
   }
   if (!account) return <Navigate to="/loyalty" replace />;
 
@@ -127,10 +130,10 @@ export function Account() {
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="font-display font-bold text-espresso">
+            <p className="font-display text-espresso font-bold">
               {order.fulfillment === "DELIVERY" ? "🛵" : "🏪"} {order.number}
             </p>
-            <p className="text-xs text-charcoal/50">{formatDateTime(order.createdAt)}</p>
+            <p className="text-charcoal/50 text-xs">{formatDateTime(order.createdAt)}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
@@ -141,12 +144,12 @@ export function Account() {
         </div>
 
         {/* status progress */}
-        <div className="mt-3 rounded-xl bg-oat/30 p-3">
+        <div className="bg-oat/30 mt-3 rounded-xl p-3">
           <OrderStatusTimeline status={order.status} fulfillment={order.fulfillment} compact />
         </div>
 
         {order.fulfillment === "DELIVERY" && order.area && (
-          <p className="mt-2 text-xs text-charcoal/60">📍 {[order.building, order.area].filter(Boolean).join(", ")}</p>
+          <p className="text-charcoal/60 mt-2 text-xs">📍 {[order.building, order.area].filter(Boolean).join(", ")}</p>
         )}
 
         <ul className="mt-3 space-y-1.5 text-sm">
@@ -160,16 +163,16 @@ export function Account() {
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-oat pt-3">
+        <div className="border-oat mt-3 flex flex-wrap items-center justify-between gap-3 border-t pt-3">
           <div className="text-sm">
-            <span className="font-bold text-espresso">Total {money(order.total)}</span>
-            {order.beansEarned > 0 && <span className="ml-2 text-sage-dark">· 🫘 +{order.beansEarned} beans</span>}
+            <span className="text-espresso font-bold">Total {money(order.total)}</span>
+            {order.beansEarned > 0 && <span className="text-sage-dark ml-2">· 🫘 +{order.beansEarned} beans</span>}
           </div>
           <div className="flex flex-wrap gap-2">
             {canCancel && (
               <button
                 onClick={() => cancelOrder(order)}
-                className="rounded-full border border-terracotta/40 px-4 py-2 text-sm font-semibold text-terracotta-dark transition hover:bg-terracotta hover:text-cream"
+                className="border-terracotta/40 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full border px-4 py-2 text-sm font-semibold transition"
               >
                 Cancel
               </button>
@@ -177,7 +180,7 @@ export function Account() {
             {isActive && (
               <Link
                 to={`/order-success/${order.number}`}
-                className="rounded-full border border-oat px-5 py-2 text-sm font-semibold text-espresso transition hover:bg-oat"
+                className="border-oat text-espresso hover:bg-oat rounded-full border px-5 py-2 text-sm font-semibold transition"
               >
                 Track order
               </Link>
@@ -185,7 +188,7 @@ export function Account() {
             <button
               onClick={() => reorder(order)}
               disabled={!canReorder}
-              className="btn-3d rounded-full bg-terracotta px-5 py-2 text-sm font-semibold text-cream transition hover:bg-terracotta-dark disabled:cursor-not-allowed disabled:bg-oat disabled:text-charcoal/40"
+              className="btn-3d bg-terracotta text-cream hover:bg-terracotta-dark disabled:bg-oat disabled:text-charcoal/40 rounded-full px-5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed"
             >
               Reorder
             </button>
@@ -199,8 +202,8 @@ export function Account() {
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-bold text-espresso">My Account</h1>
-          <p className="text-sm text-charcoal/60">
+          <h1 className="font-display text-espresso text-3xl font-bold">My Account</h1>
+          <p className="text-charcoal/60 text-sm">
             {account.name || "Welcome"}
             {(account.phone || account.email) && ` · ${account.phone || account.email}`}
           </p>
@@ -211,7 +214,7 @@ export function Account() {
             toast("Logged out.");
             navigate("/");
           }}
-          className="rounded-full border border-oat bg-white px-5 py-2 text-sm font-semibold text-terracotta-dark transition hover:bg-terracotta hover:text-cream"
+          className="border-oat text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full border bg-white px-5 py-2 text-sm font-semibold transition"
         >
           Log out
         </button>
@@ -223,7 +226,7 @@ export function Account() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
               tab === t.key ? "bg-espresso text-cream" : "bg-oat text-espresso hover:bg-oat/70"
             }`}
           >
@@ -238,82 +241,74 @@ export function Account() {
           <div className="space-y-6">
             <BirthdayRewardCard actionableOnly />
             <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-2xl bg-espresso p-6 text-cream shadow-md">
-              <p className="text-sm text-oat">Beans balance</p>
-              <p className="mt-1 font-display text-5xl font-bold">{account.beanBalance}</p>
-              <p className="mt-1 text-xs text-oat/80">{account.lifetimeBeans} earned all-time</p>
-              <span className="mt-3 inline-block rounded-full bg-sage px-4 py-1 text-sm font-bold text-cream">
-                {account.tier}
-              </span>
-              <button
-                onClick={() => navigate("/loyalty")}
-                className="btn-3d mt-5 block w-full rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream"
-              >
-                Redeem rewards
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <form onSubmit={saveProfile} className="rounded-2xl bg-white p-6 shadow-sm">
-                <h2 className="font-display text-xl font-bold text-espresso">Account details</h2>
-                {account.needsProfile && (
-                  <p className="mt-2 rounded-lg bg-oat/60 px-3 py-2 text-xs text-charcoal/70">
-                    Welcome! Add your name to complete your profile.
-                  </p>
-                )}
-                <label className="mt-4 block text-sm font-semibold text-espresso">
-                  Full name
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
-                  />
-                </label>
-                <div className="mt-3">
-                  <label className="block text-sm font-semibold text-espresso" htmlFor="birthday">
-                    Date of birth <span className="font-normal text-charcoal/50">(optional)</span>
-                  </label>
-                  <input
-                    id="birthday"
-                    type="date"
-                    value={birthday}
-                    disabled={birthdayLocked}
-                    max={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => setBirthday(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal disabled:cursor-not-allowed disabled:bg-oat/40 disabled:text-charcoal/60"
-                  />
-                  {birthdayLocked ? (
-                    <p className="mt-1.5 text-xs text-charcoal/50">
-                      🔒 Your birthday is saved and locked. To change it, contact Bean Avenue support.
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-xs text-charcoal/50">
-                      We use your birthday only to provide your birthday reward and related account
-                      benefits. Once saved it can't be changed without contacting support.
-                    </p>
-                  )}
-                </div>
+              <div className="bg-espresso text-cream rounded-2xl p-6 shadow-md">
+                <p className="text-oat text-sm">Beans balance</p>
+                <p className="font-display mt-1 text-5xl font-bold">{account.beanBalance}</p>
+                <p className="text-oat/80 mt-1 text-xs">{account.lifetimeBeans} earned all-time</p>
+                <span className="bg-sage text-cream mt-3 inline-block rounded-full px-4 py-1 text-sm font-bold">{account.tier}</span>
                 <button
-                  type="submit"
-                  disabled={saving}
-                  className="btn-3d mt-5 w-full rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream disabled:opacity-60"
+                  onClick={() => navigate("/loyalty")}
+                  className="btn-3d bg-terracotta text-cream mt-5 block w-full rounded-full px-6 py-2.5 font-semibold"
                 >
-                  {saving ? "Saving…" : "Save changes"}
+                  Redeem rewards
                 </button>
-              </form>
+              </div>
 
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
-                <h2 className="font-display text-xl font-bold text-espresso">Login methods</h2>
-                <p className="mt-1 text-sm text-charcoal/60">
-                  Add and verify another way to sign in. Either method opens this same account.
-                </p>
-                <div className="mt-3 space-y-3">
-                  <LinkMethod channel="phone" />
-                  <LinkMethod channel="email" />
+              <div className="space-y-4">
+                <form onSubmit={saveProfile} className="rounded-2xl bg-white p-6 shadow-sm">
+                  <h2 className="font-display text-espresso text-xl font-bold">Account details</h2>
+                  {account.needsProfile && (
+                    <p className="bg-oat/60 text-charcoal/70 mt-2 rounded-lg px-3 py-2 text-xs">Welcome! Add your name to complete your profile.</p>
+                  )}
+                  <label className="text-espresso mt-4 block text-sm font-semibold">
+                    Full name
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your name"
+                      className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5 font-normal"
+                    />
+                  </label>
+                  <div className="mt-3">
+                    <label className="text-espresso block text-sm font-semibold" htmlFor="birthday">
+                      Date of birth <span className="text-charcoal/50 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      id="birthday"
+                      type="date"
+                      value={birthday}
+                      disabled={birthdayLocked}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => setBirthday(e.target.value)}
+                      className="border-oat disabled:bg-oat/40 disabled:text-charcoal/60 mt-1 w-full rounded-xl border px-4 py-2.5 font-normal disabled:cursor-not-allowed"
+                    />
+                    {birthdayLocked ? (
+                      <p className="text-charcoal/50 mt-1.5 text-xs">🔒 Your birthday is saved and locked. To change it, contact Bean Avenue support.</p>
+                    ) : (
+                      <p className="text-charcoal/50 mt-1.5 text-xs">
+                        We use your birthday only to provide your birthday reward and related account benefits. Once saved it can't be changed without
+                        contacting support.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="btn-3d bg-espresso text-cream mt-5 w-full rounded-full px-6 py-2.5 font-semibold disabled:opacity-60"
+                  >
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                </form>
+
+                <div className="rounded-2xl bg-white p-6 shadow-sm">
+                  <h2 className="font-display text-espresso text-xl font-bold">Login methods</h2>
+                  <p className="text-charcoal/60 mt-1 text-sm">Add and verify another way to sign in. Either method opens this same account.</p>
+                  <div className="mt-3 space-y-3">
+                    <LinkMethod channel="phone" />
+                    <LinkMethod channel="email" />
+                  </div>
                 </div>
               </div>
-            </div>
             </div>
           </div>
         )}
@@ -335,7 +330,7 @@ export function Account() {
         {/* RECENTLY ORDERED */}
         {tab === "recent" && (
           <div className="space-y-4">
-            <p className="text-sm text-charcoal/60">Your latest orders — tap Reorder to add them straight back to your cart.</p>
+            <p className="text-charcoal/60 text-sm">Your latest orders — tap Reorder to add them straight back to your cart.</p>
             {orders.length === 0 ? (
               <EmptyState text="Nothing here yet — your recent orders will show up here." cta="Order now" to="/menu" navigate={navigate} />
             ) : (
@@ -348,70 +343,68 @@ export function Account() {
         {tab === "rewards" && (
           <div className="space-y-6">
             <section>
-              <h2 className="font-display text-xl font-bold text-espresso">Birthday reward</h2>
+              <h2 className="font-display text-espresso text-xl font-bold">Birthday reward</h2>
               <div className="mt-3">
                 <BirthdayRewardCard />
               </div>
             </section>
             <div className="grid gap-6 lg:grid-cols-2">
-            <section>
-              <h2 className="font-display text-xl font-bold text-espresso">Redeemed rewards</h2>
-              {redemptions.length === 0 ? (
-                <p className="mt-3 rounded-2xl bg-white p-6 text-sm text-charcoal/60 shadow-sm">
-                  No rewards redeemed yet. Head to the rewards page to spend your beans.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {redemptions.map((r) => (
-                    <li key={r.id} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
-                      <div>
-                        <p className="font-semibold text-espresso">{r.rewardName}</p>
-                        <p className="text-xs text-charcoal/50">
-                          {r.cost} beans · {formatDateTime(r.createdAt)}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-0.5 text-xs font-semibold ${
-                          r.status === "ACTIVE"
-                            ? "bg-sage/20 text-sage-dark"
-                            : r.status === "CLAIMED"
-                              ? "bg-oat text-charcoal/60"
-                              : "bg-terracotta/15 text-terracotta-dark"
-                        }`}
-                      >
-                        {r.status === "ACTIVE" ? r.code : r.status}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section>
-              <h2 className="font-display text-xl font-bold text-espresso">Points history</h2>
-              {transactions.length === 0 ? (
-                <p className="mt-3 rounded-2xl bg-white p-6 text-sm text-charcoal/60 shadow-sm">
-                  No points activity yet.
-                </p>
-              ) : (
-                <ul className="mt-3 divide-y divide-oat rounded-2xl bg-white shadow-sm">
-                  {transactions.map((t) => (
-                    <li key={t.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                      <span>
-                        {t.note ?? (t.type === "EARN" ? `Earned on ${t.refId ?? t.source}` : t.source)}
-                        <span className="block text-xs text-charcoal/50">
-                          {formatDateTime(t.createdAt)} · balance {t.balanceAfter}
+              <section>
+                <h2 className="font-display text-espresso text-xl font-bold">Redeemed rewards</h2>
+                {redemptions.length === 0 ? (
+                  <p className="text-charcoal/60 mt-3 rounded-2xl bg-white p-6 text-sm shadow-sm">
+                    No rewards redeemed yet. Head to the rewards page to spend your beans.
+                  </p>
+                ) : (
+                  <ul className="mt-3 space-y-2">
+                    {redemptions.map((r) => (
+                      <li key={r.id} className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
+                        <div>
+                          <p className="text-espresso font-semibold">{r.rewardName}</p>
+                          <p className="text-charcoal/50 text-xs">
+                            {r.cost} beans · {formatDateTime(r.createdAt)}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-3 py-0.5 text-xs font-semibold ${
+                            r.status === "ACTIVE"
+                              ? "bg-sage/20 text-sage-dark"
+                              : r.status === "CLAIMED"
+                                ? "bg-oat text-charcoal/60"
+                                : "bg-terracotta/15 text-terracotta-dark"
+                          }`}
+                        >
+                          {r.status === "ACTIVE" ? r.code : r.status}
                         </span>
-                      </span>
-                      <span className={`font-bold ${t.amount > 0 ? "text-sage-dark" : "text-terracotta-dark"}`}>
-                        {t.amount > 0 ? "+" : ""}
-                        {t.amount}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section>
+                <h2 className="font-display text-espresso text-xl font-bold">Points history</h2>
+                {transactions.length === 0 ? (
+                  <p className="text-charcoal/60 mt-3 rounded-2xl bg-white p-6 text-sm shadow-sm">No points activity yet.</p>
+                ) : (
+                  <ul className="divide-oat mt-3 divide-y rounded-2xl bg-white shadow-sm">
+                    {transactions.map((t) => (
+                      <li key={t.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                        <span>
+                          {t.note ?? (t.type === "EARN" ? `Earned on ${t.refId ?? t.source}` : t.source)}
+                          <span className="text-charcoal/50 block text-xs">
+                            {formatDateTime(t.createdAt)} · balance {t.balanceAfter}
+                          </span>
+                        </span>
+                        <span className={`font-bold ${t.amount > 0 ? "text-sage-dark" : "text-terracotta-dark"}`}>
+                          {t.amount > 0 ? "+" : ""}
+                          {t.amount}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
             </div>
           </div>
         )}
@@ -428,22 +421,20 @@ export function Account() {
                   <div key={b.id} className="rounded-2xl bg-white p-5 shadow-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="font-display font-bold text-espresso">
+                        <p className="font-display text-espresso font-bold">
                           {b.room?.name ?? "Room"} · {b.number}
                         </p>
-                        <p className="text-xs text-charcoal/50">
+                        <p className="text-charcoal/50 text-xs">
                           {formatDateTime(b.startTime)} – {formatDateTime(b.endTime)}
                         </p>
                       </div>
-                      <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${status.cls}`}>
-                        {status.label}
-                      </span>
+                      <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${status.cls}`}>{status.label}</span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between border-t border-oat pt-3 text-sm">
+                    <div className="border-oat mt-3 flex items-center justify-between border-t pt-3 text-sm">
                       <span className="text-charcoal/70">
                         {b.durationHours}h · {b.peopleCount} {b.peopleCount === 1 ? "person" : "people"}
                       </span>
-                      <span className="font-bold text-espresso">{money(b.total)}</span>
+                      <span className="text-espresso font-bold">{money(b.total)}</span>
                     </div>
                   </div>
                 );
@@ -469,9 +460,18 @@ function AddressesTab({ addresses, onChange }: { addresses: SavedAddress[]; onCh
   function startEdit(a: SavedAddress) {
     setEditingId(a.id);
     setEditing({
-      label: a.label, fullName: a.fullName, phone: a.phone, addressLine: a.addressLine,
-      building: a.building, floor: a.floor, apartment: a.apartment, area: a.area,
-      landmark: a.landmark, instructions: a.instructions, lat: a.lat, lng: a.lng,
+      label: a.label,
+      fullName: a.fullName,
+      phone: a.phone,
+      addressLine: a.addressLine,
+      building: a.building,
+      floor: a.floor,
+      apartment: a.apartment,
+      area: a.area,
+      landmark: a.landmark,
+      instructions: a.instructions,
+      lat: a.lat,
+      lng: a.lng,
     });
   }
 
@@ -518,15 +518,21 @@ function AddressesTab({ addresses, onChange }: { addresses: SavedAddress[]; onCh
   if (editing) {
     return (
       <div className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="font-display text-xl font-bold text-espresso">{editingId ? "Edit address" : "New address"}</h2>
+        <h2 className="font-display text-espresso text-xl font-bold">{editingId ? "Edit address" : "New address"}</h2>
         <div className="mt-4">
           <AddressFields value={editing} onChange={setEditing} />
         </div>
         <div className="mt-5 flex gap-2">
-          <button onClick={save} disabled={saving} className="btn-3d rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="btn-3d bg-terracotta text-cream rounded-full px-6 py-2.5 font-semibold disabled:opacity-60">
             {saving ? "Saving…" : "Save address"}
           </button>
-          <button onClick={() => { setEditing(null); setEditingId(null); }} className="rounded-full border border-oat px-6 py-2.5 font-semibold text-espresso">
+          <button
+            onClick={() => {
+              setEditing(null);
+              setEditingId(null);
+            }}
+            className="border-oat text-espresso rounded-full border px-6 py-2.5 font-semibold"
+          >
             Cancel
           </button>
         </div>
@@ -537,31 +543,42 @@ function AddressesTab({ addresses, onChange }: { addresses: SavedAddress[]; onCh
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-charcoal/60">Saved delivery addresses for faster checkout.</p>
-        <button onClick={startNew} className="btn-3d rounded-full bg-espresso px-5 py-2 text-sm font-semibold text-cream">+ Add address</button>
+        <p className="text-charcoal/60 text-sm">Saved delivery addresses for faster checkout.</p>
+        <button onClick={startNew} className="btn-3d bg-espresso text-cream rounded-full px-5 py-2 text-sm font-semibold">
+          + Add address
+        </button>
       </div>
       {addresses.length === 0 ? (
-        <div className="rounded-2xl bg-white p-10 text-center text-charcoal/60 shadow-sm">No saved addresses yet.</div>
+        <div className="text-charcoal/60 rounded-2xl bg-white p-10 text-center shadow-sm">No saved addresses yet.</div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {addresses.map((a) => (
             <div key={a.id} className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="font-display font-bold text-espresso">{a.label}</span>
+                <span className="font-display text-espresso font-bold">{a.label}</span>
                 {a.isDefault ? (
-                  <span className="rounded-full bg-sage/20 px-2.5 py-0.5 text-xs font-semibold text-sage-dark">Default</span>
+                  <span className="bg-sage/20 text-sage-dark rounded-full px-2.5 py-0.5 text-xs font-semibold">Default</span>
                 ) : (
-                  <button onClick={() => makeDefault(a)} className="text-xs font-semibold text-terracotta hover:underline">Make default</button>
+                  <button onClick={() => makeDefault(a)} className="text-terracotta text-xs font-semibold hover:underline">
+                    Make default
+                  </button>
                 )}
               </div>
-              <p className="mt-2 text-sm text-charcoal/80">{a.fullName} · {a.phone}</p>
-              <p className="text-sm text-charcoal/60">
-                {[a.building, a.addressLine, a.apartment && `Apt ${a.apartment}`, a.area].filter(Boolean).join(", ")}
+              <p className="text-charcoal/80 mt-2 text-sm">
+                {a.fullName} · {a.phone}
               </p>
-              {a.landmark && <p className="text-xs text-charcoal/50">Near {a.landmark}</p>}
+              <p className="text-charcoal/60 text-sm">{[a.building, a.addressLine, a.apartment && `Apt ${a.apartment}`, a.area].filter(Boolean).join(", ")}</p>
+              {a.landmark && <p className="text-charcoal/50 text-xs">Near {a.landmark}</p>}
               <div className="mt-3 flex gap-2">
-                <button onClick={() => startEdit(a)} className="rounded-full border border-oat px-4 py-1.5 text-sm font-semibold text-espresso hover:bg-oat">Edit</button>
-                <button onClick={() => remove(a)} className="rounded-full border border-terracotta/40 px-4 py-1.5 text-sm font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">Delete</button>
+                <button onClick={() => startEdit(a)} className="border-oat text-espresso hover:bg-oat rounded-full border px-4 py-1.5 text-sm font-semibold">
+                  Edit
+                </button>
+                <button
+                  onClick={() => remove(a)}
+                  className="border-terracotta/40 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full border px-4 py-1.5 text-sm font-semibold"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           ))}
@@ -571,24 +588,11 @@ function AddressesTab({ addresses, onChange }: { addresses: SavedAddress[]; onCh
   );
 }
 
-function EmptyState({
-  text,
-  cta,
-  to,
-  navigate,
-}: {
-  text: string;
-  cta: string;
-  to: string;
-  navigate: (to: string) => void;
-}) {
+function EmptyState({ text, cta, to, navigate }: { text: string; cta: string; to: string; navigate: (to: string) => void }) {
   return (
     <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
       <p className="text-charcoal/60">{text}</p>
-      <button
-        onClick={() => navigate(to)}
-        className="btn-3d mt-4 rounded-full bg-terracotta px-6 py-2.5 font-semibold text-cream"
-      >
+      <button onClick={() => navigate(to)} className="btn-3d bg-terracotta text-cream mt-4 rounded-full px-6 py-2.5 font-semibold">
         {cta}
       </button>
     </div>

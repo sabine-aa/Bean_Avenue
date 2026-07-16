@@ -7,8 +7,7 @@ const SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
 // Who performed an action, and from which part of the system.
 export type Actor = { actorId: number | null; actorName: string; actorRole: string; source: string };
 
-const titleRole = (r?: string | null) =>
-  r ? r.charAt(0).toUpperCase() + r.slice(1).toLowerCase() : "Staff";
+const titleRole = (r?: string | null) => (r ? r.charAt(0).toUpperCase() + r.slice(1).toLowerCase() : "Staff");
 
 /** Full actor context (name + role + source) for the audit trail. */
 export function actorCtx(req: Request): Actor {
@@ -84,13 +83,7 @@ const SECTION_BY_ENTITY: Record<string, string> = {
  * Legacy helper kept for existing admin calls (orders/payments/delivery). Routes
  * through the richer trail so those actions still show up with a section.
  */
-export async function logActivity(
-  actor: string,
-  action: string,
-  detail: string,
-  entity?: string,
-  entityId?: string | number
-): Promise<void> {
+export async function logActivity(actor: string, action: string, detail: string, entity?: string, entityId?: string | number): Promise<void> {
   await audit(
     { actorId: null, actorName: actor, actorRole: "Manager", source: "Admin" },
     {
@@ -100,6 +93,6 @@ export async function logActivity(
       entity,
       entityId,
       orderNumber: entity === "order" && entityId != null ? String(entityId) : null,
-    }
+    },
   );
 }

@@ -37,10 +37,22 @@ export function Home() {
   const open = isOpenNow();
 
   useEffect(() => {
-    api.get<FeaturedSection>("/api/featured").then(setFeatured).catch(() => {});
-    api.get<DoughnutPromo>("/api/doughnuts/promo").then(setDoughnutPromo).catch(() => {});
-    api.get<Room[]>("/api/rooms").then(setRooms).catch(() => {});
-    api.get<{ products: HomeShopProduct[]; categories: { id: number; name: string }[] }>("/api/shop").then(setShop).catch(() => {});
+    api
+      .get<FeaturedSection>("/api/featured")
+      .then(setFeatured)
+      .catch(() => {});
+    api
+      .get<DoughnutPromo>("/api/doughnuts/promo")
+      .then(setDoughnutPromo)
+      .catch(() => {});
+    api
+      .get<Room[]>("/api/rooms")
+      .then(setRooms)
+      .catch(() => {});
+    api
+      .get<{ products: HomeShopProduct[]; categories: { id: number; name: string }[] }>("/api/shop")
+      .then(setShop)
+      .catch(() => {});
   }, []);
 
   // One tile per shop category (photo from a featured product when possible),
@@ -81,29 +93,17 @@ export function Home() {
       <HomeBanner />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-oat">
+      <section className="bg-oat relative overflow-hidden">
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage:
-              "radial-gradient(circle at 50% 30%, rgb(255 255 255 / 0.7), transparent 55%)",
+            backgroundImage: "radial-gradient(circle at 50% 30%, rgb(255 255 255 / 0.7), transparent 55%)",
           }}
           aria-hidden
         />
         {/* floating 3D beans */}
-        <img
-          src="/bean.png"
-          alt=""
-          aria-hidden
-          className="float-bean absolute left-[6%] top-16 w-16 opacity-80 md:block"
-        />
-        <img
-          src="/bean.png"
-          alt=""
-          aria-hidden
-          className="float-bean absolute right-[8%] top-28 w-12 opacity-70 md:block"
-          style={{ animationDelay: "1.4s" }}
-        />
+        <img src="/bean.png" alt="" aria-hidden className="float-bean absolute top-16 left-[6%] w-16 opacity-80 md:block" />
+        <img src="/bean.png" alt="" aria-hidden className="float-bean absolute top-28 right-[8%] w-12 opacity-70 md:block" style={{ animationDelay: "1.4s" }} />
         <img
           src="/bean.png"
           alt=""
@@ -115,28 +115,16 @@ export function Home() {
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute bottom-20 right-[18%] w-14 opacity-75 lg:block"
+          className="float-bean absolute right-[18%] bottom-20 w-14 opacity-75 lg:block"
           style={{ animationDelay: "0.7s" }}
         />
+        <img src="/bean.png" alt="" aria-hidden className="float-bean absolute top-10 left-[28%] w-9 opacity-60 lg:block" style={{ animationDelay: "2.1s" }} />
+        <img src="/bean.png" alt="" aria-hidden className="float-bean absolute top-20 right-[30%] w-8 opacity-50 lg:block" style={{ animationDelay: "3.4s" }} />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[28%] top-10 w-9 opacity-60 lg:block"
-          style={{ animationDelay: "2.1s" }}
-        />
-        <img
-          src="/bean.png"
-          alt=""
-          aria-hidden
-          className="float-bean absolute right-[30%] top-20 w-8 opacity-50 lg:block"
-          style={{ animationDelay: "3.4s" }}
-        />
-        <img
-          src="/bean.png"
-          alt=""
-          aria-hidden
-          className="float-bean absolute left-[3%] bottom-24 w-12 opacity-70 md:block"
+          className="float-bean absolute bottom-24 left-[3%] w-12 opacity-70 md:block"
           style={{ animationDelay: "1.9s" }}
         />
         <img
@@ -150,42 +138,26 @@ export function Home() {
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute left-[44%] bottom-6 w-7 opacity-50 lg:block"
+          className="float-bean absolute bottom-6 left-[44%] w-7 opacity-50 lg:block"
           style={{ animationDelay: "0.4s" }}
         />
         <img
           src="/bean.png"
           alt=""
           aria-hidden
-          className="float-bean absolute right-[14%] top-1/2 w-9 opacity-55 lg:block"
+          className="float-bean absolute top-1/2 right-[14%] w-9 opacity-55 lg:block"
           style={{ animationDelay: "2.5s" }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-16 text-center sm:py-24">
-          <img
-            src="/logo.png"
-            alt="Bean Avenue — Brews, Bonds and Business"
-            className="fade-up mx-auto w-full max-w-lg drop-shadow-xl sm:max-w-xl"
-          />
-          <p
-            className="fade-up mx-auto mt-6 max-w-xl text-lg text-charcoal/80"
-            style={{ animationDelay: "0.1s" }}
-          >
+          <img src="/logo.png" alt="Bean Avenue — Brews, Bonds and Business" className="fade-up mx-auto w-full max-w-lg drop-shadow-xl sm:max-w-xl" />
+          <p className="fade-up text-charcoal/80 mx-auto mt-6 max-w-xl text-lg" style={{ animationDelay: "0.1s" }}>
             Freshly brewed coffee and quiet rooms to get things done — all on one avenue.
           </p>
-          <div
-            className="fade-up mt-8 flex flex-wrap justify-center gap-4"
-            style={{ animationDelay: "0.2s" }}
-          >
-            <Link
-              to="/menu"
-              className="btn-3d rounded-full bg-terracotta px-9 py-3.5 font-semibold text-cream"
-            >
+          <div className="fade-up mt-8 flex flex-wrap justify-center gap-4" style={{ animationDelay: "0.2s" }}>
+            <Link to="/menu" className="btn-3d bg-terracotta text-cream rounded-full px-9 py-3.5 font-semibold">
               Order Now
             </Link>
-            <Link
-              to="/book"
-              className="btn-3d rounded-full bg-espresso px-9 py-3.5 font-semibold text-cream"
-            >
+            <Link to="/book" className="btn-3d bg-espresso text-cream rounded-full px-9 py-3.5 font-semibold">
               Book a Room
             </Link>
           </div>
@@ -196,11 +168,15 @@ export function Home() {
       {featured.visible && featured.items.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 py-10">
           <div className="mb-5 flex items-end justify-between gap-3">
-            <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">{featured.title}</h2>
-            <Link to="/menu" className="btn-3d shrink-0 rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha">View Full Menu →</Link>
+            <h2 className="font-display text-espresso text-2xl font-bold sm:text-3xl">{featured.title}</h2>
+            <Link to="/menu" className="btn-3d bg-espresso text-cream hover:bg-mocha shrink-0 rounded-full px-4 py-2 text-sm font-semibold">
+              View Full Menu →
+            </Link>
           </div>
           <ScrollRow>
-            {featured.items.map((item) => <CompactMenuCard key={item.id} item={item} />)}
+            {featured.items.map((item) => (
+              <CompactMenuCard key={item.id} item={item} />
+            ))}
           </ScrollRow>
         </section>
       )}
@@ -217,16 +193,14 @@ export function Home() {
                 className="mx-auto h-48 w-48 object-contain drop-shadow-[0_6px_24px_rgba(255,255,255,0.12)] sm:h-60 sm:w-60"
               />
               <div className="text-center sm:text-left">
-                <span className="inline-block rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white">
+                <span className="inline-block rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold tracking-[0.2em] text-white uppercase">
                   Hanson Doughnuts
                 </span>
-                <h2 className="mt-4 font-display text-3xl font-bold text-white sm:text-4xl">
-                  {doughnutPromo.title}
-                </h2>
+                <h2 className="font-display mt-4 text-3xl font-bold text-white sm:text-4xl">{doughnutPromo.title}</h2>
                 <p className="mt-3 text-white/70">{doughnutPromo.description}</p>
                 <Link
                   to="/doughnuts"
-                  className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-white shadow-[0_0_24px_rgba(242,100,25,0.35)] transition hover:bg-terracotta-dark"
+                  className="btn-3d bg-terracotta hover:bg-terracotta-dark mt-6 inline-block rounded-full px-8 py-3 font-semibold text-white shadow-[0_0_24px_rgba(242,100,25,0.35)] transition"
                 >
                   {doughnutPromo.buttonText}
                 </Link>
@@ -240,45 +214,23 @@ export function Home() {
       <section className="bg-oat/60 py-16">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 md:grid-cols-2">
           <div className="card-lift overflow-hidden rounded-2xl bg-white shadow-sm">
-            <Img
-              src="/photos/study-room-whiteboard.jpg"
-              alt="The Study Room"
-              className="h-52 w-full"
-            />
+            <Img src="/photos/study-room-whiteboard.jpg" alt="The Study Room" className="h-52 w-full" />
             <div className="p-8">
-              <h3 className="font-display text-2xl font-bold text-espresso">Book a Study Room</h3>
-              <p className="mt-2 text-charcoal/70">
-                Quiet private space for studying, meetings, or work.
-              </p>
-              <p className="mt-4 font-display text-xl font-semibold text-terracotta">
-                From ${studyRoom?.pricePerHour ?? 5}/hour
-              </p>
-              <Link
-                to="/book?room=STUDY"
-                className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
-              >
+              <h3 className="font-display text-espresso text-2xl font-bold">Book a Study Room</h3>
+              <p className="text-charcoal/70 mt-2">Quiet private space for studying, meetings, or work.</p>
+              <p className="font-display text-terracotta mt-4 text-xl font-semibold">From ${studyRoom?.pricePerHour ?? 5}/hour</p>
+              <Link to="/book?room=STUDY" className="btn-3d bg-espresso text-cream mt-5 inline-block rounded-full px-6 py-2.5 font-semibold">
                 Book Now
               </Link>
             </div>
           </div>
           <div className="card-lift overflow-hidden rounded-2xl bg-white shadow-sm">
-            <Img
-              src="/photos/conference-room.jpg"
-              alt="The Conference Room"
-              className="h-52 w-full"
-            />
+            <Img src="/photos/conference-room.jpg" alt="The Conference Room" className="h-52 w-full" />
             <div className="p-8">
-              <h3 className="font-display text-2xl font-bold text-espresso">Book a Conference Room</h3>
-              <p className="mt-2 text-charcoal/70">
-                Perfect for meetings, presentations, and group work.
-              </p>
-              <p className="mt-4 font-display text-xl font-semibold text-terracotta">
-                From ${confRoom?.pricePerHour ?? 20}/hour
-              </p>
-              <Link
-                to="/book?room=CONFERENCE"
-                className="btn-3d mt-5 inline-block rounded-full bg-espresso px-6 py-2.5 font-semibold text-cream"
-              >
+              <h3 className="font-display text-espresso text-2xl font-bold">Book a Conference Room</h3>
+              <p className="text-charcoal/70 mt-2">Perfect for meetings, presentations, and group work.</p>
+              <p className="font-display text-terracotta mt-4 text-xl font-semibold">From ${confRoom?.pricePerHour ?? 20}/hour</p>
+              <Link to="/book?room=CONFERENCE" className="btn-3d bg-espresso text-cream mt-5 inline-block rounded-full px-6 py-2.5 font-semibold">
                 Book Now
               </Link>
             </div>
@@ -291,20 +243,24 @@ export function Home() {
         <section className="mx-auto max-w-6xl px-4 py-10">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
-              <h2 className="font-display text-2xl font-bold text-espresso sm:text-3xl">Take Bean Avenue Home.</h2>
-              <p className="mt-1 text-sm text-charcoal/55">illy capsules, machines, beans & more — for pickup or preorder.</p>
+              <h2 className="font-display text-espresso text-2xl font-bold sm:text-3xl">Take Bean Avenue Home.</h2>
+              <p className="text-charcoal/55 mt-1 text-sm">illy capsules, machines, beans & more — for pickup or preorder.</p>
             </div>
-            <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
+            <Link to="/shop" className="btn-3d bg-terracotta text-cream hover:bg-terracotta-dark shrink-0 rounded-full px-4 py-2 text-sm font-semibold">
+              Full Shop →
+            </Link>
           </div>
           <ScrollRow>
-            {shopCategoryTiles.map((t) => <ShopCategoryCard key={t.name} title={t.name} image={t.image} fromPrice={t.from} />)}
+            {shopCategoryTiles.map((t) => (
+              <ShopCategoryCard key={t.name} title={t.name} image={t.image} fromPrice={t.from} />
+            ))}
           </ScrollRow>
         </section>
       )}
 
       {/* Why Bean Avenue */}
       <section className="mx-auto max-w-6xl px-4 py-16 text-center">
-        <h2 className="font-display text-3xl font-bold text-espresso">Why Bean Avenue</h2>
+        <h2 className="font-display text-espresso text-3xl font-bold">Why Bean Avenue</h2>
         <div className="mt-8 grid gap-8 sm:grid-cols-3">
           {[
             ["📶", "Fast Wi-Fi", "Stream, sync, and ship without the spinner."],
@@ -313,8 +269,8 @@ export function Home() {
           ].map(([icon, title, blurb]) => (
             <div key={title}>
               <p className="text-4xl">{icon}</p>
-              <h3 className="mt-3 font-semibold text-espresso">{title}</h3>
-              <p className="mt-1 text-sm text-charcoal/70">{blurb}</p>
+              <h3 className="text-espresso mt-3 font-semibold">{title}</h3>
+              <p className="text-charcoal/70 mt-1 text-sm">{blurb}</p>
             </div>
           ))}
         </div>
@@ -325,33 +281,21 @@ export function Home() {
         <div className="mx-auto max-w-3xl px-4 text-center">
           {account ? (
             <>
-              <h2 className="font-display text-3xl font-bold text-espresso">
+              <h2 className="font-display text-espresso text-3xl font-bold">
                 Hey {account.name} — you have {account.beanBalance} beans ☕
               </h2>
-              <p className="mt-3 text-charcoal/70">
-                Keep sipping to earn more, then trade your beans for free drinks, pastries, and study
-                hours.
-              </p>
-              <Link
-                to="/loyalty"
-                className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-cream"
-              >
+              <p className="text-charcoal/70 mt-3">Keep sipping to earn more, then trade your beans for free drinks, pastries, and study hours.</p>
+              <Link to="/loyalty" className="btn-3d bg-terracotta text-cream mt-6 inline-block rounded-full px-8 py-3 font-semibold">
                 View my rewards
               </Link>
             </>
           ) : (
             <>
-              <h2 className="font-display text-3xl font-bold text-espresso">
-                Every cup earns you beans.
-              </h2>
-              <p className="mt-3 text-charcoal/70">
-                Earn 1 bean per $1 — on coffee <em>and</em> room bookings. Trade them for free drinks,
-                pastries, and study hours.
+              <h2 className="font-display text-espresso text-3xl font-bold">Every cup earns you beans.</h2>
+              <p className="text-charcoal/70 mt-3">
+                Earn 1 bean per $1 — on coffee <em>and</em> room bookings. Trade them for free drinks, pastries, and study hours.
               </p>
-              <Link
-                to="/loyalty"
-                className="btn-3d mt-6 inline-block rounded-full bg-terracotta px-8 py-3 font-semibold text-cream"
-              >
+              <Link to="/loyalty" className="btn-3d bg-terracotta text-cream mt-6 inline-block rounded-full px-8 py-3 font-semibold">
                 Join Free
               </Link>
             </>
@@ -368,8 +312,8 @@ export function Home() {
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="grid gap-10 md:grid-cols-2">
           <div>
-            <h2 className="font-display text-3xl font-bold text-espresso">Find us</h2>
-            <p className="mt-3 text-charcoal/80">Aley, Lebanon</p>
+            <h2 className="font-display text-espresso text-3xl font-bold">Find us</h2>
+            <p className="text-charcoal/80 mt-3">Aley, Lebanon</p>
             <span
               className={`mt-3 inline-block rounded-full px-3 py-1 text-sm font-semibold ${
                 open ? "bg-sage/25 text-sage-dark" : "bg-terracotta/15 text-terracotta-dark"
@@ -380,9 +324,9 @@ export function Home() {
             <table className="mt-5 w-full max-w-sm text-sm">
               <tbody>
                 {HOURS.map((h) => (
-                  <tr key={h.day} className="border-b border-oat">
+                  <tr key={h.day} className="border-oat border-b">
                     <td className="py-1.5 font-medium">{h.day}</td>
-                    <td className="py-1.5 text-right text-charcoal/70">
+                    <td className="text-charcoal/70 py-1.5 text-right">
                       {h.open} – {h.close}
                     </td>
                   </tr>
@@ -405,12 +349,7 @@ export function Home() {
       {/* Contact strip */}
       <section className="mx-auto max-w-6xl px-4 pb-4 text-center">
         <p className="text-charcoal/70">Questions? Message us — we reply fast.</p>
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="btn-3d mt-4 inline-block rounded-full bg-sage px-8 py-3 font-semibold text-cream"
-        >
+        <a href={WHATSAPP_URL} target="_blank" rel="noreferrer" className="btn-3d bg-sage text-cream mt-4 inline-block rounded-full px-8 py-3 font-semibold">
           💬 WhatsApp us
         </a>
       </section>

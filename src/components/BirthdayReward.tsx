@@ -40,22 +40,22 @@ export function BirthdayRewardCard({ actionableOnly = false }: { actionableOnly?
   // 1) An active, unused voucher — show it for the counter.
   if (active && voucher) {
     return (
-      <div className="overflow-hidden rounded-2xl border-2 border-dashed border-terracotta bg-gradient-to-br from-oat/60 to-white p-6 shadow-sm">
-        <div className="flex items-center gap-2 text-terracotta-dark">
+      <div className="border-terracotta from-oat/60 overflow-hidden rounded-2xl border-2 border-dashed bg-gradient-to-br to-white p-6 shadow-sm">
+        <div className="text-terracotta-dark flex items-center gap-2">
           <span className="text-2xl">🎂</span>
           <p className="font-display text-lg font-bold">{voucher.rewardName}</p>
         </div>
-        <p className="mt-1 text-sm text-charcoal/70">Show this code at the counter to claim your free cupcake.</p>
-        <div className="mt-4 rounded-xl bg-espresso px-4 py-4 text-center">
-          <p className="text-xs uppercase tracking-widest text-oat/80">Voucher code</p>
-          <p className="mt-1 font-mono text-3xl font-bold tracking-[0.2em] text-cream">{voucher.code}</p>
+        <p className="text-charcoal/70 mt-1 text-sm">Show this code at the counter to claim your free cupcake.</p>
+        <div className="bg-espresso mt-4 rounded-xl px-4 py-4 text-center">
+          <p className="text-oat/80 text-xs tracking-widest uppercase">Voucher code</p>
+          <p className="text-cream mt-1 font-mono text-3xl font-bold tracking-[0.2em]">{voucher.code}</p>
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-charcoal/60">
+        <div className="text-charcoal/60 mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span>Issued {formatDate(voucher.issuedAt)}</span>
           <span>Valid until {formatDate(voucher.expiresAt)}</span>
           <span className={`rounded-full px-3 py-0.5 font-semibold ${STATUS_META.AVAILABLE.cls}`}>Available</span>
         </div>
-        {br.eligibleNote && <p className="mt-3 text-xs text-charcoal/50">{br.eligibleNote}.</p>}
+        {br.eligibleNote && <p className="text-charcoal/50 mt-3 text-xs">{br.eligibleNote}.</p>}
       </div>
     );
   }
@@ -63,25 +63,23 @@ export function BirthdayRewardCard({ actionableOnly = false }: { actionableOnly?
   // 2) Available to claim right now.
   if (br.available) {
     return (
-      <div className="overflow-hidden rounded-2xl border-2 border-terracotta bg-gradient-to-br from-oat/70 to-white p-6 shadow-sm">
+      <div className="border-terracotta from-oat/70 overflow-hidden rounded-2xl border-2 bg-gradient-to-br to-white p-6 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-3xl">🎂</span>
           <div>
-            <p className="font-display text-xl font-bold text-espresso">Happy Birthday!</p>
-            <p className="text-sm text-charcoal/70">A free {br.rewardName.toLowerCase()} is waiting for you.</p>
+            <p className="font-display text-espresso text-xl font-bold">Happy Birthday!</p>
+            <p className="text-charcoal/70 text-sm">A free {br.rewardName.toLowerCase()} is waiting for you.</p>
           </div>
         </div>
-        {br.eligibleNote && <p className="mt-3 text-sm text-charcoal/60">{br.eligibleNote}.</p>}
+        {br.eligibleNote && <p className="text-charcoal/60 mt-3 text-sm">{br.eligibleNote}.</p>}
         <button
           onClick={claim}
           disabled={claiming}
-          className="btn-3d mt-4 w-full rounded-full bg-terracotta px-6 py-3 text-base font-semibold text-cream disabled:opacity-60"
+          className="btn-3d bg-terracotta text-cream mt-4 w-full rounded-full px-6 py-3 text-base font-semibold disabled:opacity-60"
         >
           {claiming ? "Creating your voucher…" : "Claim Birthday Cupcake"}
         </button>
-        {br.windowEnd && (
-          <p className="mt-2 text-center text-xs text-charcoal/50">Available until {formatDate(br.windowEnd)}</p>
-        )}
+        {br.windowEnd && <p className="text-charcoal/50 mt-2 text-center text-xs">Available until {formatDate(br.windowEnd)}</p>}
       </div>
     );
   }
@@ -93,12 +91,12 @@ export function BirthdayRewardCard({ actionableOnly = false }: { actionableOnly?
     const st = vStatus(voucher);
     const meta = STATUS_META[st];
     return (
-      <div className="rounded-2xl border border-oat bg-white p-5 shadow-sm">
+      <div className="border-oat rounded-2xl border bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-display font-bold text-espresso">🎂 {voucher.rewardName}</p>
+          <p className="font-display text-espresso font-bold">🎂 {voucher.rewardName}</p>
           <span className={`rounded-full px-3 py-0.5 text-xs font-semibold ${meta.cls}`}>{meta.label}</span>
         </div>
-        <p className="mt-1 text-xs text-charcoal/50">
+        <p className="text-charcoal/50 mt-1 text-xs">
           {voucher.code} · issued {formatDate(voucher.issuedAt)}
           {voucher.usedAt && ` · used ${formatDate(voucher.usedAt)}`}
         </p>
@@ -109,12 +107,10 @@ export function BirthdayRewardCard({ actionableOnly = false }: { actionableOnly?
   // 4) No voucher yet — explain when/why (only when there's something useful to say).
   if (!br.hasBirthday || br.reason) {
     return (
-      <div className="rounded-2xl border border-oat bg-white p-5 shadow-sm">
-        <p className="font-display font-bold text-espresso">🎂 Birthday {br.rewardName}</p>
-        <p className="mt-1 text-sm text-charcoal/60">
-          {!br.hasBirthday
-            ? "Add your birthday in Account details to unlock a free cupcake around your birthday each year."
-            : br.reason}
+      <div className="border-oat rounded-2xl border bg-white p-5 shadow-sm">
+        <p className="font-display text-espresso font-bold">🎂 Birthday {br.rewardName}</p>
+        <p className="text-charcoal/60 mt-1 text-sm">
+          {!br.hasBirthday ? "Add your birthday in Account details to unlock a free cupcake around your birthday each year." : br.reason}
         </p>
       </div>
     );

@@ -54,9 +54,7 @@ eventsRouter.get("/all", requireAdmin, async (_req, res) => {
 // PATCH /api/events/reorder  (admin) — must be declared before "/:id"
 eventsRouter.patch("/reorder", requireAdmin, async (req, res) => {
   const ids: number[] = req.body.ids ?? [];
-  await prisma.$transaction(
-    ids.map((id, index) => prisma.event.update({ where: { id }, data: { sortOrder: index } }))
-  );
+  await prisma.$transaction(ids.map((id, index) => prisma.event.update({ where: { id }, data: { sortOrder: index } })));
   res.json({ ok: true });
 });
 

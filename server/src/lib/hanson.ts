@@ -36,7 +36,9 @@ export async function checkHansonAvailability(items: Line[]): Promise<string | n
     if (!a) continue; // not produced/tracked today → unlimited (untracked)
     if (qty > a.remaining) {
       const item = await prisma.menuItem.findUnique({ where: { id }, select: { name: true } });
-      return a.remaining <= 0 ? `${item?.name ?? "That doughnut"} is sold out today.` : `Only ${a.remaining} ${item?.name ?? "doughnut"}${a.remaining === 1 ? "" : "s"} left today.`;
+      return a.remaining <= 0
+        ? `${item?.name ?? "That doughnut"} is sold out today.`
+        : `Only ${a.remaining} ${item?.name ?? "doughnut"}${a.remaining === 1 ? "" : "s"} left today.`;
     }
   }
   return null;

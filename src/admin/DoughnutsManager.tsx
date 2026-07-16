@@ -40,7 +40,10 @@ export function AdminDoughnuts() {
       .get<{ items: { menuItem: MenuItem }[] }>("/api/featured/admin")
       .then((r) => setFeaturedIds(new Set(r.items.map((i) => i.menuItem.id))))
       .catch(() => {});
-    api.get<Promo>("/api/doughnuts/promo").then(setPromo).catch(() => {});
+    api
+      .get<Promo>("/api/doughnuts/promo")
+      .then(setPromo)
+      .catch(() => {});
   }
   useEffect(() => {
     load();
@@ -125,22 +128,30 @@ export function AdminDoughnuts() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="font-display text-3xl font-bold text-espresso">Hanson Doughnuts Manager</h1>
+        <h1 className="font-display text-espresso text-3xl font-bold">Hanson Doughnuts Manager</h1>
         <div className="flex gap-2">
-          <Link to="/doughnuts" target="_blank" className="rounded-full bg-oat px-4 py-2 text-sm font-semibold text-espresso hover:bg-espresso hover:text-cream">
+          <Link
+            to="/doughnuts"
+            target="_blank"
+            className="bg-oat text-espresso hover:bg-espresso hover:text-cream rounded-full px-4 py-2 text-sm font-semibold"
+          >
             Preview today's page ↗
           </Link>
-          <button onClick={openNew} className="rounded-full bg-terracotta px-5 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">
+          <button onClick={openNew} className="bg-terracotta text-cream hover:bg-terracotta-dark rounded-full px-5 py-2 text-sm font-semibold">
             + New doughnut
           </button>
         </div>
       </div>
 
       {/* Today's selection */}
-      <div className="mt-5 rounded-2xl bg-espresso p-5 text-cream shadow-sm">
-        <p className="text-sm text-oat">Customers currently see {today.length} doughnut{today.length === 1 ? "" : "s"} today:</p>
+      <div className="bg-espresso text-cream mt-5 rounded-2xl p-5 shadow-sm">
+        <p className="text-oat text-sm">
+          Customers currently see {today.length} doughnut{today.length === 1 ? "" : "s"} today:
+        </p>
         <p className="mt-1 font-semibold">
-          {today.length ? today.map((d) => `${d.name}${!d.inStock ? " (sold out)" : ""}`).join(" · ") : "None — turn on “Available Today” for ~5 doughnuts below."}
+          {today.length
+            ? today.map((d) => `${d.name}${!d.inStock ? " (sold out)" : ""}`).join(" · ")
+            : "None — turn on “Available Today” for ~5 doughnuts below."}
         </p>
       </div>
 
@@ -148,28 +159,48 @@ export function AdminDoughnuts() {
       {promo && (
         <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold text-espresso">Homepage promo section</h2>
-            <label className="flex items-center gap-2 text-sm font-semibold text-espresso">
+            <h2 className="font-display text-espresso text-lg font-bold">Homepage promo section</h2>
+            <label className="text-espresso flex items-center gap-2 text-sm font-semibold">
               <input type="checkbox" checked={promo.visible} onChange={(e) => savePromo({ visible: e.target.checked })} />
               Show on homepage
             </label>
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="text-xs font-semibold text-espresso">
+            <label className="text-espresso text-xs font-semibold">
               Title
-              <input value={promo.title} onChange={(e) => setPromo({ ...promo, title: e.target.value })} onBlur={(e) => savePromo({ title: e.target.value })} className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal" />
+              <input
+                value={promo.title}
+                onChange={(e) => setPromo({ ...promo, title: e.target.value })}
+                onBlur={(e) => savePromo({ title: e.target.value })}
+                className="border-oat mt-1 w-full rounded-lg border px-3 py-2 font-normal"
+              />
             </label>
-            <label className="text-xs font-semibold text-espresso">
+            <label className="text-espresso text-xs font-semibold">
               Button text
-              <input value={promo.buttonText} onChange={(e) => setPromo({ ...promo, buttonText: e.target.value })} onBlur={(e) => savePromo({ buttonText: e.target.value })} className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal" />
+              <input
+                value={promo.buttonText}
+                onChange={(e) => setPromo({ ...promo, buttonText: e.target.value })}
+                onBlur={(e) => savePromo({ buttonText: e.target.value })}
+                className="border-oat mt-1 w-full rounded-lg border px-3 py-2 font-normal"
+              />
             </label>
-            <label className="text-xs font-semibold text-espresso sm:col-span-2">
+            <label className="text-espresso text-xs font-semibold sm:col-span-2">
               Description
-              <input value={promo.description} onChange={(e) => setPromo({ ...promo, description: e.target.value })} onBlur={(e) => savePromo({ description: e.target.value })} className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal" />
+              <input
+                value={promo.description}
+                onChange={(e) => setPromo({ ...promo, description: e.target.value })}
+                onBlur={(e) => savePromo({ description: e.target.value })}
+                className="border-oat mt-1 w-full rounded-lg border px-3 py-2 font-normal"
+              />
             </label>
-            <label className="text-xs font-semibold text-espresso sm:col-span-2">
+            <label className="text-espresso text-xs font-semibold sm:col-span-2">
               Image URL
-              <input value={promo.image} onChange={(e) => setPromo({ ...promo, image: e.target.value })} onBlur={(e) => savePromo({ image: e.target.value })} className="mt-1 w-full rounded-lg border border-oat px-3 py-2 font-normal" />
+              <input
+                value={promo.image}
+                onChange={(e) => setPromo({ ...promo, image: e.target.value })}
+                onBlur={(e) => savePromo({ image: e.target.value })}
+                className="border-oat mt-1 w-full rounded-lg border px-3 py-2 font-normal"
+              />
             </label>
           </div>
         </div>
@@ -178,54 +209,103 @@ export function AdminDoughnuts() {
       {/* Add / edit form */}
       {showEditor && (
         <form onSubmit={save} className="mt-5 grid gap-4 rounded-2xl bg-white p-6 shadow-md sm:grid-cols-2">
-          <h2 className="font-display text-xl font-bold text-espresso sm:col-span-2">
-            {creating ? "New doughnut" : "Edit doughnut"}
-          </h2>
-          <label className="text-sm font-semibold text-espresso">
+          <h2 className="font-display text-espresso text-xl font-bold sm:col-span-2">{creating ? "New doughnut" : "Edit doughnut"}</h2>
+          <label className="text-espresso text-sm font-semibold">
             Name
-            <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+            />
           </label>
-          <label className="text-sm font-semibold text-espresso">
+          <label className="text-espresso text-sm font-semibold">
             Price ($)
-            <input required type="number" step="0.25" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+            <input
+              required
+              type="number"
+              step="0.25"
+              min="0"
+              value={form.price}
+              onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+            />
           </label>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
             Description
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={2}
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+            />
           </label>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
             Ingredients / allergens
-            <input value={form.ingredients} onChange={(e) => setForm({ ...form, ingredients: e.target.value })} className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+            <input
+              value={form.ingredients}
+              onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+            />
           </label>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
-            Image URL <span className="font-normal text-charcoal/50">(replace the placeholder with the real photo)</span>
-            <input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
+            Image URL <span className="text-charcoal/50 font-normal">(replace the placeholder with the real photo)</span>
+            <input
+              value={form.image}
+              onChange={(e) => setForm({ ...form, image: e.target.value })}
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+            />
           </label>
           {form.image && <Img src={form.image} alt="preview" className="h-24 w-32 rounded-xl sm:col-span-2" />}
           <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" className="rounded-full bg-espresso px-6 py-2 font-semibold text-cream hover:bg-mocha">Save</button>
-            <button type="button" onClick={() => { setCreating(false); setEditingId(null); }} className="rounded-full px-6 py-2 font-semibold text-charcoal/60 hover:text-terracotta">Cancel</button>
+            <button type="submit" className="bg-espresso text-cream hover:bg-mocha rounded-full px-6 py-2 font-semibold">
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreating(false);
+                setEditingId(null);
+              }}
+              className="text-charcoal/60 hover:text-terracotta rounded-full px-6 py-2 font-semibold"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       )}
 
       {/* Catalogue */}
-      <h2 className="mt-6 font-display text-lg font-bold text-espresso">Full catalogue ({items.length})</h2>
+      <h2 className="font-display text-espresso mt-6 text-lg font-bold">Full catalogue ({items.length})</h2>
       <div className="mt-2 space-y-2">
         {items.map((d, idx) => (
           <div key={d.id} className={`flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3 shadow-sm ${d.isHidden ? "opacity-50" : ""}`}>
             <div className="flex flex-col">
-              <button onClick={() => move(idx, -1)} disabled={idx === 0} aria-label="Move up" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▲</button>
-              <button onClick={() => move(idx, 1)} disabled={idx === items.length - 1} aria-label="Move down" className="px-1 text-charcoal/40 hover:text-espresso disabled:opacity-30">▼</button>
+              <button
+                onClick={() => move(idx, -1)}
+                disabled={idx === 0}
+                aria-label="Move up"
+                className="text-charcoal/40 hover:text-espresso px-1 disabled:opacity-30"
+              >
+                ▲
+              </button>
+              <button
+                onClick={() => move(idx, 1)}
+                disabled={idx === items.length - 1}
+                aria-label="Move down"
+                className="text-charcoal/40 hover:text-espresso px-1 disabled:opacity-30"
+              >
+                ▼
+              </button>
             </div>
             <Img src={d.photo} alt={d.name} className="h-14 w-14 rounded-xl" />
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-espresso">
+              <p className="text-espresso font-semibold">
                 {d.name}
-                {!d.inStock && <span className="ml-2 text-xs font-semibold text-terracotta-dark">SOLD OUT</span>}
-                {d.isHidden && <span className="ml-2 text-xs text-charcoal/40">hidden</span>}
+                {!d.inStock && <span className="text-terracotta-dark ml-2 text-xs font-semibold">SOLD OUT</span>}
+                {d.isHidden && <span className="text-charcoal/40 ml-2 text-xs">hidden</span>}
               </p>
-              <p className="text-sm text-terracotta">{money(d.price)}</p>
+              <p className="text-terracotta text-sm">{money(d.price)}</p>
             </div>
             {/* Available Today toggle */}
             <button
@@ -234,17 +314,33 @@ export function AdminDoughnuts() {
             >
               Today: {d.availableToday ? "ON" : "OFF"}
             </button>
-            <button onClick={() => patchItem(d, { inStock: !d.inStock })} className="rounded-full bg-oat px-3 py-1.5 text-xs font-semibold hover:bg-espresso hover:text-cream">
+            <button
+              onClick={() => patchItem(d, { inStock: !d.inStock })}
+              className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-xs font-semibold"
+            >
               {d.inStock ? "Mark sold out" : "Back in stock"}
             </button>
-            <button onClick={() => toggleFeatured(d)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${featuredIds.has(d.id) ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}>
+            <button
+              onClick={() => toggleFeatured(d)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${featuredIds.has(d.id) ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}
+            >
               {featuredIds.has(d.id) ? "★ Featured" : "Feature"}
             </button>
-            <button onClick={() => patchItem(d, { isHidden: !d.isHidden })} className="rounded-full bg-oat px-3 py-1.5 text-xs font-semibold hover:bg-espresso hover:text-cream">
+            <button
+              onClick={() => patchItem(d, { isHidden: !d.isHidden })}
+              className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-xs font-semibold"
+            >
               {d.isHidden ? "Show" : "Hide"}
             </button>
-            <button onClick={() => openEdit(d)} className="rounded-full bg-espresso px-3 py-1.5 text-xs font-semibold text-cream hover:bg-mocha">Edit</button>
-            <button onClick={() => remove(d)} className="rounded-full bg-terracotta/15 px-3 py-1.5 text-xs font-semibold text-terracotta-dark hover:bg-terracotta hover:text-cream">Delete</button>
+            <button onClick={() => openEdit(d)} className="bg-espresso text-cream hover:bg-mocha rounded-full px-3 py-1.5 text-xs font-semibold">
+              Edit
+            </button>
+            <button
+              onClick={() => remove(d)}
+              className="bg-terracotta/15 text-terracotta-dark hover:bg-terracotta hover:text-cream rounded-full px-3 py-1.5 text-xs font-semibold"
+            >
+              Delete
+            </button>
           </div>
         ))}
       </div>

@@ -17,7 +17,11 @@ activityRouter.get("/", async (req, res) => {
   if (q.from || q.to) {
     const range: Prisma.DateTimeFilter = {};
     if (q.from) range.gte = new Date(q.from);
-    if (q.to) { const t = new Date(q.to); t.setHours(23, 59, 59, 999); range.lte = t; }
+    if (q.to) {
+      const t = new Date(q.to);
+      t.setHours(23, 59, 59, 999);
+      range.lte = t;
+    }
     where.createdAt = range;
   }
   if (q.section) where.section = q.section;

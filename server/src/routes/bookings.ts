@@ -101,10 +101,16 @@ bookingsRouter.post("/", async (req, res) => {
   }
 
   const bookActor = actorCtx(req);
-  await audit(
-    bookActor.source === "System" ? { actorId: null, actorName: customerName || "Customer", actorRole: "Customer", source: "Website" } : bookActor,
-    { section: "Rooms", action: "booking_created", description: `Booking ${booking.number} — ${room.name} for ${customerName} (${Number(durationHours)}h, $${total.toFixed(2)})`, entity: "Booking", entityId: booking.id, entityName: booking.number, orderNumber: booking.number, newValue: { room: room.name, total, start } }
-  );
+  await audit(bookActor.source === "System" ? { actorId: null, actorName: customerName || "Customer", actorRole: "Customer", source: "Website" } : bookActor, {
+    section: "Rooms",
+    action: "booking_created",
+    description: `Booking ${booking.number} — ${room.name} for ${customerName} (${Number(durationHours)}h, $${total.toFixed(2)})`,
+    entity: "Booking",
+    entityId: booking.id,
+    entityName: booking.number,
+    orderNumber: booking.number,
+    newValue: { room: room.name, total, start },
+  });
   res.status(201).json(outBooking(booking));
 });
 
@@ -119,11 +125,7 @@ bookingsRouter.get("/", requireAdmin, async (req, res) => {
     where.startTime = { gte: start, lte: end };
   }
   if (search) {
-    where.OR = [
-      { customerName: { contains: search } },
-      { phone: { contains: search } },
-      { number: { contains: search } },
-    ];
+    where.OR = [{ customerName: { contains: search } }, { phone: { contains: search } }, { number: { contains: search } }];
   }
   const bookings = await prisma.booking.findMany({
     where,
@@ -140,7 +142,17 @@ bookingsRouter.patch("/:id/status", requireAdmin, async (req, res) => {
   const beforeBooking = await prisma.booking.findUnique({ where: { id } });
   const booking = await prisma.booking.update({ where: { id }, data: { status }, include: { room: true } });
   if (beforeBooking && beforeBooking.status !== booking.status)
-    await audit(actorCtx(req), { section: "Rooms", action: status === "CANCELLED" ? "booking_cancelled" : "booking_status_changed", description: `Booking ${booking.number} (${booking.room.name}) ${beforeBooking.status} → ${booking.status}`, entity: "Booking", entityId: id, entityName: booking.number, orderNumber: booking.number, oldValue: { status: beforeBooking.status }, newValue: { status: booking.status } });
+    await audit(actorCtx(req), {
+      section: "Rooms",
+      action: status === "CANCELLED" ? "booking_cancelled" : "booking_status_changed",
+      description: `Booking ${booking.number} (${booking.room.name}) ${beforeBooking.status} → ${booking.status}`,
+      entity: "Booking",
+      entityId: id,
+      entityName: booking.number,
+      orderNumber: booking.number,
+      oldValue: { status: beforeBooking.status },
+      newValue: { status: booking.status },
+    });
   if (status === "NO_SHOW" && booking.customerId) {
     await prisma.customer.update({
       where: { id: booking.customerId },

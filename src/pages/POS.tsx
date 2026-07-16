@@ -8,7 +8,17 @@ import type { Addon, AddonGroup, MenuItem, Order, OrderItemLine, OrderStatus } f
 const makeRef = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 const RETAIL_CAT = "🛍 Retail";
 const HANSON_CAT = "🍩 Hanson";
-type ShopProd = { id: number; name: string; category: string; price: number; quantity: number; images: string[]; status: string; availablePos: boolean; allowPreorder: boolean };
+type ShopProd = {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  quantity: number;
+  images: string[];
+  status: string;
+  availablePos: boolean;
+  allowPreorder: boolean;
+};
 type PosDoughnut = MenuItem & { remaining: number | null; soldOut: boolean; tracked: boolean };
 
 // ---- Shared models ------------------------------------------------------------
@@ -18,8 +28,19 @@ type PayMethod = "CASH" | "CARD" | "WHISH" | "SALARY";
 type Line = { id: number; item: MenuItem; quantity: number; options: Sel[]; addons: TAddon[]; note: string };
 type Staff = { id: number; name: string; role: string };
 type Shift = {
-  id: number; staffName: string; openingFloat: number; cashPayIns: number; cashPayOuts: number; openedAt: string;
-  salesCount: number; cashSales: number; cardSales: number; whishSales: number; salesTotal: number; expectedCash: number; countedCash?: number;
+  id: number;
+  staffName: string;
+  openingFloat: number;
+  cashPayIns: number;
+  cashPayOuts: number;
+  openedAt: string;
+  salesCount: number;
+  cashSales: number;
+  cardSales: number;
+  whishSales: number;
+  salesTotal: number;
+  expectedCash: number;
+  countedCash?: number;
 };
 type PosConfig = { card: { enabled: boolean; requireApprovalCode: boolean; provider: string }; staffDiscount?: number };
 type Session = { staff: Staff; shift: Shift | null; config?: PosConfig; terminal?: string };
@@ -59,8 +80,17 @@ export function POS() {
     setSession(null);
   };
 
-  if (!authed) return <PinLogin onLogin={(s) => { setSession(s); setAuthed(true); setLoading(false); }} />;
-  if (loading || !session) return <div className="grid h-screen place-items-center bg-oat/30 text-charcoal/50">Loading register…</div>;
+  if (!authed)
+    return (
+      <PinLogin
+        onLogin={(s) => {
+          setSession(s);
+          setAuthed(true);
+          setLoading(false);
+        }}
+      />
+    );
+  if (loading || !session) return <div className="bg-oat/30 text-charcoal/50 grid h-screen place-items-center">Loading register…</div>;
   if (!session.shift) return <OpenShiftScreen staff={session.staff} onOpen={(shift) => setSession({ ...session, shift })} onLogout={logout} />;
   return <Register session={session} setShift={(shift) => setSession({ ...session, shift })} reload={loadSession} onLogout={logout} />;
 }
@@ -82,9 +112,17 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
 
   function renameTerminal() {
     const name = window.prompt("Name this register (each till has its own shift & cash drawer):", terminal);
-    if (name && name.trim()) { setPosTerminal(name); setTerminal(getPosTerminal()); }
+    if (name && name.trim()) {
+      setPosTerminal(name);
+      setTerminal(getPosTerminal());
+    }
   }
-  const switchMode = (m: "login" | "punch") => { setMode(m); setPin(""); setErr(""); setMsg(""); };
+  const switchMode = (m: "login" | "punch") => {
+    setMode(m);
+    setPin("");
+    setErr("");
+    setMsg("");
+  };
 
   async function submit(p: string) {
     if (busy) return;
@@ -111,32 +149,52 @@ function PinLogin({ onLogin }: { onLogin: (s: Session) => void }) {
   const press = (d: string) => setPin((cur) => (cur + d).slice(0, 6));
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-espresso text-cream">
+    <div className="bg-espresso text-cream flex h-screen flex-col items-center justify-center">
       <Img src="/bean.png" alt="" className="mb-2 h-10 w-10 brightness-0 invert" />
       <p className="font-display text-2xl font-bold">Bean Avenue Register</p>
       {/* Mode toggle: sign in to the register vs. clock in/out */}
-      <div className="mt-3 flex gap-1 rounded-full bg-mocha/40 p-1 text-sm font-semibold">
-        <button onClick={() => switchMode("login")} className={`rounded-full px-4 py-1.5 ${mode === "login" ? "bg-cream text-espresso" : "text-cream/70"}`}>Sign in</button>
-        <button onClick={() => switchMode("punch")} className={`rounded-full px-4 py-1.5 ${mode === "punch" ? "bg-cream text-espresso" : "text-cream/70"}`}>🕐 Punch in/out</button>
+      <div className="bg-mocha/40 mt-3 flex gap-1 rounded-full p-1 text-sm font-semibold">
+        <button onClick={() => switchMode("login")} className={`rounded-full px-4 py-1.5 ${mode === "login" ? "bg-cream text-espresso" : "text-cream/70"}`}>
+          Sign in
+        </button>
+        <button onClick={() => switchMode("punch")} className={`rounded-full px-4 py-1.5 ${mode === "punch" ? "bg-cream text-espresso" : "text-cream/70"}`}>
+          🕐 Punch in/out
+        </button>
       </div>
-      <p className="mt-3 text-cream/60">{mode === "punch" ? "Enter your PIN to clock in or out" : "Enter your PIN"}</p>
+      <p className="text-cream/60 mt-3">{mode === "punch" ? "Enter your PIN to clock in or out" : "Enter your PIN"}</p>
       <div className="my-4 flex gap-2">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <span key={i} className={`h-3.5 w-3.5 rounded-full ${i < pin.length ? "bg-cream" : "bg-cream/25"}`} />
         ))}
       </div>
-      {err && <p className="mb-2 text-sm font-semibold text-terracotta">{err}</p>}
-      {msg && <p className="mb-2 text-sm font-semibold text-sage">{msg}</p>}
+      {err && <p className="text-terracotta mb-2 text-sm font-semibold">{err}</p>}
+      {msg && <p className="text-sage mb-2 text-sm font-semibold">{msg}</p>}
       <div className="grid grid-cols-3 gap-3">
         {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
-          <button key={d} onClick={() => press(d)} className="h-16 w-16 rounded-full bg-mocha/60 text-2xl font-bold active:scale-95">{d}</button>
+          <button key={d} onClick={() => press(d)} className="bg-mocha/60 h-16 w-16 rounded-full text-2xl font-bold active:scale-95">
+            {d}
+          </button>
         ))}
-        <button onClick={() => setPin("")} className="h-16 w-16 rounded-full text-sm font-semibold text-cream/60">Clear</button>
-        <button onClick={() => press("0")} className="h-16 w-16 rounded-full bg-mocha/60 text-2xl font-bold active:scale-95">0</button>
-        <button onClick={() => submit(pin)} disabled={pin.length < 4 || busy} className={`h-16 w-16 rounded-full text-lg font-bold disabled:opacity-40 ${mode === "punch" ? "bg-sage-dark" : "bg-terracotta"}`}>{mode === "punch" ? "🕐" : "→"}</button>
+        <button onClick={() => setPin("")} className="text-cream/60 h-16 w-16 rounded-full text-sm font-semibold">
+          Clear
+        </button>
+        <button onClick={() => press("0")} className="bg-mocha/60 h-16 w-16 rounded-full text-2xl font-bold active:scale-95">
+          0
+        </button>
+        <button
+          onClick={() => submit(pin)}
+          disabled={pin.length < 4 || busy}
+          className={`h-16 w-16 rounded-full text-lg font-bold disabled:opacity-40 ${mode === "punch" ? "bg-sage-dark" : "bg-terracotta"}`}
+        >
+          {mode === "punch" ? "🕐" : "→"}
+        </button>
       </div>
-      <button onClick={renameTerminal} className="mt-6 text-sm text-cream/50 hover:text-cream">🖥 {terminal} · change</button>
-      <Link to="/" className="mt-3 text-sm text-cream/50 hover:text-cream">← Back to site</Link>
+      <button onClick={renameTerminal} className="text-cream/50 hover:text-cream mt-6 text-sm">
+        🖥 {terminal} · change
+      </button>
+      <Link to="/" className="text-cream/50 hover:text-cream mt-3 text-sm">
+        ← Back to site
+      </Link>
     </div>
   );
 }
@@ -156,28 +214,47 @@ function OpenShiftScreen({ staff, onOpen, onLogout }: { staff: Staff; onOpen: (s
     }
   }
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-oat/30 text-espresso">
+    <div className="bg-oat/30 text-espresso flex h-screen flex-col items-center justify-center">
       <p className="font-display text-2xl font-bold">Hi {staff.name} 👋</p>
-      <p className="mt-1 text-charcoal/60">Open a shift to start selling.</p>
+      <p className="text-charcoal/60 mt-1">Open a shift to start selling.</p>
       <div className="mt-6 w-72 rounded-2xl bg-white p-5 shadow-sm">
         <label className="text-sm font-semibold">
           Starting cash in drawer
           <div className="mt-1 flex items-center gap-1">
-            <span className="text-lg text-charcoal/50">$</span>
-            <input autoFocus value={float} onChange={(e) => setFloat(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" className="w-full rounded-xl border border-oat px-3 py-2.5 text-lg" />
+            <span className="text-charcoal/50 text-lg">$</span>
+            <input
+              autoFocus
+              value={float}
+              onChange={(e) => setFloat(e.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="0.00"
+              className="border-oat w-full rounded-xl border px-3 py-2.5 text-lg"
+            />
           </div>
         </label>
-        <button onClick={open} disabled={busy} className="btn-3d mt-4 w-full rounded-xl bg-espresso py-3 font-bold text-cream disabled:opacity-50">
+        <button onClick={open} disabled={busy} className="btn-3d bg-espresso text-cream mt-4 w-full rounded-xl py-3 font-bold disabled:opacity-50">
           {busy ? "Opening…" : "Open shift"}
         </button>
       </div>
-      <button onClick={onLogout} className="mt-6 text-sm text-charcoal/50 hover:text-terracotta">Sign out</button>
+      <button onClick={onLogout} className="text-charcoal/50 hover:text-terracotta mt-6 text-sm">
+        Sign out
+      </button>
     </div>
   );
 }
 
 // ---- Register -----------------------------------------------------------------
-function Register({ session, setShift, reload, onLogout }: { session: Session; setShift: (s: Shift | null) => void; reload: () => void; onLogout: () => void }) {
+function Register({
+  session,
+  setShift,
+  reload,
+  onLogout,
+}: {
+  session: Session;
+  setShift: (s: Shift | null) => void;
+  reload: () => void;
+  onLogout: () => void;
+}) {
   const shift = session.shift!;
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<string[]>([]);
@@ -199,14 +276,43 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [shopProducts, setShopProducts] = useState<ShopProd[]>([]);
   const [shopLines, setShopLines] = useState<{ id: number; product: ShopProd; quantity: number }[]>([]);
   const [preorderProduct, setPreorderProduct] = useState<ShopProd | null>(null);
-  const [compact, setCompact] = useState(() => { try { return localStorage.getItem("pos.compact") === "1"; } catch { return false; } });
-  const toggleCompact = () => setCompact((c) => { const n = !c; try { localStorage.setItem("pos.compact", n ? "1" : "0"); } catch { /* ignore */ } return n; });
+  const [compact, setCompact] = useState(() => {
+    try {
+      return localStorage.getItem("pos.compact") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleCompact = () =>
+    setCompact((c) => {
+      const n = !c;
+      try {
+        localStorage.setItem("pos.compact", n ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return n;
+    });
   const [ticketOpen, setTicketOpen] = useState(false); // slide-out sale panel on tablet/narrow screens
-  const loadShop = useCallback(() => { posApi.get<ShopProd[]>("/api/shop/pos").then(setShopProducts).catch(() => {}); }, []);
-  useEffect(() => { loadShop(); }, [loadShop]);
+  const loadShop = useCallback(() => {
+    posApi
+      .get<ShopProd[]>("/api/shop/pos")
+      .then(setShopProducts)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadShop();
+  }, [loadShop]);
   const [doughnuts, setDoughnuts] = useState<PosDoughnut[]>([]);
-  const loadDoughnuts = useCallback(() => { posApi.get<PosDoughnut[]>("/api/doughnuts").then(setDoughnuts).catch(() => {}); }, []);
-  useEffect(() => { loadDoughnuts(); }, [loadDoughnuts]);
+  const loadDoughnuts = useCallback(() => {
+    posApi
+      .get<PosDoughnut[]>("/api/doughnuts")
+      .then(setDoughnuts)
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadDoughnuts();
+  }, [loadDoughnuts]);
   const [orderType, setOrderType] = useState<"TAKEAWAY" | "DINE_IN">("TAKEAWAY");
   const [table, setTable] = useState("");
   const [online, setOnline] = useState(navigator.onLine);
@@ -220,7 +326,12 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   const [staffPurchase, setStaffPurchase] = useState<{ id: number; name: string } | null>(null);
   const [staffPicker, setStaffPicker] = useState(false);
   const [tabPin, setTabPin] = useState("");
-  useEffect(() => { posApi.get<Staff[]>("/api/pos/staff-list").then(setStaffList).catch(() => {}); }, []);
+  useEffect(() => {
+    posApi
+      .get<Staff[]>("/api/pos/staff-list")
+      .then(setStaffList)
+      .catch(() => {});
+  }, []);
   const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
   const [onlineNew, setOnlineNew] = useState(0);
   const [showOnline, setShowOnline] = useState(false);
@@ -252,7 +363,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
       };
       tone(880, 0, 0.18);
       tone(1320, 0.16, 0.26);
-    } catch { /* audio blocked — the visual alert still shows */ }
+    } catch {
+      /* audio blocked — the visual alert still shows */
+    }
   }, []);
   // Browsers block audio until the user interacts; resume the context on any tap.
   useEffect(() => {
@@ -274,7 +387,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
         setOrderAlert({ count: arrivals.length, latest: arrivals[arrivals.length - 1].number });
       }
       firstLoad.current = false;
-    } catch { /* offline — keep the last list */ }
+    } catch {
+      /* offline — keep the last list */
+    }
   }, [chime]);
   useEffect(() => {
     loadOnline();
@@ -298,7 +413,8 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
         setCats(cachedCats());
       });
     // Which items/categories have add-on groups → tapping them opens the customizer.
-    api.get<{ itemIds: number[]; categories: string[] }>("/api/addons/coverage")
+    api
+      .get<{ itemIds: number[]; categories: string[] }>("/api/addons/coverage")
       .then((cv) => setCoverage({ itemIds: new Set(cv.itemIds), categories: new Set(cv.categories) }))
       .catch(() => {});
   }, []);
@@ -309,13 +425,23 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   // Keep queued offline sales syncing whenever we're online.
   useEffect(() => {
     const sync = async () => setPending(await flushQueue());
-    const goOnline = () => { setOnline(true); sync(); };
+    const goOnline = () => {
+      setOnline(true);
+      sync();
+    };
     const goOffline = () => setOnline(false);
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
     sync();
-    const t = setInterval(() => { setOnline(navigator.onLine); if (navigator.onLine) sync(); }, 15000);
-    return () => { window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); clearInterval(t); };
+    const t = setInterval(() => {
+      setOnline(navigator.onLine);
+      if (navigator.onLine) sync();
+    }, 15000);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+      clearInterval(t);
+    };
   }, []);
 
   const visible = useMemo(() => {
@@ -346,7 +472,9 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
     setNextId((n) => n + 1);
   }
   const setShopQty = (id: number, delta: number) =>
-    setShopLines((ls) => ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: Math.min(l.quantity + delta, l.product.quantity) }]) : [l])));
+    setShopLines((ls) =>
+      ls.flatMap((l) => (l.id === id ? (l.quantity + delta <= 0 ? [] : [{ ...l, quantity: Math.min(l.quantity + delta, l.product.quantity) }]) : [l])),
+    );
   // A staff purchase applies the global staff-discount %; otherwise the manual discount.
   const disc = staffPurchase
     ? Math.round(Math.min(subtotal, (subtotal * staffDiscountPct) / 100) * 100) / 100
@@ -395,11 +523,23 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           q = Math.min(q, Math.max(l.quantity, l.item.stockQty - others));
         }
         return [{ ...l, quantity: q }];
-      })
+      }),
     );
 
   function newSale() {
-    setLines([]); setShopLines([]); setDiscount(""); setPhone(""); setTendered(""); setReceipt(null); setPay(null); setTable(""); setCardApproval(""); setCardLast4(""); setStaffPurchase(null); setTabPin(""); setTicketOpen(false);
+    setLines([]);
+    setShopLines([]);
+    setDiscount("");
+    setPhone("");
+    setTendered("");
+    setReceipt(null);
+    setPay(null);
+    setTable("");
+    setCardApproval("");
+    setCardLast4("");
+    setStaffPurchase(null);
+    setTabPin("");
+    setTicketOpen(false);
   }
 
   async function completeSale(method: PayMethod) {
@@ -449,8 +589,28 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
           createdAt: new Date().toISOString(),
           beansEarned: 0,
           items: [
-            ...lines.map((l) => ({ id: l.id, menuItemId: l.item.id, name: l.item.name, unitPrice: unitPrice(l), quantity: l.quantity, selectedOptions: l.options, addons: [], specialInstructions: l.note || null, lineTotal: lineTotal(l) })),
-            ...shopLines.map((l) => ({ id: 100000 + l.id, menuItemId: null, name: l.product.name, unitPrice: l.product.price, quantity: l.quantity, selectedOptions: [], addons: [], specialInstructions: null, lineTotal: Math.round(l.product.price * l.quantity * 100) / 100 })),
+            ...lines.map((l) => ({
+              id: l.id,
+              menuItemId: l.item.id,
+              name: l.item.name,
+              unitPrice: unitPrice(l),
+              quantity: l.quantity,
+              selectedOptions: l.options,
+              addons: [],
+              specialInstructions: l.note || null,
+              lineTotal: lineTotal(l),
+            })),
+            ...shopLines.map((l) => ({
+              id: 100000 + l.id,
+              menuItemId: null,
+              name: l.product.name,
+              unitPrice: l.product.price,
+              quantity: l.quantity,
+              selectedOptions: [],
+              addons: [],
+              specialInstructions: null,
+              lineTotal: Math.round(l.product.price * l.quantity * 100) / 100,
+            })),
           ],
         } as unknown as Order);
         setPay(null);
@@ -466,110 +626,243 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
   // slide-out drawer on tablet/narrow screens.
   const ticketBody = (
     <>
-      <div className="flex items-center justify-between border-b border-oat px-4 py-2.5">
+      <div className="border-oat flex items-center justify-between border-b px-4 py-2.5">
         <span className="font-display text-lg font-bold">Current sale</span>
         <div className="flex items-center gap-3">
-          {!cartEmpty && <button onClick={newSale} className="text-sm font-semibold text-charcoal/50 hover:text-terracotta">Clear</button>}
-          <button onClick={() => setTicketOpen(false)} aria-label="Close" className="text-2xl leading-none text-charcoal/40 hover:text-charcoal lg:hidden">×</button>
+          {!cartEmpty && (
+            <button onClick={newSale} className="text-charcoal/50 hover:text-terracotta text-sm font-semibold">
+              Clear
+            </button>
+          )}
+          <button onClick={() => setTicketOpen(false)} aria-label="Close" className="text-charcoal/40 hover:text-charcoal text-2xl leading-none lg:hidden">
+            ×
+          </button>
         </div>
       </div>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
-        {cartEmpty && <p className="p-8 text-center text-charcoal/40">Tap items to start a sale.</p>}
+        {cartEmpty && <p className="text-charcoal/40 p-8 text-center">Tap items to start a sale.</p>}
         {shopLines.map((l) => (
-          <div key={`shop-${l.id}`} className="rounded-xl bg-oat/25 p-2.5">
+          <div key={`shop-${l.id}`} className="bg-oat/25 rounded-xl p-2.5">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="font-semibold leading-tight text-espresso">{l.product.name}</p>
+                <p className="text-espresso leading-tight font-semibold">{l.product.name}</p>
                 <p className="mt-0.5 text-[11px] font-semibold text-[#5b3fd6]">🛍 Retail · {money(l.product.price)} each</p>
               </div>
-              <span className="whitespace-nowrap font-bold text-terracotta">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
+              <span className="text-terracotta font-bold whitespace-nowrap">{money(Math.round(l.product.price * l.quantity * 100) / 100)}</span>
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
+              <button onClick={() => setShopQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg leading-none font-bold shadow-sm">
+                –
+              </button>
               <span className="w-6 text-center font-semibold">{l.quantity}</span>
-              <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
-              <button onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))} className="ml-auto rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+              <button onClick={() => setShopQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg leading-none font-bold shadow-sm">
+                +
+              </button>
+              <button
+                onClick={() => setShopLines((ls) => ls.filter((x) => x.id !== l.id))}
+                className="text-charcoal/40 hover:text-terracotta ml-auto rounded-full px-2 py-1 text-xs font-semibold"
+              >
+                Remove
+              </button>
             </div>
           </div>
         ))}
         {lines.map((l) => (
-          <div key={l.id} className="rounded-xl bg-oat/25 p-2.5">
+          <div key={l.id} className="bg-oat/25 rounded-xl p-2.5">
             <div className="flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 font-semibold leading-tight text-espresso">{l.item.name}</p>
-              <span className="whitespace-nowrap font-bold text-terracotta">{money(lineTotal(l))}</span>
+              <p className="text-espresso min-w-0 flex-1 leading-tight font-semibold">{l.item.name}</p>
+              <span className="text-terracotta font-bold whitespace-nowrap">{money(lineTotal(l))}</span>
             </div>
-            {l.options.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60">{l.options.map((o) => o.choice).join(" · ")}</p>}
-            {l.addons.length > 0 && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Add-ons:</span> {l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)).join(", ")}</p>}
-            {l.note && <p className="mt-0.5 text-xs text-charcoal/60"><span className="font-semibold text-charcoal/75">Note:</span> {l.note}</p>}
+            {l.options.length > 0 && <p className="text-charcoal/60 mt-0.5 text-xs">{l.options.map((o) => o.choice).join(" · ")}</p>}
+            {l.addons.length > 0 && (
+              <p className="text-charcoal/60 mt-0.5 text-xs">
+                <span className="text-charcoal/75 font-semibold">Add-ons:</span>{" "}
+                {l.addons.map((a) => (a.quantity > 1 ? `${a.name} ×${a.quantity}` : a.name)).join(", ")}
+              </p>
+            )}
+            {l.note && (
+              <p className="text-charcoal/60 mt-0.5 text-xs">
+                <span className="text-charcoal/75 font-semibold">Note:</span> {l.note}
+              </p>
+            )}
             <div className="mt-2 flex items-center gap-2">
-              <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">–</button>
+              <button onClick={() => setQty(l.id, -1)} className="h-7 w-7 rounded-full bg-white text-lg leading-none font-bold shadow-sm">
+                –
+              </button>
               <span className="w-6 text-center font-semibold">{l.quantity}</span>
-              <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg font-bold leading-none shadow-sm">+</button>
+              <button onClick={() => setQty(l.id, 1)} className="h-7 w-7 rounded-full bg-white text-lg leading-none font-bold shadow-sm">
+                +
+              </button>
               <div className="ml-auto flex items-center gap-1.5">
-                <button onClick={() => setModal({ line: l, isNew: false })} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-espresso shadow-sm hover:bg-espresso hover:text-cream">Edit</button>
-                <button onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))} className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta">Remove</button>
+                <button
+                  onClick={() => setModal({ line: l, isNew: false })}
+                  className="text-espresso hover:bg-espresso hover:text-cream rounded-full bg-white px-3 py-1 text-xs font-semibold shadow-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setLines((ls) => ls.filter((x) => x.id !== l.id))}
+                  className="text-charcoal/40 hover:text-terracotta rounded-full px-2 py-1 text-xs font-semibold"
+                >
+                  Remove
+                </button>
               </div>
             </div>
           </div>
         ))}
       </div>
-      <div className="border-t border-oat p-3">
+      <div className="border-oat border-t p-3">
         <div className="mb-2 grid grid-cols-2 gap-2">
-          <button onClick={() => setOrderType("TAKEAWAY")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "TAKEAWAY" ? "bg-espresso text-cream" : "bg-oat"}`}>🥡 Takeaway</button>
-          <button onClick={() => setOrderType("DINE_IN")} className={`rounded-xl py-2 text-sm font-semibold ${orderType === "DINE_IN" ? "bg-espresso text-cream" : "bg-oat"}`}>🍽 Dine-in</button>
+          <button
+            onClick={() => setOrderType("TAKEAWAY")}
+            className={`rounded-xl py-2 text-sm font-semibold ${orderType === "TAKEAWAY" ? "bg-espresso text-cream" : "bg-oat"}`}
+          >
+            🥡 Takeaway
+          </button>
+          <button
+            onClick={() => setOrderType("DINE_IN")}
+            className={`rounded-xl py-2 text-sm font-semibold ${orderType === "DINE_IN" ? "bg-espresso text-cream" : "bg-oat"}`}
+          >
+            🍽 Dine-in
+          </button>
         </div>
         {orderType === "DINE_IN" && (
-          <input value={table} onChange={(e) => setTable(e.target.value)} placeholder="Table number" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
+          <input
+            value={table}
+            onChange={(e) => setTable(e.target.value)}
+            placeholder="Table number"
+            className="border-oat mb-2 w-full rounded-xl border px-3 py-2 text-sm"
+          />
         )}
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Customer phone (optional — earns beans)" className="mb-2 w-full rounded-xl border border-oat px-3 py-2 text-sm" />
-        <div className="mb-1 flex items-center justify-between text-sm"><span className="text-charcoal/60">Subtotal</span><span>{money(subtotal)}</span></div>
-        {staffDiscountPct > 0 && (
-          staffPurchase ? (
-            <div className="mb-1 flex items-center justify-between rounded-lg bg-sage/15 px-2 py-1.5 text-sm">
-              <span className="font-semibold text-sage-dark">👤 {staffPurchase.name} · staff −{staffDiscountPct}%</span>
-              <button onClick={() => setStaffPurchase(null)} className="text-xs font-semibold text-charcoal/50 hover:text-terracotta">Remove</button>
+        <input
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="Customer phone (optional — earns beans)"
+          className="border-oat mb-2 w-full rounded-xl border px-3 py-2 text-sm"
+        />
+        <div className="mb-1 flex items-center justify-between text-sm">
+          <span className="text-charcoal/60">Subtotal</span>
+          <span>{money(subtotal)}</span>
+        </div>
+        {staffDiscountPct > 0 &&
+          (staffPurchase ? (
+            <div className="bg-sage/15 mb-1 flex items-center justify-between rounded-lg px-2 py-1.5 text-sm">
+              <span className="text-sage-dark font-semibold">
+                👤 {staffPurchase.name} · staff −{staffDiscountPct}%
+              </span>
+              <button onClick={() => setStaffPurchase(null)} className="text-charcoal/50 hover:text-terracotta text-xs font-semibold">
+                Remove
+              </button>
             </div>
           ) : (
-            <button onClick={() => setStaffPicker(true)} className="mb-1 w-full rounded-lg border border-dashed border-oat py-1.5 text-sm font-semibold text-charcoal/60 hover:bg-oat">👤 Staff discount ({staffDiscountPct}%)</button>
-          )
-        )}
+            <button
+              onClick={() => setStaffPicker(true)}
+              className="border-oat text-charcoal/60 hover:bg-oat mb-1 w-full rounded-lg border border-dashed py-1.5 text-sm font-semibold"
+            >
+              👤 Staff discount ({staffDiscountPct}%)
+            </button>
+          ))}
         <div className="mb-1 flex items-center justify-between text-sm">
           <span className="text-charcoal/60">Discount ($)</span>
-          {staffPurchase ? <span className="font-semibold text-sage-dark">−{money(disc)}</span> : <input value={discount} onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0" className="w-20 rounded-lg border border-oat px-2 py-1 text-right text-sm" />}
+          {staffPurchase ? (
+            <span className="text-sage-dark font-semibold">−{money(disc)}</span>
+          ) : (
+            <input
+              value={discount}
+              onChange={(e) => setDiscount(e.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="0"
+              className="border-oat w-20 rounded-lg border px-2 py-1 text-right text-sm"
+            />
+          )}
         </div>
-        <div className="mb-3 flex items-center justify-between text-lg font-bold"><span>Total</span><span className="text-terracotta">{money(total)}</span></div>
+        <div className="mb-3 flex items-center justify-between text-lg font-bold">
+          <span>Total</span>
+          <span className="text-terracotta">{money(total)}</span>
+        </div>
         <div className={`grid ${cardEnabled ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
-          <button disabled={cartEmpty} onClick={() => { setTendered(""); setPay("CASH"); }} className="btn-3d rounded-xl bg-espresso py-3 text-sm font-bold text-cream disabled:opacity-40">💵 Cash</button>
-          <button disabled={cartEmpty} onClick={() => setPay("WHISH")} className="btn-3d rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold text-cream disabled:opacity-40">📱 Whish</button>
+          <button
+            disabled={cartEmpty}
+            onClick={() => {
+              setTendered("");
+              setPay("CASH");
+            }}
+            className="btn-3d bg-espresso text-cream rounded-xl py-3 text-sm font-bold disabled:opacity-40"
+          >
+            💵 Cash
+          </button>
+          <button
+            disabled={cartEmpty}
+            onClick={() => setPay("WHISH")}
+            className="btn-3d text-cream rounded-xl bg-[#5b3fd6] py-3 text-sm font-bold disabled:opacity-40"
+          >
+            📱 Whish
+          </button>
           {cardEnabled && (
-            <button disabled={cartEmpty} onClick={() => { setCardApproval(""); setCardLast4(""); setPay("CARD"); }} className="btn-3d rounded-xl bg-terracotta py-3 text-sm font-bold text-cream disabled:opacity-40">💳 Card</button>
+            <button
+              disabled={cartEmpty}
+              onClick={() => {
+                setCardApproval("");
+                setCardLast4("");
+                setPay("CARD");
+              }}
+              className="btn-3d bg-terracotta text-cream rounded-xl py-3 text-sm font-bold disabled:opacity-40"
+            >
+              💳 Card
+            </button>
           )}
         </div>
         {staffPurchase && (
-          <button disabled={cartEmpty} onClick={() => setPay("SALARY")} className="btn-3d mt-2 w-full rounded-xl bg-sage py-3 text-sm font-bold text-cream disabled:opacity-40">🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary</button>
+          <button
+            disabled={cartEmpty}
+            onClick={() => setPay("SALARY")}
+            className="btn-3d bg-sage text-cream mt-2 w-full rounded-xl py-3 text-sm font-bold disabled:opacity-40"
+          >
+            🧾 Charge to {staffPurchase.name.split(" ")[0]}'s salary
+          </button>
         )}
       </div>
     </>
   );
 
   return (
-    <div className="flex h-screen flex-col bg-oat/30 text-espresso">
-      <div className="flex items-center justify-between border-b border-oat bg-white px-4 py-2">
+    <div className="bg-oat/30 text-espresso flex h-screen flex-col">
+      <div className="border-oat flex items-center justify-between border-b bg-white px-4 py-2">
         <div className="flex items-center gap-2">
           <Img src="/bean.png" alt="" className="h-6 w-6" />
           <span className="font-display text-base font-bold">Bean Avenue POS</span>
-          <span className="ml-2 text-sm text-charcoal/50">{session.staff.name}</span>
-          <span className="rounded-full bg-oat px-2 py-0.5 text-xs font-semibold text-charcoal/60">🖥 {session.terminal ?? getPosTerminal()}</span>
+          <span className="text-charcoal/50 ml-2 text-sm">{session.staff.name}</span>
+          <span className="bg-oat text-charcoal/60 rounded-full px-2 py-0.5 text-xs font-semibold">🖥 {session.terminal ?? getPosTerminal()}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { setShowOnline(true); setOrderAlert(null); }} className={`relative rounded-full px-3 py-1.5 text-sm font-semibold ${onlineNew > 0 ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}>
+          <button
+            onClick={() => {
+              setShowOnline(true);
+              setOrderAlert(null);
+            }}
+            className={`relative rounded-full px-3 py-1.5 text-sm font-semibold ${onlineNew > 0 ? "bg-terracotta text-cream" : "bg-oat hover:bg-espresso hover:text-cream"}`}
+          >
             🌐 Online Orders{onlineOrders.length ? ` · ${onlineOrders.length}` : ""}
-            {onlineNew > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-espresso px-1 text-xs font-bold text-cream">{onlineNew}</span>}
+            {onlineNew > 0 && (
+              <span className="bg-espresso text-cream absolute -top-1.5 -right-1.5 grid h-5 min-w-[20px] place-items-center rounded-full px-1 text-xs font-bold">
+                {onlineNew}
+              </span>
+            )}
           </button>
-          <Link to="/kds" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">🍳 Kitchen</Link>
-          <button onClick={() => setShowBooking(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">📅 Book Room</button>
-          <button onClick={toggleCompact} title="Toggle compact grid" className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">{compact ? "🖼 Images" : "🔲 Compact"}</button>
-          <button onClick={() => setShiftPanel(true)} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold hover:bg-espresso hover:text-cream">
+          <Link to="/kds" className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-sm font-semibold">
+            🍳 Kitchen
+          </Link>
+          <button onClick={() => setShowBooking(true)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-sm font-semibold">
+            📅 Book Room
+          </button>
+          <button
+            onClick={toggleCompact}
+            title="Toggle compact grid"
+            className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-sm font-semibold"
+          >
+            {compact ? "🖼 Images" : "🔲 Compact"}
+          </button>
+          <button onClick={() => setShiftPanel(true)} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1.5 text-sm font-semibold">
             Shift · expected {money(shift.expectedCash)}
           </button>
         </div>
@@ -577,8 +870,11 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
 
       {orderAlert && (
         <button
-          onClick={() => { setShowOnline(true); setOrderAlert(null); }}
-          className="flex w-full animate-pulse items-center justify-center gap-2 bg-terracotta px-4 py-2.5 text-sm font-bold text-cream shadow-md"
+          onClick={() => {
+            setShowOnline(true);
+            setOrderAlert(null);
+          }}
+          className="bg-terracotta text-cream flex w-full animate-pulse items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold shadow-md"
         >
           🔔 New online order{orderAlert.count > 1 ? `s · ${orderAlert.count} waiting` : ` · ${orderAlert.latest}`} — tap to view
         </button>
@@ -594,63 +890,130 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
 
       <div className="flex min-h-0 flex-1">
         {/* Category rail — vertical, down the side */}
-        <div className="flex w-28 shrink-0 flex-col gap-1 overflow-y-auto border-r border-oat bg-oat/30 p-1.5 [scrollbar-width:none] sm:w-36 [&::-webkit-scrollbar]:hidden">
+        <div className="border-oat bg-oat/30 flex w-28 shrink-0 [scrollbar-width:none] flex-col gap-1 overflow-y-auto border-r p-1.5 sm:w-36 [&::-webkit-scrollbar]:hidden">
           {["All", ...cats, ...(doughnuts.length ? [HANSON_CAT] : []), ...(shopProducts.length ? [RETAIL_CAT] : [])].map((c) => (
-            <button key={c} onClick={() => setCat(c)} className={`w-full truncate rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "bg-white hover:bg-oat"}`}>{c}</button>
+            <button
+              key={c}
+              onClick={() => setCat(c)}
+              className={`w-full truncate rounded-lg px-2.5 py-2 text-left text-sm font-semibold transition ${cat === c ? "bg-espresso text-cream shadow-sm" : "hover:bg-oat bg-white"}`}
+            >
+              {c}
+            </button>
           ))}
         </div>
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="px-3 py-2">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full rounded-full border border-oat bg-white px-4 py-1.5 text-sm" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search items…"
+              className="border-oat w-full rounded-full border bg-white px-4 py-1.5 text-sm"
+            />
           </div>
-          <div className={`grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto px-3 pb-3 ${compact ? "grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}>
+          <div
+            className={`grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto px-3 pb-3 ${compact ? "grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"}`}
+          >
             {cat === RETAIL_CAT
               ? visibleShop.map((p) => {
                   const canPreorder = p.quantity <= 0 && p.allowPreorder;
-                  return <PosShopTile key={p.id} p={p} compact={compact} disabled={p.quantity <= 0 && !p.allowPreorder} onTap={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))} />;
+                  return (
+                    <PosShopTile
+                      key={p.id}
+                      p={p}
+                      compact={compact}
+                      disabled={p.quantity <= 0 && !p.allowPreorder}
+                      onTap={() => (canPreorder ? setPreorderProduct(p) : addShopLine(p))}
+                    />
+                  );
                 })
               : cat === HANSON_CAT
-              ? visibleDoughnuts.map((d) => <PosDoughnutTile key={d.id} d={d} compact={compact} onAdd={() => addItem(d)} />)
-              : visible.map((item) => <PosMenuTile key={item.id} item={item} compact={compact} onAdd={() => addItem(item)} />)}
+                ? visibleDoughnuts.map((d) => <PosDoughnutTile key={d.id} d={d} compact={compact} onAdd={() => addItem(d)} />)
+                : visible.map((item) => <PosMenuTile key={item.id} item={item} compact={compact} onAdd={() => addItem(item)} />)}
           </div>
         </div>
 
         {/* Desktop: fixed sale panel */}
-        <aside className="hidden w-[400px] shrink-0 flex-col border-l border-oat bg-white lg:flex">{ticketBody}</aside>
+        <aside className="border-oat hidden w-[400px] shrink-0 flex-col border-l bg-white lg:flex">{ticketBody}</aside>
       </div>
 
       {/* Tablet/narrow: floating ticket button + slide-out drawer */}
       {!ticketOpen && (
-        <button onClick={() => setTicketOpen(true)} className="btn-3d fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-espresso px-6 py-3 text-sm font-bold text-cream shadow-lg lg:hidden">
+        <button
+          onClick={() => setTicketOpen(true)}
+          className="btn-3d bg-espresso text-cream fixed bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow-lg lg:hidden"
+        >
           🧾 Ticket{ticketCount > 0 ? ` · ${ticketCount} item${ticketCount === 1 ? "" : "s"} · ${money(total)}` : ""}
         </button>
       )}
       {ticketOpen && (
         <div className="fixed inset-0 z-40 flex bg-black/40 lg:hidden" onClick={() => setTicketOpen(false)}>
-          <div className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>{ticketBody}</div>
+          <div className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {ticketBody}
+          </div>
         </div>
       )}
 
       {staffPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStaffPicker(false)}>
           <div className="w-full max-w-xs rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
-            <p className="font-display text-lg font-bold text-espresso">Staff discount · whose purchase?</p>
-            <p className="mt-1 text-xs text-charcoal/50">{staffDiscountPct}% off this sale, recorded as their staff purchase.</p>
+            <p className="font-display text-espresso text-lg font-bold">Staff discount · whose purchase?</p>
+            <p className="text-charcoal/50 mt-1 text-xs">{staffDiscountPct}% off this sale, recorded as their staff purchase.</p>
             <div className="mt-3 max-h-64 space-y-1 overflow-y-auto">
-              {staffList.length === 0 && <p className="text-sm text-charcoal/40">No staff found.</p>}
+              {staffList.length === 0 && <p className="text-charcoal/40 text-sm">No staff found.</p>}
               {staffList.map((s) => (
-                <button key={s.id} onClick={() => { setStaffPurchase({ id: s.id, name: s.name }); setStaffPicker(false); }} className="w-full rounded-xl border border-oat px-4 py-2.5 text-left text-sm font-semibold text-espresso hover:bg-oat">{s.name}</button>
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setStaffPurchase({ id: s.id, name: s.name });
+                    setStaffPicker(false);
+                  }}
+                  className="border-oat text-espresso hover:bg-oat w-full rounded-xl border px-4 py-2.5 text-left text-sm font-semibold"
+                >
+                  {s.name}
+                </button>
               ))}
             </div>
-            <button onClick={() => setStaffPicker(false)} className="mt-3 w-full rounded-full border border-oat py-2 text-sm font-semibold text-charcoal/60">Cancel</button>
+            <button onClick={() => setStaffPicker(false)} className="border-oat text-charcoal/60 mt-3 w-full rounded-full border py-2 text-sm font-semibold">
+              Cancel
+            </button>
           </div>
         </div>
       )}
       {showOnline && <OnlineOrdersPanel orders={onlineOrders} onClose={() => setShowOnline(false)} onChanged={loadOnline} />}
       {modal && <ConfigModal line={modal.line} isNew={modal.isNew} onClose={() => setModal(null)} onSave={(u) => saveConfigured(u, modal.isNew)} />}
-      {pay && <PayModal method={pay} total={total} tendered={tendered} setTendered={setTendered} approval={cardApproval} setApproval={setCardApproval} last4={cardLast4} setLast4={setCardLast4} requireApproval={cardCfg?.requireApprovalCode ?? false} busy={busy} staffName={staffPurchase?.name} tabPin={tabPin} setTabPin={setTabPin} onCancel={() => { setPay(null); setTabPin(""); }} onConfirm={() => completeSale(pay)} />}
+      {pay && (
+        <PayModal
+          method={pay}
+          total={total}
+          tendered={tendered}
+          setTendered={setTendered}
+          approval={cardApproval}
+          setApproval={setCardApproval}
+          last4={cardLast4}
+          setLast4={setCardLast4}
+          requireApproval={cardCfg?.requireApprovalCode ?? false}
+          busy={busy}
+          staffName={staffPurchase?.name}
+          tabPin={tabPin}
+          setTabPin={setTabPin}
+          onCancel={() => {
+            setPay(null);
+            setTabPin("");
+          }}
+          onConfirm={() => completeSale(pay)}
+        />
+      )}
       {receipt && <Receipt order={receipt} onNew={newSale} />}
-      {shiftPanel && <ShiftPanel shift={shift} staff={session.staff} onClose={() => setShiftPanel(false)} reload={reload} onClosedShift={() => setShift(null)} onLogout={onLogout} />}
+      {shiftPanel && (
+        <ShiftPanel
+          shift={shift}
+          staff={session.staff}
+          onClose={() => setShiftPanel(false)}
+          reload={reload}
+          onClosedShift={() => setShift(null)}
+          onLogout={onLogout}
+        />
+      )}
       {showBooking && <RoomBookingModal onClose={() => setShowBooking(false)} />}
       {preorderProduct && <PosPreorderModal product={preorderProduct} staffName={session.staff.name} onClose={() => setPreorderProduct(null)} />}
     </div>
@@ -658,15 +1021,27 @@ function Register({ session, setShift, reload, onLogout }: { session: Session; s
 }
 
 // ---- Shift panel (cash in/out, close, sign out) -------------------------------
-function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: {
-  shift: Shift; staff: Staff; onClose: () => void; reload: () => void; onClosedShift: () => void; onLogout: () => void;
+function ShiftPanel({
+  shift,
+  staff,
+  onClose,
+  reload,
+  onClosedShift,
+  onLogout,
+}: {
+  shift: Shift;
+  staff: Staff;
+  onClose: () => void;
+  reload: () => void;
+  onClosedShift: () => void;
+  onLogout: () => void;
 }) {
   const [mode, setMode] = useState<"menu" | "cash" | "close">("menu");
   const [cashType, setCashType] = useState<"PAYIN" | "PAYOUT">("PAYOUT");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [counted, setCounted] = useState("");
-  const [report, setReport] = useState<Shift & { difference: number } | null>(null);
+  const [report, setReport] = useState<(Shift & { difference: number }) | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submitCash() {
@@ -675,13 +1050,21 @@ function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: 
       await posApi.post("/api/pos/cash", { type: cashType, amount: Number(amount) || 0, reason });
       reload();
       onClose();
-    } catch (e) { alert(e instanceof Error ? e.message : "Couldn't record cash."); } finally { setBusy(false); }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't record cash.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function closeShift() {
     setBusy(true);
     try {
       setReport(await posApi.post("/api/pos/shift/close", { countedCash: Number(counted) || 0 }));
-    } catch (e) { alert(e instanceof Error ? e.message : "Couldn't close the shift."); } finally { setBusy(false); }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Couldn't close the shift.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -689,7 +1072,7 @@ function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: 
       <div className="w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
         {report ? (
           <div className="text-center">
-            <p className="font-display text-xl font-bold text-espresso">Shift closed</p>
+            <p className="font-display text-espresso text-xl font-bold">Shift closed</p>
             <div className="mt-3 space-y-1 text-left text-sm">
               <Row label="Sales" value={`${report.salesCount} · ${money(report.salesTotal)}`} />
               <Row label="Cash sales" value={money(report.cashSales)} />
@@ -702,55 +1085,130 @@ function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: 
               <Row label="Difference" value={`${report.difference >= 0 ? "+" : ""}${money(report.difference)}`} bold />
             </div>
             <div className="mt-5 flex gap-2">
-              <button onClick={() => { onClosedShift(); onClose(); }} className="flex-1 rounded-full border border-oat py-2.5 font-semibold">New shift</button>
-              <button onClick={() => { onLogout(); }} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">Sign out</button>
+              <button
+                onClick={() => {
+                  onClosedShift();
+                  onClose();
+                }}
+                className="border-oat flex-1 rounded-full border py-2.5 font-semibold"
+              >
+                New shift
+              </button>
+              <button
+                onClick={() => {
+                  onLogout();
+                }}
+                className="btn-3d bg-espresso text-cream flex-1 rounded-full py-2.5 font-semibold"
+              >
+                Sign out
+              </button>
             </div>
           </div>
         ) : mode === "menu" ? (
           <>
-            <p className="font-display text-xl font-bold text-espresso">Shift</p>
+            <p className="font-display text-espresso text-xl font-bold">Shift</p>
             <div className="mt-3 space-y-1 text-sm">
               <Row label="Staff" value={staff.name} />
               <Row label="Sales so far" value={`${shift.salesCount} · ${money(shift.salesTotal)}`} />
               <Row label="Expected cash" value={money(shift.expectedCash)} bold />
             </div>
             <div className="mt-4 space-y-2">
-              <button onClick={() => { setCashType("PAYIN"); setMode("cash"); }} className="w-full rounded-xl bg-oat py-2.5 font-semibold">＋ Cash in</button>
-              <button onClick={() => { setCashType("PAYOUT"); setMode("cash"); }} className="w-full rounded-xl bg-oat py-2.5 font-semibold">－ Cash out</button>
-              <button onClick={() => setMode("close")} className="w-full rounded-xl bg-terracotta py-2.5 font-semibold text-cream">Close shift (Z-report)</button>
-              <button onClick={onLogout} className="w-full py-1 text-sm text-charcoal/50 hover:text-terracotta">Sign out</button>
+              <button
+                onClick={() => {
+                  setCashType("PAYIN");
+                  setMode("cash");
+                }}
+                className="bg-oat w-full rounded-xl py-2.5 font-semibold"
+              >
+                ＋ Cash in
+              </button>
+              <button
+                onClick={() => {
+                  setCashType("PAYOUT");
+                  setMode("cash");
+                }}
+                className="bg-oat w-full rounded-xl py-2.5 font-semibold"
+              >
+                － Cash out
+              </button>
+              <button onClick={() => setMode("close")} className="bg-terracotta text-cream w-full rounded-xl py-2.5 font-semibold">
+                Close shift (Z-report)
+              </button>
+              <button onClick={onLogout} className="text-charcoal/50 hover:text-terracotta w-full py-1 text-sm">
+                Sign out
+              </button>
             </div>
-            <button onClick={onClose} className="mt-3 w-full text-sm text-charcoal/50">Back to register</button>
+            <button onClick={onClose} className="text-charcoal/50 mt-3 w-full text-sm">
+              Back to register
+            </button>
           </>
         ) : mode === "cash" ? (
           <>
-            <p className="font-display text-xl font-bold text-espresso">{cashType === "PAYIN" ? "Cash in" : "Cash out"}</p>
-            <label className="mt-3 block text-sm font-semibold">Amount
-              <input autoFocus value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" className="mt-1 w-full rounded-xl border border-oat px-3 py-2 text-lg" />
+            <p className="font-display text-espresso text-xl font-bold">{cashType === "PAYIN" ? "Cash in" : "Cash out"}</p>
+            <label className="mt-3 block text-sm font-semibold">
+              Amount
+              <input
+                autoFocus
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="border-oat mt-1 w-full rounded-xl border px-3 py-2 text-lg"
+              />
             </label>
-            <label className="mt-2 block text-sm font-semibold">Reason
-              <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. milk run, tips" className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal" />
+            <label className="mt-2 block text-sm font-semibold">
+              Reason
+              <input
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="e.g. milk run, tips"
+                className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
+              />
             </label>
             <div className="mt-4 flex gap-2">
-              <button onClick={() => setMode("menu")} className="flex-1 rounded-full border border-oat py-2.5 font-semibold">Back</button>
-              <button onClick={submitCash} disabled={busy || !amount} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">Record</button>
+              <button onClick={() => setMode("menu")} className="border-oat flex-1 rounded-full border py-2.5 font-semibold">
+                Back
+              </button>
+              <button
+                onClick={submitCash}
+                disabled={busy || !amount}
+                className="btn-3d bg-espresso text-cream flex-1 rounded-full py-2.5 font-semibold disabled:opacity-50"
+              >
+                Record
+              </button>
             </div>
           </>
         ) : (
           <>
-            <p className="font-display text-xl font-bold text-espresso">Close shift</p>
+            <p className="font-display text-espresso text-xl font-bold">Close shift</p>
             <div className="mt-3 space-y-1 text-sm">
               <Row label="Expected cash in drawer" value={money(shift.expectedCash)} bold />
             </div>
-            <label className="mt-3 block text-sm font-semibold">Count the cash in the drawer
+            <label className="mt-3 block text-sm font-semibold">
+              Count the cash in the drawer
               <div className="mt-1 flex items-center gap-1">
-                <span className="text-lg text-charcoal/50">$</span>
-                <input autoFocus value={counted} onChange={(e) => setCounted(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" className="w-full rounded-xl border border-oat px-3 py-2 text-lg" />
+                <span className="text-charcoal/50 text-lg">$</span>
+                <input
+                  autoFocus
+                  value={counted}
+                  onChange={(e) => setCounted(e.target.value.replace(/[^0-9.]/g, ""))}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className="border-oat w-full rounded-xl border px-3 py-2 text-lg"
+                />
               </div>
             </label>
             <div className="mt-4 flex gap-2">
-              <button onClick={() => setMode("menu")} className="flex-1 rounded-full border border-oat py-2.5 font-semibold">Back</button>
-              <button onClick={closeShift} disabled={busy || counted === ""} className="btn-3d flex-1 rounded-full bg-terracotta py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Closing…" : "Close shift"}</button>
+              <button onClick={() => setMode("menu")} className="border-oat flex-1 rounded-full border py-2.5 font-semibold">
+                Back
+              </button>
+              <button
+                onClick={closeShift}
+                disabled={busy || counted === ""}
+                className="btn-3d bg-terracotta text-cream flex-1 rounded-full py-2.5 font-semibold disabled:opacity-50"
+              >
+                {busy ? "Closing…" : "Close shift"}
+              </button>
             </div>
           </>
         )}
@@ -759,7 +1217,10 @@ function ShiftPanel({ shift, staff, onClose, reload, onClosedShift, onLogout }: 
   );
 }
 const Row = ({ label, value, bold }: { label: string; value: string; bold?: boolean }) => (
-  <div className={`flex items-center justify-between ${bold ? "font-bold text-espresso" : "text-charcoal/70"}`}><span>{label}</span><span>{value}</span></div>
+  <div className={`flex items-center justify-between ${bold ? "text-espresso font-bold" : "text-charcoal/70"}`}>
+    <span>{label}</span>
+    <span>{value}</span>
+  </div>
 );
 
 // ---- Online orders panel — live website/app orders staff work from the POS ----
@@ -772,22 +1233,48 @@ const STATUS_PILL: Record<string, { label: string; cls: string }> = {
   OUT_FOR_DELIVERY: { label: "Out for delivery", cls: "bg-sage/30 text-sage-dark" },
 };
 const PAY_LABEL: Record<string, string> = {
-  ONLINE: "Paid online (card)", CASH_ON_DELIVERY: "Cash on delivery", CASH_AT_PICKUP: "Cash at pickup", CASH: "Cash", CARD: "Card", WHISH: "Whish",
+  ONLINE: "Paid online (card)",
+  CASH_ON_DELIVERY: "Cash on delivery",
+  CASH_AT_PICKUP: "Cash at pickup",
+  CASH: "Cash",
+  CARD: "Card",
+  WHISH: "Whish",
 };
 const PAY_STATUS_LABEL: Record<string, string> = {
-  PAID: "Paid", PENDING: "Awaiting payment", CASH_DUE: "Cash due", CASH_COLLECTED: "Cash collected", FAILED: "Payment failed", REFUNDED: "Refunded",
+  PAID: "Paid",
+  PENDING: "Awaiting payment",
+  CASH_DUE: "Cash due",
+  CASH_COLLECTED: "Cash collected",
+  FAILED: "Payment failed",
+  REFUNDED: "Refunded",
 };
 
 function nextActions(o: Order): { label: string; status: OrderStatus; danger?: boolean }[] {
   const del = o.fulfillment === "DELIVERY";
   switch (o.status) {
-    case "RECEIVED": return [{ label: "✓ Accept", status: "ACCEPTED" }, { label: "Cancel", status: "CANCELLED", danger: true }];
-    case "ACCEPTED": return [{ label: "👨‍🍳 Start preparing", status: "PREPARING" }, { label: "Cancel", status: "CANCELLED", danger: true }];
-    case "PREPARING": return [{ label: del ? "📦 Ready for delivery" : "🔔 Mark ready", status: del ? "READY_FOR_DELIVERY" : "READY_FOR_PICKUP" }, { label: "Cancel", status: "CANCELLED", danger: true }];
-    case "READY_FOR_PICKUP": return [{ label: "✓ Complete (picked up)", status: "COMPLETED" }];
-    case "READY_FOR_DELIVERY": return [{ label: "🛵 Out for delivery", status: "OUT_FOR_DELIVERY" }];
-    case "OUT_FOR_DELIVERY": return [{ label: "✓ Delivered", status: "DELIVERED" }];
-    default: return [];
+    case "RECEIVED":
+      return [
+        { label: "✓ Accept", status: "ACCEPTED" },
+        { label: "Cancel", status: "CANCELLED", danger: true },
+      ];
+    case "ACCEPTED":
+      return [
+        { label: "👨‍🍳 Start preparing", status: "PREPARING" },
+        { label: "Cancel", status: "CANCELLED", danger: true },
+      ];
+    case "PREPARING":
+      return [
+        { label: del ? "📦 Ready for delivery" : "🔔 Mark ready", status: del ? "READY_FOR_DELIVERY" : "READY_FOR_PICKUP" },
+        { label: "Cancel", status: "CANCELLED", danger: true },
+      ];
+    case "READY_FOR_PICKUP":
+      return [{ label: "✓ Complete (picked up)", status: "COMPLETED" }];
+    case "READY_FOR_DELIVERY":
+      return [{ label: "🛵 Out for delivery", status: "OUT_FOR_DELIVERY" }];
+    case "OUT_FOR_DELIVERY":
+      return [{ label: "✓ Delivered", status: "DELIVERED" }];
+    default:
+      return [];
   }
 }
 
@@ -816,13 +1303,15 @@ function OnlineOrdersPanel({ orders, onClose, onChanged }: { orders: Order[]; on
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
-      <div className="flex h-full w-full max-w-md flex-col bg-oat shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-oat bg-white px-4 py-3">
-          <span className="font-display text-lg font-bold text-espresso">🌐 Online orders {orders.length ? `· ${orders.length}` : ""}</span>
-          <button onClick={onClose} className="text-2xl leading-none text-charcoal/40 hover:text-charcoal">×</button>
+      <div className="bg-oat flex h-full w-full max-w-md flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="border-oat flex items-center justify-between border-b bg-white px-4 py-3">
+          <span className="font-display text-espresso text-lg font-bold">🌐 Online orders {orders.length ? `· ${orders.length}` : ""}</span>
+          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal text-2xl leading-none">
+            ×
+          </button>
         </div>
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
-          {orders.length === 0 && <p className="p-8 text-center text-charcoal/40">No live online orders right now.</p>}
+          {orders.length === 0 && <p className="text-charcoal/40 p-8 text-center">No live online orders right now.</p>}
           {orders.map((o) => {
             const pill = STATUS_PILL[o.status] ?? { label: o.status, cls: "bg-oat text-charcoal/60" };
             const isDelivery = o.fulfillment === "DELIVERY";
@@ -831,48 +1320,72 @@ function OnlineOrdersPanel({ orders, onClose, onChanged }: { orders: Order[]; on
                 {/* header */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-bold text-espresso">{o.number} <span className="ml-1 rounded-full bg-espresso/10 px-2 py-0.5 text-[11px] font-semibold text-espresso">Online</span></p>
-                    <p className="text-xs text-charcoal/50">{isDelivery ? "🛵 Delivery" : "🥡 Pickup"}{o.pickupTime && !isDelivery ? ` · ${o.pickupTime}` : ""} · {formatTime(o.createdAt)}</p>
+                    <p className="text-espresso font-bold">
+                      {o.number} <span className="bg-espresso/10 text-espresso ml-1 rounded-full px-2 py-0.5 text-[11px] font-semibold">Online</span>
+                    </p>
+                    <p className="text-charcoal/50 text-xs">
+                      {isDelivery ? "🛵 Delivery" : "🥡 Pickup"}
+                      {o.pickupTime && !isDelivery ? ` · ${o.pickupTime}` : ""} · {formatTime(o.createdAt)}
+                    </p>
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${pill.cls}`}>{pill.label}</span>
                 </div>
 
                 {/* customer */}
-                <p className="mt-2 text-sm font-semibold text-espresso">{o.customerName} · <a href={`tel:${o.phone}`} className="text-terracotta">{o.phone}</a></p>
+                <p className="text-espresso mt-2 text-sm font-semibold">
+                  {o.customerName} ·{" "}
+                  <a href={`tel:${o.phone}`} className="text-terracotta">
+                    {o.phone}
+                  </a>
+                </p>
 
                 {/* items */}
-                <div className="mt-2 space-y-1.5 border-y border-oat/60 py-2">
+                <div className="border-oat/60 mt-2 space-y-1.5 border-y py-2">
                   {o.items.map((it) => (
                     <div key={it.id} className="text-sm">
                       <div className="flex justify-between gap-2">
-                        <span className="font-semibold text-espresso">{it.quantity}× {it.name}</span>
+                        <span className="text-espresso font-semibold">
+                          {it.quantity}× {it.name}
+                        </span>
                         <span className="text-charcoal/60">{money(it.lineTotal)}</span>
                       </div>
-                      {itemLine(it) && <p className="text-xs text-charcoal/60">{itemLine(it)}</p>}
-                      {it.specialInstructions && <p className="text-xs font-semibold text-terracotta-dark">📝 {it.specialInstructions}</p>}
+                      {itemLine(it) && <p className="text-charcoal/60 text-xs">{itemLine(it)}</p>}
+                      {it.specialInstructions && <p className="text-terracotta-dark text-xs font-semibold">📝 {it.specialInstructions}</p>}
                     </div>
                   ))}
                 </div>
 
                 {/* delivery address */}
                 {isDelivery && (
-                  <p className="mt-2 text-xs text-charcoal/60">📍 {[o.area, o.addressLine, o.building && `Bldg ${o.building}`, o.floor && `Fl ${o.floor}`].filter(Boolean).join(", ")}{o.deliveryInstructions ? ` — ${o.deliveryInstructions}` : ""}</p>
+                  <p className="text-charcoal/60 mt-2 text-xs">
+                    📍 {[o.area, o.addressLine, o.building && `Bldg ${o.building}`, o.floor && `Fl ${o.floor}`].filter(Boolean).join(", ")}
+                    {o.deliveryInstructions ? ` — ${o.deliveryInstructions}` : ""}
+                  </p>
                 )}
 
                 {/* totals + payment + loyalty */}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-sm">
-                  <span className="font-bold text-espresso">Total {money(o.total)}</span>
-                  <span className="text-xs text-charcoal/60">{PAY_LABEL[o.paymentMethod] ?? o.paymentMethod} · {PAY_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus}</span>
+                  <span className="text-espresso font-bold">Total {money(o.total)}</span>
+                  <span className="text-charcoal/60 text-xs">
+                    {PAY_LABEL[o.paymentMethod] ?? o.paymentMethod} · {PAY_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus}
+                  </span>
                 </div>
                 {(o.beansEarned > 0 || (o.loyaltyDiscount ?? 0) > 0) && (
-                  <p className="text-xs text-sage-dark">{o.beansEarned > 0 ? `+${o.beansEarned} beans` : ""}{(o.loyaltyDiscount ?? 0) > 0 ? `${o.beansEarned > 0 ? " · " : ""}reward −${money(o.loyaltyDiscount)}` : ""}</p>
+                  <p className="text-sage-dark text-xs">
+                    {o.beansEarned > 0 ? `+${o.beansEarned} beans` : ""}
+                    {(o.loyaltyDiscount ?? 0) > 0 ? `${o.beansEarned > 0 ? " · " : ""}reward −${money(o.loyaltyDiscount)}` : ""}
+                  </p>
                 )}
 
                 {/* actions */}
                 <div className="mt-3 flex flex-wrap gap-2">
                   {nextActions(o).map((a) => (
-                    <button key={a.status} disabled={busyId === o.id} onClick={() => act(o, a.status)}
-                      className={`flex-1 rounded-full px-3 py-2.5 text-sm font-bold disabled:opacity-40 ${a.danger ? "border border-terracotta/40 text-terracotta-dark" : "btn-3d bg-espresso text-cream"}`}>
+                    <button
+                      key={a.status}
+                      disabled={busyId === o.id}
+                      onClick={() => act(o, a.status)}
+                      className={`flex-1 rounded-full px-3 py-2.5 text-sm font-bold disabled:opacity-40 ${a.danger ? "border-terracotta/40 text-terracotta-dark border" : "btn-3d bg-espresso text-cream"}`}
+                    >
                       {a.label}
                     </button>
                   ))}
@@ -894,10 +1407,16 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
   const [note, setNote] = useState(line.note);
   const [groups, setGroups] = useState<AddonGroup[]>([]);
   const [err, setErr] = useState("");
-  useEffect(() => { api.get<AddonGroup[]>(`/api/addons/for/${line.item.id}`).then(setGroups).catch(() => setGroups([])); }, [line.item.id]);
+  useEffect(() => {
+    api
+      .get<AddonGroup[]>(`/api/addons/for/${line.item.id}`)
+      .then(setGroups)
+      .catch(() => setGroups([]));
+  }, [line.item.id]);
 
   const base = line.item.price;
-  const pickOption = (g: string, choice: string, priceDelta: number) => setOptions((os) => [...os.filter((o) => o.group !== g), { group: g, choice, priceDelta }]);
+  const pickOption = (g: string, choice: string, priceDelta: number) =>
+    setOptions((os) => [...os.filter((o) => o.group !== g), { group: g, choice, priceDelta }]);
 
   const selectedIn = (g: AddonGroup) => addons.filter((a) => g.addons.some((x) => x.id === a.addonId));
   const isSel = (id: number) => addons.some((a) => a.addonId === id);
@@ -913,7 +1432,10 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
         return [...withoutGroup, { addonId: a.id, name: a.name, price: a.price, quantity: 1 }];
       }
       if (selected) return cur.filter((x) => x.addonId !== a.id);
-      if (g.maxSelect > 0 && selectedIn(g).length >= g.maxSelect) { setErr(`Choose up to ${g.maxSelect} in ${g.name}.`); return cur; }
+      if (g.maxSelect > 0 && selectedIn(g).length >= g.maxSelect) {
+        setErr(`Choose up to ${g.maxSelect} in ${g.name}.`);
+        return cur;
+      }
       return [...cur, { addonId: a.id, name: a.name, price: a.price, quantity: 1 }];
     });
   }
@@ -942,9 +1464,11 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
       <div className="flex max-h-[92vh] w-full max-w-md flex-col rounded-t-2xl bg-white sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-oat px-5 py-3.5">
-          <p className="font-display text-xl font-bold text-espresso">{line.item.name}</p>
-          <button onClick={onClose} className="text-2xl leading-none text-charcoal/40 hover:text-charcoal">×</button>
+        <div className="border-oat flex items-center justify-between border-b px-5 py-3.5">
+          <p className="font-display text-espresso text-xl font-bold">{line.item.name}</p>
+          <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal text-2xl leading-none">
+            ×
+          </button>
         </div>
 
         {/* Scrollable body */}
@@ -954,15 +1478,20 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
             const isSize = g.name.toLowerCase() === "size";
             return (
               <div key={g.name} className="mb-4">
-                <p className="mb-2 text-sm font-bold text-espresso">{g.name}</p>
+                <p className="text-espresso mb-2 text-sm font-bold">{g.name}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {g.choices.map((c) => {
                     const active = options.find((o) => o.group === g.name)?.choice === c.label;
                     return (
-                      <button key={c.label} onClick={() => pickOption(g.name, c.label, c.priceDelta)}
-                        className={`rounded-xl border-2 px-2 py-2.5 text-center text-sm font-semibold transition ${active ? "border-espresso bg-espresso text-cream" : "border-oat bg-white text-espresso"}`}>
+                      <button
+                        key={c.label}
+                        onClick={() => pickOption(g.name, c.label, c.priceDelta)}
+                        className={`rounded-xl border-2 px-2 py-2.5 text-center text-sm font-semibold transition ${active ? "border-espresso bg-espresso text-cream" : "border-oat text-espresso bg-white"}`}
+                      >
                         <span className="block">{c.label}</span>
-                        <span className={`text-xs font-bold ${active ? "text-cream/90" : "text-terracotta"}`}>{isSize ? money(base + c.priceDelta) : c.priceDelta ? `+${money(c.priceDelta)}` : ""}</span>
+                        <span className={`text-xs font-bold ${active ? "text-cream/90" : "text-terracotta"}`}>
+                          {isSize ? money(base + c.priceDelta) : c.priceDelta ? `+${money(c.priceDelta)}` : ""}
+                        </span>
                       </button>
                     );
                   })}
@@ -975,23 +1504,38 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
           {groups.map((g) => (
             <div key={g.id} className="mb-4">
               <div className="mb-2 flex items-baseline justify-between">
-                <p className="text-sm font-bold text-espresso">{g.name}</p>
-                <span className={`text-[11px] font-semibold uppercase tracking-wide ${g.minSelect > 0 ? "text-terracotta" : "text-charcoal/40"}`}>{groupHint(g)}</span>
+                <p className="text-espresso text-sm font-bold">{g.name}</p>
+                <span className={`text-[11px] font-semibold tracking-wide uppercase ${g.minSelect > 0 ? "text-terracotta" : "text-charcoal/40"}`}>
+                  {groupHint(g)}
+                </span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {g.addons.map((a) => {
                   const active = isSel(a.id);
                   const picked = addons.find((x) => x.addonId === a.id);
                   return (
-                    <button key={a.id} onClick={() => chooseAddon(g, a)}
-                      className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-2 text-sm font-semibold transition ${active ? "border-sage-dark bg-sage/20 text-sage-dark" : "border-oat bg-white text-espresso"}`}>
+                    <button
+                      key={a.id}
+                      onClick={() => chooseAddon(g, a)}
+                      className={`flex items-center gap-2 rounded-full border-2 px-3.5 py-2 text-sm font-semibold transition ${active ? "border-sage-dark bg-sage/20 text-sage-dark" : "border-oat text-espresso bg-white"}`}
+                    >
                       <span>{a.name}</span>
                       {a.price > 0 && <span className={active ? "text-sage-dark" : "text-terracotta"}>+{money(a.price)}</span>}
                       {active && a.maxQuantity > 1 && picked && (
                         <span className="ml-1 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                          <span onClick={() => setAddonQty(picked, a.maxQuantity, -1)} className="grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold text-espresso">–</span>
+                          <span
+                            onClick={() => setAddonQty(picked, a.maxQuantity, -1)}
+                            className="text-espresso grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold"
+                          >
+                            –
+                          </span>
                           <span className="w-3 text-center">{picked.quantity}</span>
-                          <span onClick={() => setAddonQty(picked, a.maxQuantity, 1)} className="grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold text-espresso">+</span>
+                          <span
+                            onClick={() => setAddonQty(picked, a.maxQuantity, 1)}
+                            className="text-espresso grid h-5 w-5 place-items-center rounded-full bg-white text-base font-bold"
+                          >
+                            +
+                          </span>
                         </span>
                       )}
                     </button>
@@ -1002,29 +1546,54 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
           ))}
 
           {/* Note */}
-          <label className="mt-1 block text-sm font-bold text-espresso">Note
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Extra hot, less sugar, no ice…" className="mt-1.5 w-full rounded-xl border border-oat px-3.5 py-2.5 text-sm font-normal" />
+          <label className="text-espresso mt-1 block text-sm font-bold">
+            Note
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Extra hot, less sugar, no ice…"
+              className="border-oat mt-1.5 w-full rounded-xl border px-3.5 py-2.5 text-sm font-normal"
+            />
           </label>
 
-          {err && <p className="mt-3 rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-semibold text-terracotta-dark">{err}</p>}
+          {err && <p className="bg-terracotta/10 text-terracotta-dark mt-3 rounded-lg px-3 py-2 text-sm font-semibold">{err}</p>}
         </div>
 
         {/* Footer — quantity, price breakdown, actions */}
-        <div className="border-t border-oat px-5 py-3.5">
+        <div className="border-oat border-t px-5 py-3.5">
           <div className="mb-3 flex items-center gap-3">
-            <span className="text-sm font-bold text-espresso">Quantity</span>
-            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="h-9 w-9 rounded-full bg-oat text-xl font-bold active:scale-95">–</button>
+            <span className="text-espresso text-sm font-bold">Quantity</span>
+            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="bg-oat h-9 w-9 rounded-full text-xl font-bold active:scale-95">
+              –
+            </button>
             <span className="w-8 text-center text-lg font-bold">{quantity}</span>
-            <button onClick={() => setQuantity((q) => q + 1)} className="h-9 w-9 rounded-full bg-oat text-xl font-bold active:scale-95">+</button>
+            <button onClick={() => setQuantity((q) => q + 1)} className="bg-oat h-9 w-9 rounded-full text-xl font-bold active:scale-95">
+              +
+            </button>
           </div>
           <div className="mb-3 space-y-0.5 text-sm">
-            <div className="flex justify-between text-charcoal/60"><span>Base</span><span>{money(sizePrice)}</span></div>
-            {addonsSum > 0 && <div className="flex justify-between text-charcoal/60"><span>Add-ons</span><span>+{money(addonsSum)}</span></div>}
-            <div className="flex justify-between text-lg font-bold text-espresso"><span>Item total{quantity > 1 ? ` (×${quantity})` : ""}</span><span className="text-terracotta">{money(lineTotal(preview))}</span></div>
+            <div className="text-charcoal/60 flex justify-between">
+              <span>Base</span>
+              <span>{money(sizePrice)}</span>
+            </div>
+            {addonsSum > 0 && (
+              <div className="text-charcoal/60 flex justify-between">
+                <span>Add-ons</span>
+                <span>+{money(addonsSum)}</span>
+              </div>
+            )}
+            <div className="text-espresso flex justify-between text-lg font-bold">
+              <span>Item total{quantity > 1 ? ` (×${quantity})` : ""}</span>
+              <span className="text-terracotta">{money(lineTotal(preview))}</span>
+            </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={onClose} className="rounded-full border border-oat px-5 py-3 font-semibold text-charcoal/60">Cancel</button>
-            <button onClick={save} className="btn-3d flex-1 rounded-full bg-espresso py-3 text-base font-bold text-cream">{isNew ? `Add to order · ${money(lineTotal(preview))}` : "Save changes"}</button>
+            <button onClick={onClose} className="border-oat text-charcoal/60 rounded-full border px-5 py-3 font-semibold">
+              Cancel
+            </button>
+            <button onClick={save} className="btn-3d bg-espresso text-cream flex-1 rounded-full py-3 text-base font-bold">
+              {isNew ? `Add to order · ${money(lineTotal(preview))}` : "Save changes"}
+            </button>
           </div>
         </div>
       </div>
@@ -1033,10 +1602,38 @@ function ConfigModal({ line, isNew, onClose, onSave }: { line: Line; isNew: bool
 }
 
 // ---- Payment modal ------------------------------------------------------------
-function PayModal({ method, total, tendered, setTendered, approval, setApproval, last4, setLast4, requireApproval, busy, staffName, tabPin, setTabPin, onCancel, onConfirm }: {
-  method: PayMethod; total: number; tendered: string; setTendered: (v: string) => void;
-  approval: string; setApproval: (v: string) => void; last4: string; setLast4: (v: string) => void; requireApproval: boolean;
-  busy: boolean; staffName?: string; tabPin: string; setTabPin: (v: string) => void; onCancel: () => void; onConfirm: () => void;
+function PayModal({
+  method,
+  total,
+  tendered,
+  setTendered,
+  approval,
+  setApproval,
+  last4,
+  setLast4,
+  requireApproval,
+  busy,
+  staffName,
+  tabPin,
+  setTabPin,
+  onCancel,
+  onConfirm,
+}: {
+  method: PayMethod;
+  total: number;
+  tendered: string;
+  setTendered: (v: string) => void;
+  approval: string;
+  setApproval: (v: string) => void;
+  last4: string;
+  setLast4: (v: string) => void;
+  requireApproval: boolean;
+  busy: boolean;
+  staffName?: string;
+  tabPin: string;
+  setTabPin: (v: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
   const change = Math.round((Number(tendered) - total) * 100) / 100;
   const quick = [total, Math.ceil(total), Math.ceil(total / 5) * 5, Math.ceil(total / 10) * 10].filter((v, i, a) => a.indexOf(v) === i);
@@ -1045,40 +1642,97 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="w-full max-w-sm rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
-        <p className="font-display text-xl font-bold text-espresso">{title}</p>
-        <div className="mt-3 flex items-center justify-between text-lg"><span className="text-charcoal/60">Total due</span><span className="font-bold text-terracotta">{money(total)}</span></div>
+        <p className="font-display text-espresso text-xl font-bold">{title}</p>
+        <div className="mt-3 flex items-center justify-between text-lg">
+          <span className="text-charcoal/60">Total due</span>
+          <span className="text-terracotta font-bold">{money(total)}</span>
+        </div>
         {method === "CASH" && (
           <>
-            <label className="mt-4 block text-sm font-semibold text-espresso">Amount received
-              <input autoFocus value={tendered} onChange={(e) => setTendered(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-center text-2xl font-bold" />
+            <label className="text-espresso mt-4 block text-sm font-semibold">
+              Amount received
+              <input
+                autoFocus
+                value={tendered}
+                onChange={(e) => setTendered(e.target.value.replace(/[^0-9.]/g, ""))}
+                inputMode="decimal"
+                placeholder="0.00"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-center text-2xl font-bold"
+              />
             </label>
-            <div className="mt-2 flex flex-wrap gap-2">{quick.map((v) => <button key={v} onClick={() => setTendered(String(v))} className="rounded-full bg-oat px-3 py-1.5 text-sm font-semibold">{money(v)}</button>)}</div>
-            {tendered !== "" && <p className={`mt-3 text-center text-lg font-bold ${change >= 0 ? "text-sage-dark" : "text-terracotta"}`}>{change >= 0 ? `Change ${money(change)}` : `Short ${money(-change)}`}</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {quick.map((v) => (
+                <button key={v} onClick={() => setTendered(String(v))} className="bg-oat rounded-full px-3 py-1.5 text-sm font-semibold">
+                  {money(v)}
+                </button>
+              ))}
+            </div>
+            {tendered !== "" && (
+              <p className={`mt-3 text-center text-lg font-bold ${change >= 0 ? "text-sage-dark" : "text-terracotta"}`}>
+                {change >= 0 ? `Change ${money(change)}` : `Short ${money(-change)}`}
+              </p>
+            )}
           </>
         )}
-        {method === "WHISH" && <p className="mt-4 rounded-xl bg-[#5b3fd6]/10 px-4 py-3 text-sm text-charcoal/70">Collect {money(total)} via Whish, then confirm.</p>}
+        {method === "WHISH" && (
+          <p className="text-charcoal/70 mt-4 rounded-xl bg-[#5b3fd6]/10 px-4 py-3 text-sm">Collect {money(total)} via Whish, then confirm.</p>
+        )}
         {method === "SALARY" && (
           <>
-            <p className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-charcoal/70">Nothing collected now — {money(total)} is added to {staffName ? <span className="font-semibold text-sage-dark">{staffName}</span> : "the staff member"}'s tab and deducted from their salary.</p>
-            <label className="mt-3 block text-sm font-semibold text-espresso">{staffName ? `${staffName.split(" ")[0]}'s PIN` : "Staff PIN"} <span className="font-normal text-charcoal/40">— confirms it's really them</span>
-              <input autoFocus value={tabPin} onChange={(e) => setTabPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" type="password" placeholder="••••" className="mt-1 w-full rounded-xl border border-oat px-4 py-3 text-center text-2xl font-bold tracking-widest" />
+            <p className="bg-sage/15 text-charcoal/70 mt-4 rounded-xl px-4 py-3 text-sm">
+              Nothing collected now — {money(total)} is added to{" "}
+              {staffName ? <span className="text-sage-dark font-semibold">{staffName}</span> : "the staff member"}'s tab and deducted from their salary.
+            </p>
+            <label className="text-espresso mt-3 block text-sm font-semibold">
+              {staffName ? `${staffName.split(" ")[0]}'s PIN` : "Staff PIN"} <span className="text-charcoal/40 font-normal">— confirms it's really them</span>
+              <input
+                autoFocus
+                value={tabPin}
+                onChange={(e) => setTabPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                type="password"
+                placeholder="••••"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-3 text-center text-2xl font-bold tracking-widest"
+              />
             </label>
           </>
         )}
         {method === "CARD" && (
           <>
-            <p className="mt-4 rounded-xl bg-oat/50 px-4 py-3 text-sm text-charcoal/70">Charge {money(total)} on the card machine, then confirm.</p>
-            <label className="mt-3 block text-sm font-semibold text-espresso">Approval code {requireApproval ? <span className="text-terracotta">*</span> : <span className="font-normal text-charcoal/40">(optional)</span>}
-              <input autoFocus value={approval} onChange={(e) => setApproval(e.target.value)} placeholder="From the terminal receipt" className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5" />
+            <p className="bg-oat/50 text-charcoal/70 mt-4 rounded-xl px-4 py-3 text-sm">Charge {money(total)} on the card machine, then confirm.</p>
+            <label className="text-espresso mt-3 block text-sm font-semibold">
+              Approval code {requireApproval ? <span className="text-terracotta">*</span> : <span className="text-charcoal/40 font-normal">(optional)</span>}
+              <input
+                autoFocus
+                value={approval}
+                onChange={(e) => setApproval(e.target.value)}
+                placeholder="From the terminal receipt"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5"
+              />
             </label>
-            <label className="mt-2 block text-sm font-semibold text-espresso">Card last 4 <span className="font-normal text-charcoal/40">(optional)</span>
-              <input value={last4} onChange={(e) => setLast4(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="1234" className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5" />
+            <label className="text-espresso mt-2 block text-sm font-semibold">
+              Card last 4 <span className="text-charcoal/40 font-normal">(optional)</span>
+              <input
+                value={last4}
+                onChange={(e) => setLast4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                inputMode="numeric"
+                placeholder="1234"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5"
+              />
             </label>
           </>
         )}
         <div className="mt-5 flex gap-2">
-          <button onClick={onCancel} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-charcoal/60">Cancel</button>
-          <button onClick={onConfirm} disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0)) || (method === "SALARY" && tabPin.trim().length < 4)} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream disabled:opacity-50">{busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}</button>
+          <button onClick={onCancel} className="border-oat text-charcoal/60 flex-1 rounded-full border py-2.5 font-semibold">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy || cardBlocked || (method === "CASH" && (tendered === "" || change < 0)) || (method === "SALARY" && tabPin.trim().length < 4)}
+            className="btn-3d bg-espresso text-cream flex-1 rounded-full py-2.5 font-semibold disabled:opacity-50"
+          >
+            {busy ? "Saving…" : method === "SALARY" ? "Add to tab" : "Complete sale"}
+          </button>
         </div>
       </div>
     </div>
@@ -1086,7 +1740,17 @@ function PayModal({ method, total, tendered, setTendered, approval, setApproval,
 }
 
 // ---- Room booking (walk-in) ---------------------------------------------------
-type PosRoom = { id: number; name: string; type: string; pricePerHour: number; capacityMin: number; capacityMax: number; openHour: number; closeHour: number; isAvailable: boolean };
+type PosRoom = {
+  id: number;
+  name: string;
+  type: string;
+  pricePerHour: number;
+  capacityMin: number;
+  capacityMax: number;
+  openHour: number;
+  closeHour: number;
+  isAvailable: boolean;
+};
 
 function RoomBookingModal({ onClose }: { onClose: () => void }) {
   const [rooms, setRooms] = useState<PosRoom[]>([]);
@@ -1103,16 +1767,31 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState<{ number: string; total: number; roomName: string; when: string } | null>(null);
 
-  useEffect(() => { posApi.get<PosRoom[]>("/api/rooms").then((r) => setRooms(r.filter((x) => x.isAvailable))).catch(() => {}); }, []);
+  useEffect(() => {
+    posApi
+      .get<PosRoom[]>("/api/rooms")
+      .then((r) => setRooms(r.filter((x) => x.isAvailable)))
+      .catch(() => {});
+  }, []);
   const room = rooms.find((r) => r.id === roomId) ?? null;
 
   useEffect(() => {
-    if (!roomId || !date) { setBusy([]); return; }
-    posApi.get<{ busy: { start: string; end: string }[] }>(`/api/bookings/availability?roomId=${roomId}&date=${date}`).then((r) => setBusy(r.busy)).catch(() => setBusy([]));
+    if (!roomId || !date) {
+      setBusy([]);
+      return;
+    }
+    posApi
+      .get<{ busy: { start: string; end: string }[] }>(`/api/bookings/availability?roomId=${roomId}&date=${date}`)
+      .then((r) => setBusy(r.busy))
+      .catch(() => setBusy([]));
   }, [roomId, date]);
   // Reset the chosen start when the room, date or duration changes.
-  useEffect(() => { setStartHour(null); }, [roomId, date, duration]);
-  useEffect(() => { if (room) setPeople((p) => Math.min(Math.max(p, room.capacityMin), room.capacityMax)); }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    setStartHour(null);
+  }, [roomId, date, duration]);
+  useEffect(() => {
+    if (room) setPeople((p) => Math.min(Math.max(p, room.capacityMin), room.capacityMax));
+  }, [roomId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [y, m, d] = date.split("-").map(Number);
   const now = new Date();
@@ -1136,13 +1815,25 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
   async function submit() {
     if (!room || startHour == null) return setError("Pick a room and a start time.");
     if (!name.trim()) return setError("Enter the customer's name.");
-    setSaving(true); setError("");
+    setSaving(true);
+    setError("");
     try {
       const bk = await posApi.post<{ number: string; total: number; room?: { name: string }; startTime: string; endTime: string }>("/api/pos/booking", {
-        roomId: room.id, date, startHour, durationHours: duration, peopleCount: people,
-        customerName: name.trim(), phone: phone.trim() || undefined, notes: notes.trim() || undefined,
+        roomId: room.id,
+        date,
+        startHour,
+        durationHours: duration,
+        peopleCount: people,
+        customerName: name.trim(),
+        phone: phone.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
-      setDone({ number: bk.number, total: bk.total, roomName: bk.room?.name ?? room.name, when: `${new Date(bk.startTime).toLocaleString()} → ${new Date(bk.endTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` });
+      setDone({
+        number: bk.number,
+        total: bk.total,
+        roomName: bk.room?.name ?? room.name,
+        when: `${new Date(bk.startTime).toLocaleString()} → ${new Date(bk.endTime).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't book the room.");
     } finally {
@@ -1151,7 +1842,15 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
   }
 
   function reset() {
-    setDone(null); setRoomId(null); setStartHour(null); setDuration(1); setPeople(1); setName(""); setPhone(""); setNotes(""); setError("");
+    setDone(null);
+    setRoomId(null);
+    setStartHour(null);
+    setDuration(1);
+    setPeople(1);
+    setName("");
+    setPhone("");
+    setNotes("");
+    setError("");
   }
 
   const field = "mt-1 w-full rounded-xl border border-oat px-3 py-2 text-sm";
@@ -1161,81 +1860,125 @@ function RoomBookingModal({ onClose }: { onClose: () => void }) {
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
         {done ? (
           <div className="text-center">
-            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-sage/20 text-3xl">✓</div>
-            <p className="font-display text-xl font-bold text-espresso">Room booked</p>
-            <p className="mt-1 text-sm text-charcoal/60">{done.number} · {done.roomName}</p>
-            <p className="mt-1 text-sm text-charcoal/60">{done.when}</p>
-            <p className="mt-3 text-3xl font-bold text-terracotta">{money(done.total)}</p>
-            <p className="text-sm text-charcoal/50">Collect {money(done.total)} from the customer.</p>
+            <div className="bg-sage/20 mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full text-3xl">✓</div>
+            <p className="font-display text-espresso text-xl font-bold">Room booked</p>
+            <p className="text-charcoal/60 mt-1 text-sm">
+              {done.number} · {done.roomName}
+            </p>
+            <p className="text-charcoal/60 mt-1 text-sm">{done.when}</p>
+            <p className="text-terracotta mt-3 text-3xl font-bold">{money(done.total)}</p>
+            <p className="text-charcoal/50 text-sm">Collect {money(done.total)} from the customer.</p>
             <div className="mt-5 flex gap-2">
-              <button onClick={reset} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">Book another</button>
-              <button onClick={onClose} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">Done</button>
+              <button onClick={reset} className="border-oat text-espresso hover:bg-oat flex-1 rounded-full border py-2.5 font-semibold">
+                Book another
+              </button>
+              <button onClick={onClose} className="btn-3d bg-espresso text-cream flex-1 rounded-full py-2.5 font-semibold">
+                Done
+              </button>
             </div>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-xl font-bold text-espresso">📅 Book a room</h2>
-              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">✕</button>
+              <h2 className="font-display text-espresso text-xl font-bold">📅 Book a room</h2>
+              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">
+                ✕
+              </button>
             </div>
-            <p className="mt-1 text-sm text-charcoal/55">For a walk-in customer.</p>
+            <p className="text-charcoal/55 mt-1 text-sm">For a walk-in customer.</p>
 
             {/* Room picker */}
             <div className="mt-3 grid grid-cols-2 gap-2">
               {rooms.map((r) => (
-                <button key={r.id} onClick={() => setRoomId(r.id)} className={`rounded-xl border-2 p-3 text-left transition ${roomId === r.id ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage"}`}>
-                  <p className="font-semibold text-espresso">{r.type === "STUDY" ? "📚" : "👥"} {r.name}</p>
-                  <p className="text-xs text-charcoal/55">{money(r.pricePerHour)}/hr · {r.capacityMin}–{r.capacityMax} ppl</p>
+                <button
+                  key={r.id}
+                  onClick={() => setRoomId(r.id)}
+                  className={`rounded-xl border-2 p-3 text-left transition ${roomId === r.id ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage"}`}
+                >
+                  <p className="text-espresso font-semibold">
+                    {r.type === "STUDY" ? "📚" : "👥"} {r.name}
+                  </p>
+                  <p className="text-charcoal/55 text-xs">
+                    {money(r.pricePerHour)}/hr · {r.capacityMin}–{r.capacityMax} ppl
+                  </p>
                 </button>
               ))}
-              {rooms.length === 0 && <p className="col-span-2 text-sm text-charcoal/50">No rooms available.</p>}
+              {rooms.length === 0 && <p className="text-charcoal/50 col-span-2 text-sm">No rooms available.</p>}
             </div>
 
             {room && (
               <div className="mt-3 space-y-3">
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="block text-xs font-semibold text-espresso">Date
+                  <label className="text-espresso block text-xs font-semibold">
+                    Date
                     <input type="date" value={date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)} className={field} />
                   </label>
-                  <label className="block text-xs font-semibold text-espresso">Duration
+                  <label className="text-espresso block text-xs font-semibold">
+                    Duration
                     <select value={duration} onChange={(e) => setDuration(Number(e.target.value))} className={field}>
-                      {[1, 2, 3, 4].map((h) => <option key={h} value={h}>{h} hour{h > 1 ? "s" : ""}</option>)}
+                      {[1, 2, 3, 4].map((h) => (
+                        <option key={h} value={h}>
+                          {h} hour{h > 1 ? "s" : ""}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
 
                 <div>
-                  <p className="text-xs font-semibold text-espresso">Start time</p>
+                  <p className="text-espresso text-xs font-semibold">Start time</p>
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {hourOptions.map((o) => (
-                      <button key={o.h} disabled={o.disabled} onClick={() => setStartHour(o.h)} className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${startHour === o.h ? "bg-espresso text-cream" : o.disabled ? "cursor-not-allowed bg-oat/50 text-charcoal/30 line-through" : "bg-oat hover:bg-espresso hover:text-cream"}`}>{o.label}</button>
+                      <button
+                        key={o.h}
+                        disabled={o.disabled}
+                        onClick={() => setStartHour(o.h)}
+                        className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${startHour === o.h ? "bg-espresso text-cream" : o.disabled ? "bg-oat/50 text-charcoal/30 cursor-not-allowed line-through" : "bg-oat hover:bg-espresso hover:text-cream"}`}
+                      >
+                        {o.label}
+                      </button>
                     ))}
-                    {hourOptions.length === 0 && <p className="text-xs text-charcoal/45">No open slots for this duration.</p>}
+                    {hourOptions.length === 0 && <p className="text-charcoal/45 text-xs">No open slots for this duration.</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <label className="block text-xs font-semibold text-espresso">Customer name
+                  <label className="text-espresso block text-xs font-semibold">
+                    Customer name
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Walk-in name" className={field} />
                   </label>
-                  <label className="block text-xs font-semibold text-espresso">People
-                    <input type="number" min={room.capacityMin} max={room.capacityMax} value={people} onChange={(e) => setPeople(Number(e.target.value))} className={field} />
+                  <label className="text-espresso block text-xs font-semibold">
+                    People
+                    <input
+                      type="number"
+                      min={room.capacityMin}
+                      max={room.capacityMax}
+                      value={people}
+                      onChange={(e) => setPeople(Number(e.target.value))}
+                      className={field}
+                    />
                   </label>
-                  <label className="block text-xs font-semibold text-espresso">Phone <span className="font-normal text-charcoal/40">(optional · earns beans)</span>
+                  <label className="text-espresso block text-xs font-semibold">
+                    Phone <span className="text-charcoal/40 font-normal">(optional · earns beans)</span>
                     <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="optional" className={field} />
                   </label>
-                  <label className="block text-xs font-semibold text-espresso">Notes
+                  <label className="text-espresso block text-xs font-semibold">
+                    Notes
                     <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="optional" className={field} />
                   </label>
                 </div>
 
-                {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
+                {error && <p className="bg-terracotta/10 text-terracotta-dark rounded-lg px-3 py-2 text-sm font-medium">{error}</p>}
 
-                <div className="flex items-center justify-between rounded-xl bg-oat/50 px-3 py-2">
-                  <span className="text-sm text-charcoal/60">Total</span>
-                  <span className="text-lg font-bold text-espresso">{money(total)}</span>
+                <div className="bg-oat/50 flex items-center justify-between rounded-xl px-3 py-2">
+                  <span className="text-charcoal/60 text-sm">Total</span>
+                  <span className="text-espresso text-lg font-bold">{money(total)}</span>
                 </div>
-                <button onClick={submit} disabled={saving || startHour == null} className="btn-3d w-full rounded-full bg-terracotta py-3 font-semibold text-cream disabled:opacity-50">
+                <button
+                  onClick={submit}
+                  disabled={saving || startHour == null}
+                  className="btn-3d bg-terracotta text-cream w-full rounded-full py-3 font-semibold disabled:opacity-50"
+                >
                   {saving ? "Booking…" : `Book & collect ${money(total)}`}
                 </button>
               </div>
@@ -1256,26 +1999,38 @@ function PosMenuTile({ item, compact, onAdd }: { item: MenuItem; compact: boolea
   const stockCls = left == null ? "" : left <= 0 ? "text-terracotta-dark" : left <= 5 ? "text-amber-600" : "text-charcoal/45";
   if (compact) {
     return (
-      <button onClick={onAdd} disabled={out} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{item.name}</p>
+      <button
+        onClick={onAdd}
+        disabled={out}
+        className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50"
+      >
+        <p className="text-espresso line-clamp-2 text-xs leading-tight font-semibold">{item.name}</p>
         <div className="mt-1 flex items-center justify-between">
-          <span className="text-sm font-bold text-terracotta">{price}</span>
+          <span className="text-terracotta text-sm font-bold">{price}</span>
           {left != null && <span className={`text-[10px] font-semibold ${stockCls}`}>{out ? "Out" : left}</span>}
         </div>
       </button>
     );
   }
   return (
-    <button onClick={onAdd} disabled={out} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
+    <button
+      onClick={onAdd}
+      disabled={out}
+      className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50"
+    >
       {left != null && (
-        <span className={`absolute right-1 top-1 z-10 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${stockCls}`}>{out ? "Out" : `${left} left`}</span>
+        <span className={`absolute top-1 right-1 z-10 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-bold shadow-sm ${stockCls}`}>
+          {out ? "Out" : `${left} left`}
+        </span>
       )}
-      {item.photo
-        ? <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="aspect-[4/3] w-full bg-oat/30" />
-        : <div className="flex aspect-[5/2] w-full items-center justify-center bg-oat/40 text-lg font-bold text-espresso/25">{item.name.slice(0, 1)}</div>}
+      {item.photo ? (
+        <Img src={item.photo} alt={item.name} fit={item.imageFit === "contain" ? "contain" : "cover"} className="bg-oat/30 aspect-[4/3] w-full" />
+      ) : (
+        <div className="bg-oat/40 text-espresso/25 flex aspect-[5/2] w-full items-center justify-center text-lg font-bold">{item.name.slice(0, 1)}</div>
+      )}
       <div className="p-1.5">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight">{item.name}</p>
-        <p className="text-sm font-bold text-terracotta">{price}</p>
+        <p className="line-clamp-2 text-xs leading-tight font-semibold">{item.name}</p>
+        <p className="text-terracotta text-sm font-bold">{price}</p>
       </div>
     </button>
   );
@@ -1286,21 +2041,29 @@ function PosShopTile({ p, compact, disabled, onTap }: { p: ShopProd; compact: bo
   const cls = out ? (p.allowPreorder ? "text-[#5b3fd6]" : "text-terracotta-dark") : p.quantity <= 5 ? "text-amber-600" : "text-charcoal/45";
   if (compact) {
     return (
-      <button onClick={onTap} disabled={disabled} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{p.name}</p>
+      <button
+        onClick={onTap}
+        disabled={disabled}
+        className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50"
+      >
+        <p className="text-espresso line-clamp-2 text-xs leading-tight font-semibold">{p.name}</p>
         <div className="mt-1 flex items-center justify-between">
-          <span className="text-sm font-bold text-terracotta">{money(p.price)}</span>
+          <span className="text-terracotta text-sm font-bold">{money(p.price)}</span>
           <span className={`text-[10px] font-semibold ${cls}`}>{out ? (p.allowPreorder ? "Pre" : "Out") : p.quantity}</span>
         </div>
       </button>
     );
   }
   return (
-    <button onClick={onTap} disabled={disabled} className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
-      <Img src={p.images[0] ?? ""} alt={p.name} fit="contain" className="aspect-[4/3] w-full bg-oat/30" />
+    <button
+      onClick={onTap}
+      disabled={disabled}
+      className="card-lift relative flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50"
+    >
+      <Img src={p.images[0] ?? ""} alt={p.name} fit="contain" className="bg-oat/30 aspect-[4/3] w-full" />
       <div className="p-1.5">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight">{p.name}</p>
-        <p className="text-sm font-bold text-terracotta">{money(p.price)}</p>
+        <p className="line-clamp-2 text-xs leading-tight font-semibold">{p.name}</p>
+        <p className="text-terracotta text-sm font-bold">{money(p.price)}</p>
         <p className={`text-[10px] font-semibold ${cls}`}>{out ? (p.allowPreorder ? "Preorder" : "Out of stock") : `${p.quantity} in stock`}</p>
       </div>
     </button>
@@ -1312,23 +2075,33 @@ function PosDoughnutTile({ d, compact, onAdd }: { d: PosDoughnut; compact: boole
   const cls = soldOut ? "text-terracotta-dark" : d.remaining != null && d.remaining <= 3 ? "text-amber-600" : "text-charcoal/45";
   if (compact) {
     return (
-      <button onClick={onAdd} disabled={soldOut} className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight text-espresso">{d.name}</p>
+      <button
+        onClick={onAdd}
+        disabled={soldOut}
+        className="card-lift flex min-h-[58px] flex-col justify-between rounded-lg bg-white p-2 text-left shadow-sm active:scale-95 disabled:opacity-50"
+      >
+        <p className="text-espresso line-clamp-2 text-xs leading-tight font-semibold">{d.name}</p>
         <div className="mt-1 flex items-center justify-between">
-          <span className="text-sm font-bold text-terracotta">{money(d.price)}</span>
+          <span className="text-terracotta text-sm font-bold">{money(d.price)}</span>
           {d.tracked && <span className={`text-[10px] font-semibold ${cls}`}>{soldOut ? "Out" : d.remaining}</span>}
         </div>
       </button>
     );
   }
   return (
-    <button onClick={onAdd} disabled={soldOut} className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50">
-      {d.photo
-        ? <Img src={d.photo} alt={d.name} fit={d.imageFit === "contain" ? "contain" : "cover"} className="aspect-[4/3] w-full bg-oat/30" />
-        : <div className="flex aspect-[5/2] w-full items-center justify-center bg-oat/40 text-lg">🍩</div>}
+    <button
+      onClick={onAdd}
+      disabled={soldOut}
+      className="card-lift flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-sm active:scale-95 disabled:opacity-50"
+    >
+      {d.photo ? (
+        <Img src={d.photo} alt={d.name} fit={d.imageFit === "contain" ? "contain" : "cover"} className="bg-oat/30 aspect-[4/3] w-full" />
+      ) : (
+        <div className="bg-oat/40 flex aspect-[5/2] w-full items-center justify-center text-lg">🍩</div>
+      )}
       <div className="p-1.5">
-        <p className="line-clamp-2 text-xs font-semibold leading-tight">{d.name}</p>
-        <p className="text-sm font-bold text-terracotta">{money(d.price)}</p>
+        <p className="line-clamp-2 text-xs leading-tight font-semibold">{d.name}</p>
+        <p className="text-terracotta text-sm font-bold">{money(d.price)}</p>
         {d.tracked && <p className={`text-[10px] font-semibold ${cls}`}>{soldOut ? "Sold out" : `${d.remaining} left`}</p>}
       </div>
     </button>
@@ -1349,11 +2122,16 @@ function PosPreorderModal({ product, staffName, onClose }: { product: ShopProd; 
     if (busy) return;
     if (!name.trim()) return setError("Enter the customer's name.");
     if (!phone.trim()) return setError("Enter the customer's phone.");
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       const r = await posApi.post<{ number: string }>("/api/shop/preorder", {
-        productId: product.id, quantity: qty, customerName: name.trim(), phone: phone.trim(),
-        notes: notes.trim() || undefined, createdBy: staffName,
+        productId: product.id,
+        quantity: qty,
+        customerName: name.trim(),
+        phone: phone.trim(),
+        notes: notes.trim() || undefined,
+        createdBy: staffName,
       });
       setDone({ number: r.number });
     } catch (e) {
@@ -1370,34 +2148,55 @@ function PosPreorderModal({ product, staffName, onClose }: { product: ShopProd; 
         {done ? (
           <div className="text-center">
             <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-[#5b3fd6]/15 text-3xl">📦</div>
-            <p className="font-display text-xl font-bold text-espresso">Preorder created</p>
-            <p className="mt-1 text-sm text-charcoal/60">{done.number} · {product.name}</p>
-            <p className="mt-2 rounded-xl bg-oat/50 px-3 py-2 text-sm text-charcoal/70">Tell the customer we'll call them when it arrives. It's in Admin → Preorders.</p>
-            <button onClick={onClose} className="btn-3d mt-4 w-full rounded-full bg-espresso py-2.5 font-semibold text-cream">Done</button>
+            <p className="font-display text-espresso text-xl font-bold">Preorder created</p>
+            <p className="text-charcoal/60 mt-1 text-sm">
+              {done.number} · {product.name}
+            </p>
+            <p className="bg-oat/50 text-charcoal/70 mt-2 rounded-xl px-3 py-2 text-sm">
+              Tell the customer we'll call them when it arrives. It's in Admin → Preorders.
+            </p>
+            <button onClick={onClose} className="btn-3d bg-espresso text-cream mt-4 w-full rounded-full py-2.5 font-semibold">
+              Done
+            </button>
           </div>
         ) : (
           <>
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#5b3fd6]">Preorder · walk-in</p>
-                <h2 className="font-display text-lg font-bold text-espresso">{product.name}</h2>
+                <p className="text-xs font-semibold tracking-wide text-[#5b3fd6] uppercase">Preorder · walk-in</p>
+                <h2 className="font-display text-espresso text-lg font-bold">{product.name}</h2>
               </div>
-              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">✕</button>
+              <button onClick={onClose} className="text-charcoal/40 hover:text-charcoal">
+                ✕
+              </button>
             </div>
-            <p className="mt-1 text-sm text-charcoal/55">{money(product.price)} · no payment now · manager will contact the customer.</p>
+            <p className="text-charcoal/55 mt-1 text-sm">{money(product.price)} · no payment now · manager will contact the customer.</p>
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-espresso">Qty</span>
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="h-8 w-8 rounded-full bg-oat font-bold">–</button>
+                <span className="text-espresso text-sm font-semibold">Qty</span>
+                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="bg-oat h-8 w-8 rounded-full font-bold">
+                  –
+                </button>
                 <span className="w-6 text-center font-semibold">{qty}</span>
-                <button onClick={() => setQty((q) => q + 1)} className="h-8 w-8 rounded-full bg-oat font-bold">+</button>
+                <button onClick={() => setQty((q) => q + 1)} className="bg-oat h-8 w-8 rounded-full font-bold">
+                  +
+                </button>
               </div>
-              <label className="block text-xs font-semibold text-espresso">Customer name<input value={name} onChange={(e) => setName(e.target.value)} className={field} /></label>
-              <label className="block text-xs font-semibold text-espresso">Phone<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" className={field} /></label>
-              <label className="block text-xs font-semibold text-espresso">Notes (colour, model…)<input value={notes} onChange={(e) => setNotes(e.target.value)} className={field} /></label>
-              {error && <p className="rounded-lg bg-terracotta/10 px-3 py-2 text-sm font-medium text-terracotta-dark">{error}</p>}
+              <label className="text-espresso block text-xs font-semibold">
+                Customer name
+                <input value={name} onChange={(e) => setName(e.target.value)} className={field} />
+              </label>
+              <label className="text-espresso block text-xs font-semibold">
+                Phone
+                <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" className={field} />
+              </label>
+              <label className="text-espresso block text-xs font-semibold">
+                Notes (colour, model…)
+                <input value={notes} onChange={(e) => setNotes(e.target.value)} className={field} />
+              </label>
+              {error && <p className="bg-terracotta/10 text-terracotta-dark rounded-lg px-3 py-2 text-sm font-medium">{error}</p>}
             </div>
-            <button onClick={submit} disabled={busy} className="btn-3d mt-4 w-full rounded-full bg-[#5b3fd6] py-3 font-bold text-cream disabled:opacity-60">
+            <button onClick={submit} disabled={busy} className="btn-3d text-cream mt-4 w-full rounded-full bg-[#5b3fd6] py-3 font-bold disabled:opacity-60">
               {busy ? "Creating…" : "Create preorder"}
             </button>
           </>
@@ -1411,12 +2210,15 @@ function PosPreorderModal({ product, staffName, onClose }: { product: ShopProd; 
 function receiptHtml(order: Order) {
   const rows = order.items
     .map((i) => {
-      const extras = [...(i.selectedOptions ?? []).map((o) => o.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} x${a.quantity}` : a.name))].filter(Boolean).join(", ");
+      const extras = [...(i.selectedOptions ?? []).map((o) => o.choice), ...(i.addons ?? []).map((a) => (a.quantity > 1 ? `${a.name} x${a.quantity}` : a.name))]
+        .filter(Boolean)
+        .join(", ");
       const detail = [extras, i.specialInstructions].filter(Boolean).join(" · ");
       return `<tr><td>${i.quantity}× ${i.name}${detail ? `<div style="font-size:10px;color:#666">${detail}</div>` : ""}</td><td style="text-align:right;vertical-align:top">${money(i.lineTotal)}</td></tr>`;
     })
     .join("");
-  const paid = order.paymentMethod === "CARD" ? "Card" : order.paymentMethod === "WHISH" ? "Whish" : order.paymentMethod === "SALARY" ? "Staff tab (salary)" : "Cash";
+  const paid =
+    order.paymentMethod === "CARD" ? "Card" : order.paymentMethod === "WHISH" ? "Whish" : order.paymentMethod === "SALARY" ? "Staff tab (salary)" : "Cash";
   return `<html><head><title>${order.number}</title><style>body{font-family:monospace;font-size:12px;padding:8px;width:280px;margin:0}h2{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse}td{padding:2px 0}.tot{border-top:1px dashed #000;margin-top:6px;padding-top:6px;font-weight:bold;font-size:14px}.c{text-align:center;color:#555}</style></head><body><h2>Bean Avenue</h2><p class="c">${order.number} · ${new Date(order.createdAt).toLocaleString()}</p><table>${rows}</table><table class="tot"><tr><td>TOTAL</td><td style="text-align:right">${money(order.total)}</td></tr><tr><td>Paid (${paid})</td><td></td></tr></table><p class="c">Thank you! ☕</p></body></html>`;
 }
 
@@ -1427,8 +2229,13 @@ function printReceipt(order: Order) {
   iframe.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
   document.body.appendChild(iframe);
   const doc = iframe.contentWindow?.document;
-  if (!doc) { iframe.remove(); return; }
-  doc.open(); doc.write(receiptHtml(order)); doc.close();
+  if (!doc) {
+    iframe.remove();
+    return;
+  }
+  doc.open();
+  doc.write(receiptHtml(order));
+  doc.close();
   setTimeout(() => {
     iframe.contentWindow?.focus();
     iframe.contentWindow?.print();
@@ -1447,15 +2254,26 @@ function Receipt({ order, onNew }: { order: Order; onNew: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
-        <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-sage/20 text-3xl">✓</div>
-        <p className="font-display text-xl font-bold text-espresso">Sale complete</p>
-        <p className="mt-1 text-sm text-charcoal/60">{order.number}</p>
-        <p className="mt-3 text-3xl font-bold text-terracotta">{money(order.total)}</p>
-        <p className="text-sm text-charcoal/50">{isTab ? "Charged to staff salary" : `Paid by ${order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}`}{order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}</p>
-        {order.number !== "SAVED OFFLINE" && <p className="mt-2 inline-block rounded-full bg-sage/15 px-3 py-1 text-xs font-semibold text-sage-dark">{isTab ? "🧾 On staff tab · 🍳 Sent to kitchen" : "🖨 Printing · 🍳 Sent to kitchen"}</p>}
+        <div className="bg-sage/20 mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full text-3xl">✓</div>
+        <p className="font-display text-espresso text-xl font-bold">Sale complete</p>
+        <p className="text-charcoal/60 mt-1 text-sm">{order.number}</p>
+        <p className="text-terracotta mt-3 text-3xl font-bold">{money(order.total)}</p>
+        <p className="text-charcoal/50 text-sm">
+          {isTab ? "Charged to staff salary" : `Paid by ${order.paymentMethod === "CARD" ? "card" : order.paymentMethod === "WHISH" ? "Whish" : "cash"}`}
+          {order.beansEarned ? ` · ${order.beansEarned} beans earned` : ""}
+        </p>
+        {order.number !== "SAVED OFFLINE" && (
+          <p className="bg-sage/15 text-sage-dark mt-2 inline-block rounded-full px-3 py-1 text-xs font-semibold">
+            {isTab ? "🧾 On staff tab · 🍳 Sent to kitchen" : "🖨 Printing · 🍳 Sent to kitchen"}
+          </p>
+        )}
         <div className="mt-5 flex gap-2">
-          <button onClick={() => printReceipt(order)} className="flex-1 rounded-full border border-oat py-2.5 font-semibold text-espresso hover:bg-oat">🖨 Reprint</button>
-          <button onClick={onNew} className="btn-3d flex-1 rounded-full bg-espresso py-2.5 font-semibold text-cream">New sale</button>
+          <button onClick={() => printReceipt(order)} className="border-oat text-espresso hover:bg-oat flex-1 rounded-full border py-2.5 font-semibold">
+            🖨 Reprint
+          </button>
+          <button onClick={onNew} className="btn-3d bg-espresso text-cream flex-1 rounded-full py-2.5 font-semibold">
+            New sale
+          </button>
         </div>
       </div>
     </div>

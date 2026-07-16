@@ -30,7 +30,7 @@ export const SETTING_DEFAULTS: Record<string, string> = {
   "staff.discount.percent": "0", // % off a staff purchase, applied from the register
   "tax.rate": "0", // percentage applied to (subtotal - discounts + delivery fee)
   "tax.label": "Tax",
-  "currency": "USD",
+  currency: "USD",
 };
 
 export type SettingsMap = Record<string, string>;
@@ -54,8 +54,8 @@ export async function saveSettings(partial: Record<string, unknown>): Promise<vo
         where: { key },
         create: { key, value: String(value) },
         update: { value: String(value) },
-      })
-    )
+      }),
+    ),
   );
 }
 

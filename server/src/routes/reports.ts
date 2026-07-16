@@ -13,10 +13,7 @@ reportsRouter.use(requireAdmin);
 // old orders, so the "open orders" list includes them too.
 const INACTIVE_ORDER = ["CANCELLED", "AWAITING_PAYMENT"];
 const INACTIVE_BOOKING = ["CANCELLED", "NO_SHOW"];
-const OPEN_ORDER_STATUSES = [
-  "NEW", "RECEIVED", "ACCEPTED", "PREPARING",
-  "READY", "READY_FOR_PICKUP", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY",
-];
+const OPEN_ORDER_STATUSES = ["NEW", "RECEIVED", "ACCEPTED", "PREPARING", "READY", "READY_FOR_PICKUP", "READY_FOR_DELIVERY", "OUT_FOR_DELIVERY"];
 
 // GET /api/reports/dashboard
 reportsRouter.get("/dashboard", async (_req, res) => {
@@ -40,12 +37,8 @@ reportsRouter.get("/dashboard", async (_req, res) => {
     prisma.room.findMany({ orderBy: { id: "asc" } }),
   ]);
 
-  const revenueOrders = ordersToday
-    .filter((o) => !INACTIVE_ORDER.includes(o.status))
-    .reduce((s, o) => s + o.total, 0);
-  const revenueBookings = todaysBookings
-    .filter((b) => !INACTIVE_BOOKING.includes(b.status))
-    .reduce((s, b) => s + b.total, 0);
+  const revenueOrders = ordersToday.filter((o) => !INACTIVE_ORDER.includes(o.status)).reduce((s, o) => s + o.total, 0);
+  const revenueBookings = todaysBookings.filter((b) => !INACTIVE_BOOKING.includes(b.status)).reduce((s, b) => s + b.total, 0);
 
   res.json({
     openOrders: openOrders.map(outOrder),
@@ -102,9 +95,7 @@ reportsRouter.get("/summary", async (req, res) => {
   // Room utilization
   const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
   const utilization = rooms.map((r) => {
-    const hoursBooked = bookings
-      .filter((b) => b.roomId === r.id)
-      .reduce((s, b) => s + b.durationHours, 0);
+    const hoursBooked = bookings.filter((b) => b.roomId === r.id).reduce((s, b) => s + b.durationHours, 0);
     const hoursAvailable = (r.closeHour - r.openHour) * days;
     return {
       room: r.name,
@@ -130,9 +121,7 @@ reportsRouter.get("/summary", async (req, res) => {
   const activeCustomerIds = new Set<number>();
   orders.forEach((o) => o.customerId && activeCustomerIds.add(o.customerId));
   bookings.forEach((b) => b.customerId && activeCustomerIds.add(b.customerId));
-  const activeCustomers = activeCustomerIds.size
-    ? await prisma.customer.findMany({ where: { id: { in: [...activeCustomerIds] } } })
-    : [];
+  const activeCustomers = activeCustomerIds.size ? await prisma.customer.findMany({ where: { id: { in: [...activeCustomerIds] } } }) : [];
   const newCustomers = activeCustomers.filter((c) => c.createdAt >= start).length;
   const returning = activeCustomers.length - newCustomers;
 
@@ -172,18 +161,10 @@ reportsRouter.get("/export", async (req, res) => {
   const rows: string[] = ["Type,Number,Customer,Phone,Date,Detail,Total,Status"];
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   for (const o of orders) {
-    rows.push(
-      ["Order", o.number, o.customerName, o.phone, o.createdAt.toISOString(), "Food order", o.total, o.status]
-        .map(esc)
-        .join(",")
-    );
+    rows.push(["Order", o.number, o.customerName, o.phone, o.createdAt.toISOString(), "Food order", o.total, o.status].map(esc).join(","));
   }
   for (const b of bookings) {
-    rows.push(
-      ["Booking", b.number, b.customerName, b.phone, b.startTime.toISOString(), b.room.name, b.total, b.status]
-        .map(esc)
-        .join(",")
-    );
+    rows.push(["Booking", b.number, b.customerName, b.phone, b.startTime.toISOString(), b.room.name, b.total, b.status].map(esc).join(","));
   }
 
   res.setHeader("Content-Type", "text/csv");

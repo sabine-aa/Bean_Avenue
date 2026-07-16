@@ -26,11 +26,7 @@ export function Img({
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
-      <div
-        role="img"
-        aria-label={alt}
-        className={`flex items-center justify-center bg-oat ${className ?? ""}`}
-      >
+      <div role="img" aria-label={alt} className={`bg-oat flex items-center justify-center ${className ?? ""}`}>
         <img src="/bean.png" alt="" className="h-1/3 max-h-16 opacity-60" />
       </div>
     );

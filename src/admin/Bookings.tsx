@@ -3,14 +3,7 @@ import { useToast } from "../context/ToastContext";
 import { api, formatDate, formatTime, money } from "../lib/api";
 import type { Booking, BookingStatus, Room } from "../types";
 
-const STATUSES: BookingStatus[] = [
-  "PENDING",
-  "CONFIRMED",
-  "IN_USE",
-  "COMPLETED",
-  "CANCELLED",
-  "NO_SHOW",
-];
+const STATUSES: BookingStatus[] = ["PENDING", "CONFIRMED", "IN_USE", "COMPLETED", "CANCELLED", "NO_SHOW"];
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
   PENDING: "bg-oat text-mocha",
@@ -75,13 +68,13 @@ export function AdminBookings() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-bold text-espresso">Room Bookings</h1>
+      <h1 className="font-display text-espresso text-3xl font-bold">Room Bookings</h1>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="rounded-full border border-oat bg-white px-3 py-1.5 text-sm"
+          className="border-oat rounded-full border bg-white px-3 py-1.5 text-sm"
           aria-label="Filter by status"
         >
           <option value="ALL">All statuses</option>
@@ -94,7 +87,7 @@ export function AdminBookings() {
         <select
           value={roomId}
           onChange={(e) => setRoomId(e.target.value)}
-          className="rounded-full border border-oat bg-white px-3 py-1.5 text-sm"
+          className="border-oat rounded-full border bg-white px-3 py-1.5 text-sm"
           aria-label="Filter by room"
         >
           <option value="">All rooms</option>
@@ -108,7 +101,7 @@ export function AdminBookings() {
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="rounded-full border border-oat bg-white px-3 py-1.5 text-sm"
+          className="border-oat rounded-full border bg-white px-3 py-1.5 text-sm"
           aria-label="Filter by date"
         />
         <input
@@ -116,26 +109,26 @@ export function AdminBookings() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search name or phone…"
-          className="ml-auto w-full rounded-full border border-oat bg-white px-4 py-1.5 text-sm sm:w-60"
+          className="border-oat ml-auto w-full rounded-full border bg-white px-4 py-1.5 text-sm sm:w-60"
         />
       </div>
 
       {rescheduling && (
         <form onSubmit={submitReschedule} className="mt-5 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-5 shadow-md">
-          <p className="w-full font-semibold text-espresso">
+          <p className="text-espresso w-full font-semibold">
             Reschedule {rescheduling.number} ({rescheduling.customerName}) — conflict check applies.
           </p>
-          <label className="text-sm font-semibold text-espresso">
+          <label className="text-espresso text-sm font-semibold">
             Date
             <input
               type="date"
               required
               value={reForm.date}
               onChange={(e) => setReForm({ ...reForm, date: e.target.value })}
-              className="mt-1 block rounded-xl border border-oat px-3 py-2 font-normal"
+              className="border-oat mt-1 block rounded-xl border px-3 py-2 font-normal"
             />
           </label>
-          <label className="text-sm font-semibold text-espresso">
+          <label className="text-espresso text-sm font-semibold">
             Start hour
             <input
               type="number"
@@ -144,10 +137,10 @@ export function AdminBookings() {
               required
               value={reForm.startHour}
               onChange={(e) => setReForm({ ...reForm, startHour: Number(e.target.value) })}
-              className="mt-1 block w-24 rounded-xl border border-oat px-3 py-2 font-normal"
+              className="border-oat mt-1 block w-24 rounded-xl border px-3 py-2 font-normal"
             />
           </label>
-          <label className="text-sm font-semibold text-espresso">
+          <label className="text-espresso text-sm font-semibold">
             Duration (h)
             <input
               type="number"
@@ -156,16 +149,16 @@ export function AdminBookings() {
               required
               value={reForm.durationHours}
               onChange={(e) => setReForm({ ...reForm, durationHours: Number(e.target.value) })}
-              className="mt-1 block w-24 rounded-xl border border-oat px-3 py-2 font-normal"
+              className="border-oat mt-1 block w-24 rounded-xl border px-3 py-2 font-normal"
             />
           </label>
-          <button type="submit" className="rounded-full bg-espresso px-5 py-2 text-sm font-semibold text-cream hover:bg-mocha">
+          <button type="submit" className="bg-espresso text-cream hover:bg-mocha rounded-full px-5 py-2 text-sm font-semibold">
             Save
           </button>
           <button
             type="button"
             onClick={() => setRescheduling(null)}
-            className="rounded-full px-4 py-2 text-sm font-semibold text-charcoal/60 hover:text-terracotta"
+            className="text-charcoal/60 hover:text-terracotta rounded-full px-4 py-2 text-sm font-semibold"
           >
             Cancel
           </button>
@@ -175,7 +168,7 @@ export function AdminBookings() {
       <div className="mt-5 overflow-x-auto rounded-2xl bg-white shadow-sm">
         <table className="w-full min-w-[56rem] text-sm">
           <thead>
-            <tr className="border-b border-oat text-left text-xs uppercase tracking-wide text-charcoal/50">
+            <tr className="border-oat text-charcoal/50 border-b text-left text-xs tracking-wide uppercase">
               <th className="px-4 py-3">Number</th>
               <th className="px-4 py-3">Customer</th>
               <th className="px-4 py-3">Phone</th>
@@ -190,17 +183,19 @@ export function AdminBookings() {
           <tbody>
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-charcoal/60">
+                <td colSpan={9} className="text-charcoal/60 px-4 py-8 text-center">
                   No bookings match these filters.
                 </td>
               </tr>
             )}
             {bookings.map((b) => (
-              <tr key={b.id} className="border-b border-oat/60">
-                <td className="px-4 py-3 font-semibold text-espresso">{b.number}</td>
+              <tr key={b.id} className="border-oat/60 border-b">
+                <td className="text-espresso px-4 py-3 font-semibold">{b.number}</td>
                 <td className="px-4 py-3">{b.customerName}</td>
                 <td className="px-4 py-3">
-                  <a href={`tel:${b.phone}`} className="text-terracotta">{b.phone}</a>
+                  <a href={`tel:${b.phone}`} className="text-terracotta">
+                    {b.phone}
+                  </a>
                 </td>
                 <td className="px-4 py-3">{b.room?.name}</td>
                 <td className="px-4 py-3">{formatDate(b.startTime)}</td>
@@ -209,20 +204,24 @@ export function AdminBookings() {
                 </td>
                 <td className="px-4 py-3 font-semibold">{money(b.total)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_STYLE[b.status]}`}>
-                    {b.status.replace("_", " ")}
-                  </span>
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${STATUS_STYLE[b.status]}`}>{b.status.replace("_", " ")}</span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-1">
                     {b.status === "PENDING" && (
-                      <button onClick={() => setBookingStatus(b, "CONFIRMED")} className="rounded-full bg-sage/25 px-2.5 py-1 text-xs font-semibold text-sage-dark hover:bg-sage/50">
+                      <button
+                        onClick={() => setBookingStatus(b, "CONFIRMED")}
+                        className="bg-sage/25 text-sage-dark hover:bg-sage/50 rounded-full px-2.5 py-1 text-xs font-semibold"
+                      >
                         Confirm
                       </button>
                     )}
                     {["PENDING", "CONFIRMED", "IN_USE"].includes(b.status) && (
                       <>
-                        <button onClick={() => setBookingStatus(b, "COMPLETED")} className="rounded-full bg-oat px-2.5 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream">
+                        <button
+                          onClick={() => setBookingStatus(b, "COMPLETED")}
+                          className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-2.5 py-1 text-xs font-semibold"
+                        >
                           Complete
                         </button>
                         <button
@@ -235,14 +234,20 @@ export function AdminBookings() {
                               durationHours: b.durationHours,
                             });
                           }}
-                          className="rounded-full bg-oat px-2.5 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream"
+                          className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-2.5 py-1 text-xs font-semibold"
                         >
                           Edit time
                         </button>
-                        <button onClick={() => setBookingStatus(b, "CANCELLED")} className="rounded-full px-2.5 py-1 text-xs font-semibold text-charcoal/50 hover:text-terracotta">
+                        <button
+                          onClick={() => setBookingStatus(b, "CANCELLED")}
+                          className="text-charcoal/50 hover:text-terracotta rounded-full px-2.5 py-1 text-xs font-semibold"
+                        >
                           Cancel
                         </button>
-                        <button onClick={() => setBookingStatus(b, "NO_SHOW")} className="rounded-full px-2.5 py-1 text-xs font-semibold text-charcoal/50 hover:text-terracotta">
+                        <button
+                          onClick={() => setBookingStatus(b, "NO_SHOW")}
+                          className="text-charcoal/50 hover:text-terracotta rounded-full px-2.5 py-1 text-xs font-semibold"
+                        >
                           No-show
                         </button>
                       </>

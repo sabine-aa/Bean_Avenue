@@ -201,6 +201,4 @@ export function countryFromPhone(value: string): Country {
 
 // Kept for backwards-compatibility with the OTP login dropdown — one entry per
 // unique dial code (so it has no duplicate keys).
-export const COUNTRY_CODES = COUNTRIES.filter(
-  (c, i, arr) => arr.findIndex((o) => o.dial === c.dial) === i
-).map((c) => ({ code: c.dial, name: c.name }));
+export const COUNTRY_CODES = COUNTRIES.filter((c, i, arr) => arr.findIndex((o) => o.dial === c.dial) === i).map((c) => ({ code: c.dial, name: c.name }));

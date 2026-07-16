@@ -19,7 +19,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 const field =
   "mt-1.5 w-full rounded-xl border border-oat bg-white px-4 py-3 text-base text-charcoal transition focus:border-espresso focus:outline-none focus:ring-2 focus:ring-espresso/20";
 const label = "block text-base font-semibold text-espresso";
-const optional = <span className="font-normal text-charcoal/40"> (optional)</span>;
+const optional = <span className="text-charcoal/40 font-normal"> (optional)</span>;
 
 /** "What should we host next?" — public event-idea submission form. */
 export function SuggestEvent() {
@@ -50,15 +50,10 @@ export function SuggestEvent() {
 
   if (sent) {
     return (
-      <section className="mx-auto max-w-3xl rounded-3xl border border-oat bg-white px-6 py-12 text-center shadow-sm sm:px-10">
+      <section className="border-oat mx-auto max-w-3xl rounded-3xl border bg-white px-6 py-12 text-center shadow-sm sm:px-10">
         <p className="text-5xl">🎉</p>
-        <h2 className="mt-4 font-display text-2xl font-bold text-espresso sm:text-3xl">
-          Thank you! Your event idea has been sent to the Bean Avenue team.
-        </h2>
-        <button
-          onClick={() => setSent(false)}
-          className="btn-3d mt-6 rounded-full bg-espresso px-7 py-3 text-base font-semibold text-cream"
-        >
+        <h2 className="font-display text-espresso mt-4 text-2xl font-bold sm:text-3xl">Thank you! Your event idea has been sent to the Bean Avenue team.</h2>
+        <button onClick={() => setSent(false)} className="btn-3d bg-espresso text-cream mt-6 rounded-full px-7 py-3 text-base font-semibold">
           Suggest another
         </button>
       </section>
@@ -66,13 +61,9 @@ export function SuggestEvent() {
   }
 
   return (
-    <section className="rounded-3xl border border-oat bg-white p-7 shadow-sm sm:p-10">
-      <h2 className="font-display text-3xl font-bold text-espresso sm:text-4xl">
-        What should we host next?
-      </h2>
-      <p className="mt-3 max-w-2xl text-lg text-charcoal/75">
-        Have an idea for a workshop, activity, or community event at Bean Avenue? Share it with us.
-      </p>
+    <section className="border-oat rounded-3xl border bg-white p-7 shadow-sm sm:p-10">
+      <h2 className="font-display text-espresso text-3xl font-bold sm:text-4xl">What should we host next?</h2>
+      <p className="text-charcoal/75 mt-3 max-w-2xl text-lg">Have an idea for a workshop, activity, or community event at Bean Avenue? Share it with us.</p>
 
       <form onSubmit={submit} className="mx-auto mt-8 grid max-w-3xl gap-6 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -88,43 +79,43 @@ export function SuggestEvent() {
             }}
             placeholder="e.g. Beginner latte art class"
             aria-invalid={!!error}
-            className={`${field} ${error ? "border-terracotta ring-2 ring-terracotta/20" : ""}`}
+            className={`${field} ${error ? "border-terracotta ring-terracotta/20 ring-2" : ""}`}
           />
-          {error && <p className="mt-1.5 text-sm font-semibold text-terracotta-dark">{error}</p>}
+          {error && <p className="text-terracotta-dark mt-1.5 text-sm font-semibold">{error}</p>}
         </div>
 
         <div>
-          <label className={label} htmlFor="se-cat">Category{optional}</label>
-          <select
-            id="se-cat"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className={field}
-          >
+          <label className={label} htmlFor="se-cat">
+            Category{optional}
+          </label>
+          <select id="se-cat" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={field}>
             <option value="">Choose a category…</option>
             {EVENT_CATEGORIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className={label} htmlFor="se-day">Preferred day{optional}</label>
-          <select
-            id="se-day"
-            value={form.preferredDay}
-            onChange={(e) => setForm({ ...form, preferredDay: e.target.value })}
-            className={field}
-          >
+          <label className={label} htmlFor="se-day">
+            Preferred day{optional}
+          </label>
+          <select id="se-day" value={form.preferredDay} onChange={(e) => setForm({ ...form, preferredDay: e.target.value })} className={field}>
             <option value="">No preference</option>
             {DAYS.map((d) => (
-              <option key={d} value={d}>{d}</option>
+              <option key={d} value={d}>
+                {d}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="sm:col-span-2">
-          <label className={label} htmlFor="se-desc">Short description{optional}</label>
+          <label className={label} htmlFor="se-desc">
+            Short description{optional}
+          </label>
           <textarea
             id="se-desc"
             rows={5}
@@ -136,7 +127,9 @@ export function SuggestEvent() {
         </div>
 
         <div>
-          <label className={label} htmlFor="se-time">Preferred time{optional}</label>
+          <label className={label} htmlFor="se-time">
+            Preferred time{optional}
+          </label>
           <input
             id="se-time"
             value={form.preferredTime}
@@ -147,17 +140,16 @@ export function SuggestEvent() {
         </div>
 
         <div>
-          <label className={label} htmlFor="se-name">Your name{optional}</label>
-          <input
-            id="se-name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={field}
-          />
+          <label className={label} htmlFor="se-name">
+            Your name{optional}
+          </label>
+          <input id="se-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} />
         </div>
 
         <div className="sm:col-span-2">
-          <label className={label} htmlFor="se-phone">Phone number{optional}</label>
+          <label className={label} htmlFor="se-phone">
+            Phone number{optional}
+          </label>
           <input
             id="se-phone"
             type="tel"
@@ -183,13 +175,11 @@ export function SuggestEvent() {
           <button
             type="submit"
             disabled={sending}
-            className="btn-3d w-full rounded-full bg-espresso px-8 py-4 text-lg font-semibold text-cream disabled:opacity-60 sm:w-auto"
+            className="btn-3d bg-espresso text-cream w-full rounded-full px-8 py-4 text-lg font-semibold disabled:opacity-60 sm:w-auto"
           >
             {sending ? "Sending…" : "Submit Suggestion"}
           </button>
-          <p className="mt-3 text-sm text-charcoal/50">
-            Your details stay private with the Bean Avenue team and are never shown publicly.
-          </p>
+          <p className="text-charcoal/50 mt-3 text-sm">Your details stay private with the Bean Avenue team and are never shown publicly.</p>
         </div>
       </form>
     </section>

@@ -43,52 +43,44 @@ export function SuggestionBox() {
 
   return (
     <section id="suggestions" className="mt-6 rounded-3xl bg-white p-6 shadow-sm sm:p-8">
-      <h2 className="font-display text-2xl font-bold text-espresso">
-        Have a suggestion? We'd love to hear from you.
-      </h2>
-      <p className="mt-2 text-sm text-charcoal/70">
-        Your feedback helps us improve Bean Avenue. You can leave your name and phone number if you
-        want us to contact you back.
+      <h2 className="font-display text-espresso text-2xl font-bold">Have a suggestion? We'd love to hear from you.</h2>
+      <p className="text-charcoal/70 mt-2 text-sm">
+        Your feedback helps us improve Bean Avenue. You can leave your name and phone number if you want us to contact you back.
       </p>
 
       {sent ? (
-        <div className="mt-6 rounded-2xl bg-sage/15 p-6 text-center">
+        <div className="bg-sage/15 mt-6 rounded-2xl p-6 text-center">
           <p className="text-3xl">🫶</p>
-          <p className="mt-2 font-semibold text-espresso">Got it — thank you!</p>
-          <p className="mt-1 text-sm text-charcoal/70">
-            We read every message and use it to make Bean Avenue better.
-          </p>
-          <button
-            onClick={() => setSent(false)}
-            className="mt-4 rounded-full bg-oat px-5 py-2 text-sm font-semibold text-espresso hover:bg-oat/70"
-          >
+          <p className="text-espresso mt-2 font-semibold">Got it — thank you!</p>
+          <p className="text-charcoal/70 mt-1 text-sm">We read every message and use it to make Bean Avenue better.</p>
+          <button onClick={() => setSent(false)} className="bg-oat text-espresso hover:bg-oat/70 mt-4 rounded-full px-5 py-2 text-sm font-semibold">
             Send another
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-semibold text-espresso">
-              Name <span className="font-normal text-charcoal/50">(optional)</span>
+            <label className="text-espresso block text-sm font-semibold">
+              Name <span className="text-charcoal/50 font-normal">(optional)</span>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5 font-normal"
                 autoComplete="name"
               />
             </label>
-            <label className="block text-sm font-semibold text-espresso">
-              Phone <span className="font-normal text-charcoal/50">(optional)</span>
+            <label className="text-espresso block text-sm font-semibold">
+              Phone <span className="text-charcoal/50 font-normal">(optional)</span>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+                className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5 font-normal"
                 autoComplete="tel"
               />
             </label>
           </div>
-          <label className="block text-sm font-semibold text-espresso">
+          <label className="text-espresso block text-sm font-semibold">
             Message <span className="text-terracotta-dark">*</span>
             <textarea
               required
@@ -96,13 +88,13 @@ export function SuggestionBox() {
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
               placeholder="Suggestions, feedback, complaints, or ideas — we're all ears."
-              className="mt-1 w-full rounded-xl border border-oat px-4 py-2.5 font-normal"
+              className="border-oat mt-1 w-full rounded-xl border px-4 py-2.5 font-normal"
             />
           </label>
           <button
             type="submit"
             disabled={sending || !message.trim()}
-            className="btn-3d w-full rounded-full bg-terracotta px-6 py-3 font-semibold text-cream transition hover:bg-terracotta-dark disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            className="btn-3d bg-terracotta text-cream hover:bg-terracotta-dark w-full rounded-full px-6 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             {sending ? "Sending…" : "Send suggestion"}
           </button>

@@ -11,7 +11,12 @@ const round = (n: number) => Math.round((Number(n) || 0) * 1000) / 1000;
 const ADJUST_TYPES = ["RECEIVE", "ADJUST", "COUNT"];
 
 // Derive a product's public status from its stock + flags.
-export function shopStatus(p: { quantity: number; minQty: number; allowPreorder: boolean; isHidden: boolean }): "IN_STOCK" | "LOW" | "OUT" | "PREORDER" | "HIDDEN" {
+export function shopStatus(p: {
+  quantity: number;
+  minQty: number;
+  allowPreorder: boolean;
+  isHidden: boolean;
+}): "IN_STOCK" | "LOW" | "OUT" | "PREORDER" | "HIDDEN" {
   if (p.isHidden) return "HIDDEN";
   if (p.quantity <= 0) return p.allowPreorder ? "PREORDER" : "OUT";
   if (p.quantity <= p.minQty) return "LOW";
@@ -21,14 +26,32 @@ export function shopStatus(p: { quantity: number; minQty: number; allowPreorder:
 type ProductInput = Record<string, unknown>;
 function cleanProduct(body: ProductInput) {
   const data: Record<string, unknown> = {};
-  const str = (k: string) => { if (k in body) data[k] = String(body[k] ?? "").trim(); };
-  const strNull = (k: string) => { if (k in body) data[k] = String(body[k] ?? "").trim() || null; };
-  const numF = (k: string) => { if (k in body) data[k] = Math.max(0, round(Number(body[k]))); };
-  const boolF = (k: string) => { if (k in body) data[k] = !!body[k]; };
-  str("name"); str("category"); str("description");
-  strNull("brand"); strNull("sku"); strNull("preorderEta");
-  numF("price"); numF("costPrice"); numF("minQty");
-  boolF("availableOnline"); boolF("availablePos"); boolF("allowPreorder"); boolF("featured"); boolF("isHidden");
+  const str = (k: string) => {
+    if (k in body) data[k] = String(body[k] ?? "").trim();
+  };
+  const strNull = (k: string) => {
+    if (k in body) data[k] = String(body[k] ?? "").trim() || null;
+  };
+  const numF = (k: string) => {
+    if (k in body) data[k] = Math.max(0, round(Number(body[k])));
+  };
+  const boolF = (k: string) => {
+    if (k in body) data[k] = !!body[k];
+  };
+  str("name");
+  str("category");
+  str("description");
+  strNull("brand");
+  strNull("sku");
+  strNull("preorderEta");
+  numF("price");
+  numF("costPrice");
+  numF("minQty");
+  boolF("availableOnline");
+  boolF("availablePos");
+  boolF("allowPreorder");
+  boolF("featured");
+  boolF("isHidden");
   if ("sortOrder" in body) data.sortOrder = Math.round(Number(body.sortOrder) || 0);
   if ("images" in body) data.images = JSON.stringify(Array.isArray(body.images) ? body.images : []);
   return data;
@@ -65,12 +88,25 @@ shopRouter.get("/:id(\\d+)", async (req, res) => {
 shopRouter.post("/order", async (req, res) => {
   const b = req.body ?? {};
   const rawItems: { productId: number; quantity: number }[] = Array.isArray(b.items) ? b.items : [];
-  const customerName = String(b.customerName ?? "").trim().slice(0, 80);
-  const phone = String(b.phone ?? "").trim().slice(0, 30);
+  const customerName = String(b.customerName ?? "")
+    .trim()
+    .slice(0, 80);
+  const phone = String(b.phone ?? "")
+    .trim()
+    .slice(0, 30);
   if (!customerName || !phone) return res.status(400).json({ error: "Your name and phone are required." });
   if (!rawItems.length) return res.status(400).json({ error: "Your cart is empty." });
 
-  const built: { menuItemId: null; name: string; unitPrice: number; quantity: number; selectedOptions: string; addons: string; specialInstructions: null; lineTotal: number }[] = [];
+  const built: {
+    menuItemId: null;
+    name: string;
+    unitPrice: number;
+    quantity: number;
+    selectedOptions: string;
+    addons: string;
+    specialInstructions: null;
+    lineTotal: number;
+  }[] = [];
   const consume: { shopProductId: number; quantity: number }[] = [];
   let subtotal = 0;
   for (const it of rawItems) {
@@ -79,7 +115,16 @@ shopRouter.post("/order", async (req, res) => {
     if (!p || p.isHidden || !p.availableOnline) return res.status(400).json({ error: "A product in your cart is no longer available." });
     if (p.quantity < qty) return res.status(409).json({ error: `Only ${p.quantity} of ${p.name} left in stock.` });
     const lineTotal = round2(p.price * qty);
-    built.push({ menuItemId: null, name: p.name, unitPrice: p.price, quantity: qty, selectedOptions: "[]", addons: "[]", specialInstructions: null, lineTotal });
+    built.push({
+      menuItemId: null,
+      name: p.name,
+      unitPrice: p.price,
+      quantity: qty,
+      selectedOptions: "[]",
+      addons: "[]",
+      specialInstructions: null,
+      lineTotal,
+    });
     consume.push({ shopProductId: p.id, quantity: qty });
     subtotal += lineTotal;
   }
@@ -88,10 +133,21 @@ shopRouter.post("/order", async (req, res) => {
 
   const order = await prisma.order.create({
     data: {
-      number: genNumber("SHOP"), channel: "ONLINE", customerId: customer?.id, customerName, phone,
-      email: String(b.email ?? "").trim() || null, fulfillment: "PICKUP", pickupTime: "When ready",
-      subtotal, total: subtotal, paymentMethod: "CASH_AT_PICKUP", status: "RECEIVED", paymentStatus: "CASH_DUE",
-      beansEarned: Math.floor(subtotal), items: { create: built },
+      number: genNumber("SHOP"),
+      channel: "ONLINE",
+      customerId: customer?.id,
+      customerName,
+      phone,
+      email: String(b.email ?? "").trim() || null,
+      fulfillment: "PICKUP",
+      pickupTime: "When ready",
+      subtotal,
+      total: subtotal,
+      paymentMethod: "CASH_AT_PICKUP",
+      status: "RECEIVED",
+      paymentStatus: "CASH_DUE",
+      beansEarned: Math.floor(subtotal),
+      items: { create: built },
     },
     include: { items: true },
   });
@@ -105,8 +161,12 @@ const PREORDER_STATUSES = ["NEW", "CONFIRMED", "ORDERED", "ARRIVED", "READY", "C
 // POST /api/shop/preorder — public (also used by POS): request a preorder.
 shopRouter.post("/preorder", async (req, res) => {
   const b = req.body ?? {};
-  const customerName = String(b.customerName ?? "").trim().slice(0, 80);
-  const phone = String(b.phone ?? "").trim().slice(0, 30);
+  const customerName = String(b.customerName ?? "")
+    .trim()
+    .slice(0, 80);
+  const phone = String(b.phone ?? "")
+    .trim()
+    .slice(0, 30);
   const quantity = Math.max(1, Math.round(Number(b.quantity) || 1));
   if (!customerName || !phone) return res.status(400).json({ error: "Your name and phone are required." });
 
@@ -118,10 +178,20 @@ shopRouter.post("/preorder", async (req, res) => {
 
   const pre = await prisma.preorder.create({
     data: {
-      number: genNumber("PO"), productId: product.id, productName: product.name, quantity,
-      unitPrice, total, customerName, phone, customerId: customer?.id ?? null,
-      notes: String(b.notes ?? "").trim() || null, status: "NEW", paymentStatus: "UNPAID",
-      estimatedArrival: product.preorderEta || null, createdBy: String(b.createdBy ?? "Online").trim() || "Online",
+      number: genNumber("PO"),
+      productId: product.id,
+      productName: product.name,
+      quantity,
+      unitPrice,
+      total,
+      customerName,
+      phone,
+      customerId: customer?.id ?? null,
+      notes: String(b.notes ?? "").trim() || null,
+      status: "NEW",
+      paymentStatus: "UNPAID",
+      estimatedArrival: product.preorderEta || null,
+      createdBy: String(b.createdBy ?? "Online").trim() || "Online",
     },
   });
   res.status(201).json({ number: pre.number, total, productName: product.name });
@@ -155,7 +225,17 @@ shopRouter.patch("/preorders/:id", requireAdmin, async (req, res) => {
   const beforePre = await prisma.preorder.findUnique({ where: { id: Number(req.params.id) } });
   const pre = await prisma.preorder.update({ where: { id: Number(req.params.id) }, data });
   if (beforePre && "status" in data && beforePre.status !== pre.status) {
-    await audit(actorCtx(req), { section: "Preorders", action: "preorder_status_changed", description: `Preorder ${pre.number} ${beforePre.status} → ${pre.status}`, entity: "Preorder", entityId: pre.id, entityName: pre.number, orderNumber: pre.number, oldValue: { status: beforePre.status }, newValue: { status: pre.status } });
+    await audit(actorCtx(req), {
+      section: "Preorders",
+      action: "preorder_status_changed",
+      description: `Preorder ${pre.number} ${beforePre.status} → ${pre.status}`,
+      entity: "Preorder",
+      entityId: pre.id,
+      entityName: pre.number,
+      orderNumber: pre.number,
+      oldValue: { status: beforePre.status },
+      newValue: { status: pre.status },
+    });
   }
   res.json(pre);
 });
@@ -212,9 +292,19 @@ shopRouter.post("/", requireAdmin, async (req, res) => {
   const created = await prisma.shopProduct.create({ data: { sortOrder: count, ...data } as never });
   // Record opening stock as a movement.
   if (created.quantity !== 0) {
-    await prisma.shopStockMovement.create({ data: { productId: created.id, delta: created.quantity, balance: created.quantity, type: "COUNT", reason: "Opening stock", staffName: "Admin" } });
+    await prisma.shopStockMovement.create({
+      data: { productId: created.id, delta: created.quantity, balance: created.quantity, type: "COUNT", reason: "Opening stock", staffName: "Admin" },
+    });
   }
-  await audit(actorCtx(req), { section: "Shop", action: "shop_product_created", description: `Created shop product ${created.name} (${created.category}) at $${created.price.toFixed(2)}`, entity: "ShopProduct", entityId: created.id, entityName: created.name, newValue: { price: created.price, category: created.category } });
+  await audit(actorCtx(req), {
+    section: "Shop",
+    action: "shop_product_created",
+    description: `Created shop product ${created.name} (${created.category}) at $${created.price.toFixed(2)}`,
+    entity: "ShopProduct",
+    entityId: created.id,
+    entityName: created.name,
+    newValue: { price: created.price, category: created.category },
+  });
   res.status(201).json(outProduct(created));
 });
 
@@ -227,18 +317,71 @@ shopRouter.patch("/:id", requireAdmin, async (req, res) => {
   const actor = actorCtx(req);
   if (before) {
     if ("price" in data && before.price !== p.price)
-      await audit(actor, { section: "Shop", action: "shop_price_changed", description: `${p.name} price $${before.price.toFixed(2)} → $${p.price.toFixed(2)}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { price: before.price }, newValue: { price: p.price } });
+      await audit(actor, {
+        section: "Shop",
+        action: "shop_price_changed",
+        description: `${p.name} price $${before.price.toFixed(2)} → $${p.price.toFixed(2)}`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+        oldValue: { price: before.price },
+        newValue: { price: p.price },
+      });
     if ("allowPreorder" in data && before.allowPreorder !== p.allowPreorder)
-      await audit(actor, { section: "Shop", action: p.allowPreorder ? "shop_preorder_on" : "shop_preorder_off", description: `${p.name} marked ${p.allowPreorder ? "preorder available" : "preorder off"}`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
-    if (("availableOnline" in data && before.availableOnline !== p.availableOnline) || ("availablePos" in data && before.availablePos !== p.availablePos) || ("isHidden" in data && before.isHidden !== p.isHidden))
-      await audit(actor, { section: "Shop", action: "shop_availability_changed", description: `${p.name} availability updated (online ${p.availableOnline ? "on" : "off"}, POS ${p.availablePos ? "on" : "off"}${p.isHidden ? ", hidden" : ""})`, entity: "ShopProduct", entityId: p.id, entityName: p.name, newValue: { availableOnline: p.availableOnline, availablePos: p.availablePos, isHidden: p.isHidden } });
+      await audit(actor, {
+        section: "Shop",
+        action: p.allowPreorder ? "shop_preorder_on" : "shop_preorder_off",
+        description: `${p.name} marked ${p.allowPreorder ? "preorder available" : "preorder off"}`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+      });
+    if (
+      ("availableOnline" in data && before.availableOnline !== p.availableOnline) ||
+      ("availablePos" in data && before.availablePos !== p.availablePos) ||
+      ("isHidden" in data && before.isHidden !== p.isHidden)
+    )
+      await audit(actor, {
+        section: "Shop",
+        action: "shop_availability_changed",
+        description: `${p.name} availability updated (online ${p.availableOnline ? "on" : "off"}, POS ${p.availablePos ? "on" : "off"}${p.isHidden ? ", hidden" : ""})`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+        newValue: { availableOnline: p.availableOnline, availablePos: p.availablePos, isHidden: p.isHidden },
+      });
     if ("category" in data && before.category !== p.category)
-      await audit(actor, { section: "Shop", action: "shop_category_changed", description: `${p.name} category ${before.category || "—"} → ${p.category || "—"}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { category: before.category }, newValue: { category: p.category } });
+      await audit(actor, {
+        section: "Shop",
+        action: "shop_category_changed",
+        description: `${p.name} category ${before.category || "—"} → ${p.category || "—"}`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+        oldValue: { category: before.category },
+        newValue: { category: p.category },
+      });
     if ("images" in data && before.images !== p.images)
-      await audit(actor, { section: "Shop", action: "shop_image_changed", description: `${p.name} image updated`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
-    const otherFields = Object.keys(data).filter((k) => !["price", "allowPreorder", "availableOnline", "availablePos", "isHidden", "category", "images", "sortOrder"].includes(k));
+      await audit(actor, {
+        section: "Shop",
+        action: "shop_image_changed",
+        description: `${p.name} image updated`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+      });
+    const otherFields = Object.keys(data).filter(
+      (k) => !["price", "allowPreorder", "availableOnline", "availablePos", "isHidden", "category", "images", "sortOrder"].includes(k),
+    );
     if (otherFields.length)
-      await audit(actor, { section: "Shop", action: "shop_product_edited", description: `${p.name} edited (${otherFields.join(", ")})`, entity: "ShopProduct", entityId: p.id, entityName: p.name });
+      await audit(actor, {
+        section: "Shop",
+        action: "shop_product_edited",
+        description: `${p.name} edited (${otherFields.join(", ")})`,
+        entity: "ShopProduct",
+        entityId: p.id,
+        entityName: p.name,
+      });
   }
   res.json(outProduct(p));
 });
@@ -247,7 +390,15 @@ shopRouter.delete("/:id", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   const doomed = await prisma.shopProduct.findUnique({ where: { id } });
   await prisma.shopProduct.delete({ where: { id } }).catch(() => {});
-  if (doomed) await audit(actorCtx(req), { section: "Shop", action: "shop_product_deleted", description: `Deleted shop product ${doomed.name} (${doomed.category})`, entity: "ShopProduct", entityId: id, entityName: doomed.name });
+  if (doomed)
+    await audit(actorCtx(req), {
+      section: "Shop",
+      action: "shop_product_deleted",
+      description: `Deleted shop product ${doomed.name} (${doomed.category})`,
+      entity: "ShopProduct",
+      entityId: id,
+      entityName: doomed.name,
+    });
   res.json({ ok: true });
 });
 
@@ -264,10 +415,22 @@ shopRouter.post("/:id/adjust", requireAdmin, async (req, res) => {
   else delta = amount; // ADJUST: signed
   const balance = round(Math.max(0, p.quantity + delta));
   const updated = await prisma.shopProduct.update({ where: { id: p.id }, data: { quantity: balance } });
-  const adjReason = String(req.body?.reason ?? "").trim().slice(0, 200) || null;
+  const adjReason =
+    String(req.body?.reason ?? "")
+      .trim()
+      .slice(0, 200) || null;
   await prisma.shopStockMovement.create({
     data: { productId: p.id, delta, balance, type, reason: adjReason, staffName: "Admin" },
   });
-  await audit(actorCtx(req), { section: "Shop", action: type === "RECEIVE" ? "shop_stock_received" : type === "COUNT" ? "shop_stock_recount" : "shop_stock_adjusted", description: `${p.name}: ${delta >= 0 ? "+" : ""}${delta} → ${balance} in stock${adjReason ? ` (${adjReason})` : ""}`, entity: "ShopProduct", entityId: p.id, entityName: p.name, oldValue: { quantity: p.quantity }, newValue: { quantity: balance } });
+  await audit(actorCtx(req), {
+    section: "Shop",
+    action: type === "RECEIVE" ? "shop_stock_received" : type === "COUNT" ? "shop_stock_recount" : "shop_stock_adjusted",
+    description: `${p.name}: ${delta >= 0 ? "+" : ""}${delta} → ${balance} in stock${adjReason ? ` (${adjReason})` : ""}`,
+    entity: "ShopProduct",
+    entityId: p.id,
+    entityName: p.name,
+    oldValue: { quantity: p.quantity },
+    newValue: { quantity: balance },
+  });
   res.json(outProduct(updated));
 });

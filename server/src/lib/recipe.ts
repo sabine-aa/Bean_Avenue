@@ -98,7 +98,7 @@ export async function restoreRecipes(orderId: number): Promise<void> {
   const sales = await prisma.inventoryMovement.findMany({ where: { orderId, type: "SALE" } });
   if (!sales.length) return;
   const reversed = new Set(
-    (await prisma.inventoryMovement.findMany({ where: { orderId, type: "REFUND_REVERSAL" }, select: { inventoryItemId: true } })).map((m) => m.inventoryItemId)
+    (await prisma.inventoryMovement.findMany({ where: { orderId, type: "REFUND_REVERSAL" }, select: { inventoryItemId: true } })).map((m) => m.inventoryItemId),
   );
   for (const s of sales) {
     if (reversed.has(s.inventoryItemId)) continue;

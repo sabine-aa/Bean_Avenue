@@ -55,7 +55,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         refresh();
       }
     },
-    [refresh]
+    [refresh],
   );
 
   const markAllRead = useCallback(async () => {
@@ -68,10 +68,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   }, [refresh]);
 
-  const value = useMemo<NotificationsValue>(
-    () => ({ items, unread, refresh, markRead, markAllRead }),
-    [items, unread, refresh, markRead, markAllRead]
-  );
+  const value = useMemo<NotificationsValue>(() => ({ items, unread, refresh, markRead, markAllRead }), [items, unread, refresh, markRead, markAllRead]);
 
   return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }

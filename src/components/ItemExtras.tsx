@@ -27,19 +27,17 @@ export function ItemExtras({
   if (!hasOptions && !hasAddons && !instructions) return null;
 
   return (
-    <div className={`mt-0.5 space-y-0.5 text-xs text-charcoal/60 ${className}`}>
+    <div className={`text-charcoal/60 mt-0.5 space-y-0.5 text-xs ${className}`}>
       {hasOptions && <p>{options!.map((o) => `${o.group}: ${o.choice}`).join(" · ")}</p>}
       {hasAddons &&
         addons!.map((a, i) => (
           <p key={i}>
             + {a.quantity > 1 ? `${a.quantity}× ` : ""}
             {a.name}
-            {a.price > 0 && (
-              <span className="text-charcoal/45"> (+{money(a.price * a.quantity)})</span>
-            )}
+            {a.price > 0 && <span className="text-charcoal/45"> (+{money(a.price * a.quantity)})</span>}
           </p>
         ))}
-      {instructions && <p className="italic text-charcoal/70">“{instructions}”</p>}
+      {instructions && <p className="text-charcoal/70 italic">“{instructions}”</p>}
     </div>
   );
 }

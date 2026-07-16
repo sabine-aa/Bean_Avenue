@@ -71,7 +71,14 @@ addonsRouter.post("/groups", async (req, res) => {
   const data = cleanGroup(req.body);
   if (!data.name) return res.status(400).json({ error: "A group name is required." });
   const group = await prisma.addonGroup.create({ data: data as never });
-  await audit(actorCtx(req), { section: "Menu", action: "addon_group_created", description: `Created add-on group "${group.name}"`, entity: "AddonGroup", entityId: group.id, entityName: group.name });
+  await audit(actorCtx(req), {
+    section: "Menu",
+    action: "addon_group_created",
+    description: `Created add-on group "${group.name}"`,
+    entity: "AddonGroup",
+    entityId: group.id,
+    entityName: group.name,
+  });
   res.status(201).json(group);
 });
 
@@ -83,9 +90,23 @@ addonsRouter.patch("/groups/:id", async (req, res) => {
   const group = await prisma.addonGroup.update({ where: { id }, data });
   const actor = actorCtx(req);
   if (before && "isAvailable" in data && before.isAvailable !== group.isAvailable)
-    await audit(actor, { section: "Menu", action: group.isAvailable ? "addon_group_enabled" : "addon_group_disabled", description: `Add-on group "${group.name}" ${group.isAvailable ? "enabled" : "disabled"}`, entity: "AddonGroup", entityId: id, entityName: group.name });
+    await audit(actor, {
+      section: "Menu",
+      action: group.isAvailable ? "addon_group_enabled" : "addon_group_disabled",
+      description: `Add-on group "${group.name}" ${group.isAvailable ? "enabled" : "disabled"}`,
+      entity: "AddonGroup",
+      entityId: id,
+      entityName: group.name,
+    });
   else
-    await audit(actor, { section: "Menu", action: "addon_group_edited", description: `Edited add-on group "${group.name}"`, entity: "AddonGroup", entityId: id, entityName: group.name });
+    await audit(actor, {
+      section: "Menu",
+      action: "addon_group_edited",
+      description: `Edited add-on group "${group.name}"`,
+      entity: "AddonGroup",
+      entityId: id,
+      entityName: group.name,
+    });
   res.json(group);
 });
 
@@ -94,7 +115,15 @@ addonsRouter.delete("/groups/:id", async (req, res) => {
   const id = Number(req.params.id);
   const doomed = await prisma.addonGroup.findUnique({ where: { id } });
   await prisma.addonGroup.delete({ where: { id } });
-  if (doomed) await audit(actorCtx(req), { section: "Menu", action: "addon_group_deleted", description: `Deleted add-on group "${doomed.name}"`, entity: "AddonGroup", entityId: id, entityName: doomed.name });
+  if (doomed)
+    await audit(actorCtx(req), {
+      section: "Menu",
+      action: "addon_group_deleted",
+      description: `Deleted add-on group "${doomed.name}"`,
+      entity: "AddonGroup",
+      entityId: id,
+      entityName: doomed.name,
+    });
   res.json({ ok: true });
 });
 
@@ -110,7 +139,15 @@ addonsRouter.post("/groups/:id/addons", async (req, res) => {
       maxQuantity: Math.max(1, Math.round(Number(req.body.maxQuantity) || 1)),
     },
   });
-  await audit(actorCtx(req), { section: "Menu", action: "addon_created", description: `Created add-on "${addon.name}" ($${addon.price.toFixed(2)})`, entity: "Addon", entityId: addon.id, entityName: addon.name, newValue: { price: addon.price } });
+  await audit(actorCtx(req), {
+    section: "Menu",
+    action: "addon_created",
+    description: `Created add-on "${addon.name}" ($${addon.price.toFixed(2)})`,
+    entity: "Addon",
+    entityId: addon.id,
+    entityName: addon.name,
+    newValue: { price: addon.price },
+  });
   res.status(201).json(addon);
 });
 
@@ -127,12 +164,36 @@ addonsRouter.patch("/:id", async (req, res) => {
   const addon = await prisma.addon.update({ where: { id }, data });
   const actor = actorCtx(req);
   if (before && "price" in data && before.price !== addon.price)
-    await audit(actor, { section: "Menu", action: "addon_price_changed", description: `Add-on "${addon.name}" $${before.price.toFixed(2)} → $${addon.price.toFixed(2)}`, entity: "Addon", entityId: id, entityName: addon.name, oldValue: { price: before.price }, newValue: { price: addon.price } });
+    await audit(actor, {
+      section: "Menu",
+      action: "addon_price_changed",
+      description: `Add-on "${addon.name}" $${before.price.toFixed(2)} → $${addon.price.toFixed(2)}`,
+      entity: "Addon",
+      entityId: id,
+      entityName: addon.name,
+      oldValue: { price: before.price },
+      newValue: { price: addon.price },
+    });
   if (before && "isAvailable" in data && before.isAvailable !== addon.isAvailable)
-    await audit(actor, { section: "Menu", action: addon.isAvailable ? "addon_enabled" : "addon_disabled", description: `Add-on "${addon.name}" ${addon.isAvailable ? "enabled" : "disabled"}`, entity: "Addon", entityId: id, entityName: addon.name });
-  const priceOrAvail = ("price" in data && before && before.price !== addon.price) || ("isAvailable" in data && before && before.isAvailable !== addon.isAvailable);
+    await audit(actor, {
+      section: "Menu",
+      action: addon.isAvailable ? "addon_enabled" : "addon_disabled",
+      description: `Add-on "${addon.name}" ${addon.isAvailable ? "enabled" : "disabled"}`,
+      entity: "Addon",
+      entityId: id,
+      entityName: addon.name,
+    });
+  const priceOrAvail =
+    ("price" in data && before && before.price !== addon.price) || ("isAvailable" in data && before && before.isAvailable !== addon.isAvailable);
   if (!priceOrAvail && ("name" in data || "maxQuantity" in data))
-    await audit(actor, { section: "Menu", action: "addon_edited", description: `Edited add-on "${addon.name}"`, entity: "Addon", entityId: id, entityName: addon.name });
+    await audit(actor, {
+      section: "Menu",
+      action: "addon_edited",
+      description: `Edited add-on "${addon.name}"`,
+      entity: "Addon",
+      entityId: id,
+      entityName: addon.name,
+    });
   res.json(addon);
 });
 
@@ -141,7 +202,15 @@ addonsRouter.delete("/:id", async (req, res) => {
   const id = Number(req.params.id);
   const doomed = await prisma.addon.findUnique({ where: { id } });
   await prisma.addon.delete({ where: { id } });
-  if (doomed) await audit(actorCtx(req), { section: "Menu", action: "addon_deleted", description: `Deleted add-on "${doomed.name}"`, entity: "Addon", entityId: id, entityName: doomed.name });
+  if (doomed)
+    await audit(actorCtx(req), {
+      section: "Menu",
+      action: "addon_deleted",
+      description: `Deleted add-on "${doomed.name}"`,
+      entity: "Addon",
+      entityId: id,
+      entityName: doomed.name,
+    });
   res.json({ ok: true });
 });
 
@@ -157,7 +226,15 @@ addonsRouter.post("/assignments", async (req, res) => {
   const group = await prisma.addonGroup.findUnique({ where: { id: groupId } });
   const target = category ? `category "${category}"` : `product #${menuItemId}`;
   const targetName = menuItemId ? (await prisma.menuItem.findUnique({ where: { id: menuItemId }, select: { name: true } }))?.name : null;
-  await audit(actorCtx(req), { section: "Menu", action: category ? "addon_category_rule_added" : "addon_product_rule_added", description: `Add-on group "${group?.name ?? groupId}" enabled for ${targetName ? `"${targetName}"` : target}`, entity: "AddonAssignment", entityId: assignment.id, entityName: group?.name ?? null, newValue: { group: group?.name, menuItem: targetName, category } });
+  await audit(actorCtx(req), {
+    section: "Menu",
+    action: category ? "addon_category_rule_added" : "addon_product_rule_added",
+    description: `Add-on group "${group?.name ?? groupId}" enabled for ${targetName ? `"${targetName}"` : target}`,
+    entity: "AddonAssignment",
+    entityId: assignment.id,
+    entityName: group?.name ?? null,
+    newValue: { group: group?.name, menuItem: targetName, category },
+  });
   res.status(201).json(assignment);
 });
 
@@ -166,6 +243,14 @@ addonsRouter.delete("/assignments/:id", async (req, res) => {
   const id = Number(req.params.id);
   const doomed = await prisma.addonAssignment.findUnique({ where: { id }, include: { group: true } });
   await prisma.addonAssignment.delete({ where: { id } });
-  if (doomed) await audit(actorCtx(req), { section: "Menu", action: doomed.category ? "addon_category_rule_removed" : "addon_product_rule_removed", description: `Add-on group "${doomed.group?.name ?? doomed.groupId}" removed from ${doomed.category ? `category "${doomed.category}"` : `product #${doomed.menuItemId}`}`, entity: "AddonAssignment", entityId: id, entityName: doomed.group?.name ?? null });
+  if (doomed)
+    await audit(actorCtx(req), {
+      section: "Menu",
+      action: doomed.category ? "addon_category_rule_removed" : "addon_product_rule_removed",
+      description: `Add-on group "${doomed.group?.name ?? doomed.groupId}" removed from ${doomed.category ? `category "${doomed.category}"` : `product #${doomed.menuItemId}`}`,
+      entity: "AddonAssignment",
+      entityId: id,
+      entityName: doomed.group?.name ?? null,
+    });
   res.json({ ok: true });
 });

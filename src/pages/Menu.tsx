@@ -24,10 +24,7 @@ export function Menu() {
   };
 
   useEffect(() => {
-    Promise.all([
-      api.get<MenuItem[]>("/api/menu"),
-      api.get<string[]>("/api/categories").catch(() => [] as string[]),
-    ])
+    Promise.all([api.get<MenuItem[]>("/api/menu"), api.get<string[]>("/api/categories").catch(() => [] as string[])])
       .then(([its, cats]) => {
         setItems(its);
         setOrder(cats);
@@ -69,18 +66,14 @@ export function Menu() {
     .filter(
       (i) =>
         (active === "All" || i.category === active) &&
-        (search === "" ||
-          i.name.toLowerCase().includes(search.toLowerCase()) ||
-          i.description.toLowerCase().includes(search.toLowerCase()))
+        (search === "" || i.name.toLowerCase().includes(search.toLowerCase()) || i.description.toLowerCase().includes(search.toLowerCase())),
     )
     .sort((a, b) => catIndex(a.category) - catIndex(b.category) || a.sortOrder - b.sortOrder);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 pb-24 sm:py-8">
-      <h1 className="font-display text-3xl font-bold text-espresso sm:text-4xl">The Menu</h1>
-      <p className="mt-1 text-sm text-charcoal/70 sm:text-base">
-        Order for pickup — your cup will be waiting.
-      </p>
+      <h1 className="font-display text-espresso text-3xl font-bold sm:text-4xl">The Menu</h1>
+      <p className="text-charcoal/70 mt-1 text-sm sm:text-base">Order for pickup — your cup will be waiting.</p>
 
       {/* Search — full width on mobile, compact on larger screens */}
       <input
@@ -89,25 +82,19 @@ export function Menu() {
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search the menu…"
         aria-label="Search the menu"
-        className="mt-4 w-full rounded-full border border-oat bg-white px-4 py-2 text-sm sm:max-w-sm"
+        className="border-oat mt-4 w-full rounded-full border bg-white px-4 py-2 text-sm sm:max-w-sm"
       />
 
       {/* Mobile / tablet: one horizontally swipeable category row, sticky on scroll */}
-      <div className="sticky top-16 z-30 -mx-4 mt-3 bg-cream/95 px-4 py-2 backdrop-blur lg:hidden">
+      <div className="bg-cream/95 sticky top-16 z-30 -mx-4 mt-3 px-4 py-2 backdrop-blur lg:hidden">
         <div className="relative">
-          <div
-            ref={scrollerRef}
-            onScroll={updateScrollHint}
-            className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth pr-8"
-          >
+          <div ref={scrollerRef} onScroll={updateScrollHint} className="no-scrollbar flex gap-2 overflow-x-auto scroll-smooth pr-8">
             {allCategories.map((c) => (
               <button
                 key={c}
                 onClick={() => setCategory(c)}
-                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
-                  active === c
-                    ? "bg-espresso text-cream shadow-md"
-                    : "bg-oat text-espresso hover:bg-espresso/15"
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition ${
+                  active === c ? "bg-espresso text-cream shadow-md" : "bg-oat text-espresso hover:bg-espresso/15"
                 }`}
               >
                 {c}
@@ -116,15 +103,15 @@ export function Menu() {
           </div>
           {/* "Swipe for more" hint — fades out once scrolled to the end */}
           {canScrollRight && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-cream via-cream/90 to-transparent pl-8 pr-1">
-              <ChevronRightIcon className="h-5 w-5 animate-pulse text-espresso" />
+            <div className="from-cream via-cream/90 pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l to-transparent pr-1 pl-8">
+              <ChevronRightIcon className="text-espresso h-5 w-5 animate-pulse" />
             </div>
           )}
         </div>
       </div>
 
       {/* Body: desktop category sidebar on the left, products on the right */}
-      <div className="mt-4 lg:flex lg:gap-8 lg:mt-5">
+      <div className="mt-4 lg:mt-5 lg:flex lg:gap-8">
         <aside className="hidden lg:block lg:w-56 lg:shrink-0">
           <nav className="sticky top-20 flex flex-col gap-1">
             {allCategories.map((c) => (
@@ -143,11 +130,11 @@ export function Menu() {
 
         <div className="min-w-0 flex-1">
           {loading ? (
-            <p className="mt-12 text-center text-charcoal/60">Brewing the menu…</p>
+            <p className="text-charcoal/60 mt-12 text-center">Brewing the menu…</p>
           ) : filtered.length === 0 ? (
-            <p className="mt-12 text-center text-charcoal/60">Nothing matched — try another search?</p>
+            <p className="text-charcoal/60 mt-12 text-center">Nothing matched — try another search?</p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-5">
+            <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
               {filtered.map((item) => (
                 <MenuItemCard key={item.id} item={item} />
               ))}
@@ -159,9 +146,11 @@ export function Menu() {
       {count > 0 && (
         <Link
           to="/cart"
-          className="btn-3d fixed bottom-4 left-1/2 z-40 flex w-[min(92vw,28rem)] -translate-x-1/2 items-center justify-between rounded-full bg-espresso px-6 py-3 font-semibold text-cream"
+          className="btn-3d bg-espresso text-cream fixed bottom-4 left-1/2 z-40 flex w-[min(92vw,28rem)] -translate-x-1/2 items-center justify-between rounded-full px-6 py-3 font-semibold"
         >
-          <span>View cart · {count} item{count > 1 ? "s" : ""}</span>
+          <span>
+            View cart · {count} item{count > 1 ? "s" : ""}
+          </span>
           <span>{money(subtotal)}</span>
         </Link>
       )}

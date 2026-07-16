@@ -46,7 +46,15 @@ staffRouter.get("/timesheets", async (req, res) => {
   const rows = await prisma.timeEntry.findMany({ where: { clockIn: { gte: from, lte: to } }, orderBy: { clockIn: "desc" } });
   const entries = rows.map((e) => {
     const end = e.clockOut ? e.clockOut.getTime() : Date.now();
-    return { id: e.id, staffId: e.staffId, staffName: e.staffName, clockIn: e.clockIn, clockOut: e.clockOut, minutes: Math.max(0, Math.round((end - e.clockIn.getTime()) / 60000)), open: !e.clockOut };
+    return {
+      id: e.id,
+      staffId: e.staffId,
+      staffName: e.staffName,
+      clockIn: e.clockIn,
+      clockOut: e.clockOut,
+      minutes: Math.max(0, Math.round((end - e.clockIn.getTime()) / 60000)),
+      open: !e.clockOut,
+    };
   });
   const byStaff = new Map<number, { staffId: number; staffName: string; minutes: number; shifts: number; open: boolean }>();
   for (const e of entries) {
@@ -71,7 +79,15 @@ staffRouter.delete("/timesheets/:id", async (req, res) => {
 staffRouter.get("/tabs", async (_req, res) => {
   const orders = await prisma.order.findMany({
     where: { paymentMethod: "SALARY", staffPurchaseId: { not: null }, staffTabSettledAt: null },
-    select: { id: true, number: true, total: true, createdAt: true, staffPurchaseId: true, staffPurchaseName: true, items: { select: { name: true, quantity: true } } },
+    select: {
+      id: true,
+      number: true,
+      total: true,
+      createdAt: true,
+      staffPurchaseId: true,
+      staffPurchaseName: true,
+      items: { select: { name: true, quantity: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
   type TabOrder = { id: number; number: string; total: number; createdAt: Date; items: { name: string; quantity: number }[] };
@@ -107,13 +123,23 @@ staffRouter.post("/:id/settle-tab", async (req, res) => {
 
 // POST /api/staff  { name, pin, role }
 staffRouter.post("/", async (req, res) => {
-  const name = String(req.body?.name ?? "").trim().slice(0, 60);
+  const name = String(req.body?.name ?? "")
+    .trim()
+    .slice(0, 60);
   const pin = String(req.body?.pin ?? "").trim();
   const role = String(req.body?.role ?? "CASHIER").toUpperCase() === "MANAGER" ? "MANAGER" : "CASHIER";
   if (!name) return res.status(400).json({ error: "Name is required." });
   if (!/^\d{4,6}$/.test(pin)) return res.status(400).json({ error: "PIN must be 4–6 digits." });
   const staff = await prisma.staffUser.create({ data: { name, pinHash: await bcrypt.hash(pin, 8), role } });
-  await audit(actorCtx(req), { section: "Staff", action: "staff_created", description: `Created staff ${staff.name} (${role})`, entity: "Staff", entityId: staff.id, entityName: staff.name, newValue: { role } });
+  await audit(actorCtx(req), {
+    section: "Staff",
+    action: "staff_created",
+    description: `Created staff ${staff.name} (${role})`,
+    entity: "Staff",
+    entityId: staff.id,
+    entityName: staff.name,
+    newValue: { role },
+  });
   res.status(201).json(publicStaff(staff));
 });
 
@@ -133,13 +159,36 @@ staffRouter.patch("/:id", async (req, res) => {
   const staff = await prisma.staffUser.update({ where: { id }, data });
   const actor = actorCtx(req);
   if (before && "role" in data && before.role !== staff.role) {
-    await audit(actor, { section: "Staff", action: "role_changed", description: `${staff.name} role ${before.role} → ${staff.role}`, entity: "Staff", entityId: id, entityName: staff.name, oldValue: { role: before.role }, newValue: { role: staff.role } });
+    await audit(actor, {
+      section: "Staff",
+      action: "role_changed",
+      description: `${staff.name} role ${before.role} → ${staff.role}`,
+      entity: "Staff",
+      entityId: id,
+      entityName: staff.name,
+      oldValue: { role: before.role },
+      newValue: { role: staff.role },
+    });
   }
   if ("pinHash" in data) {
-    await audit(actor, { section: "Staff", action: "pin_changed", description: `PIN changed for ${staff.name}`, entity: "Staff", entityId: id, entityName: staff.name });
+    await audit(actor, {
+      section: "Staff",
+      action: "pin_changed",
+      description: `PIN changed for ${staff.name}`,
+      entity: "Staff",
+      entityId: id,
+      entityName: staff.name,
+    });
   }
   if (before && "isActive" in data && before.isActive !== staff.isActive) {
-    await audit(actor, { section: "Staff", action: staff.isActive ? "staff_enabled" : "staff_disabled", description: `${staff.name} ${staff.isActive ? "enabled" : "disabled"}`, entity: "Staff", entityId: id, entityName: staff.name });
+    await audit(actor, {
+      section: "Staff",
+      action: staff.isActive ? "staff_enabled" : "staff_disabled",
+      description: `${staff.name} ${staff.isActive ? "enabled" : "disabled"}`,
+      entity: "Staff",
+      entityId: id,
+      entityName: staff.name,
+    });
   }
   res.json(publicStaff(staff));
 });

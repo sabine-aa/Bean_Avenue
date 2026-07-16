@@ -71,17 +71,17 @@ export function MapPicker({ lat, lng, onChange }: MapPickerProps) {
     navigator.geolocation.getCurrentPosition(
       (p) => onChangeRef.current({ lat: p.coords.latitude, lng: p.coords.longitude }),
       () => {},
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 8000 },
     );
   }
 
   if (status === "unavailable") {
     return (
-      <div className="rounded-xl border border-dashed border-oat bg-oat/30 p-4 text-sm">
-        <p className="font-semibold text-espresso">📍 Pin your location (optional)</p>
-        <p className="mt-1 text-xs text-charcoal/60">
-          Map picker isn't available right now. You can paste coordinates from Google Maps, or just
-          fill in the address fields — staff will still get a maps link.
+      <div className="border-oat bg-oat/30 rounded-xl border border-dashed p-4 text-sm">
+        <p className="text-espresso font-semibold">📍 Pin your location (optional)</p>
+        <p className="text-charcoal/60 mt-1 text-xs">
+          Map picker isn't available right now. You can paste coordinates from Google Maps, or just fill in the address fields — staff will still get a maps
+          link.
         </p>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <input
@@ -89,17 +89,17 @@ export function MapPicker({ lat, lng, onChange }: MapPickerProps) {
             placeholder="Latitude"
             value={lat ?? ""}
             onChange={(e) => onChange({ lat: Number(e.target.value), lng: lng ?? 0 })}
-            className="rounded-lg border border-oat px-3 py-2 text-sm"
+            className="border-oat rounded-lg border px-3 py-2 text-sm"
           />
           <input
             inputMode="decimal"
             placeholder="Longitude"
             value={lng ?? ""}
             onChange={(e) => onChange({ lat: lat ?? 0, lng: Number(e.target.value) })}
-            className="rounded-lg border border-oat px-3 py-2 text-sm"
+            className="border-oat rounded-lg border px-3 py-2 text-sm"
           />
         </div>
-        <button type="button" onClick={useMyLocation} className="mt-2 text-xs font-semibold text-terracotta hover:underline">
+        <button type="button" onClick={useMyLocation} className="text-terracotta mt-2 text-xs font-semibold hover:underline">
           Use my current location
         </button>
       </div>
@@ -109,15 +109,15 @@ export function MapPicker({ lat, lng, onChange }: MapPickerProps) {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-espresso">📍 Pin your exact location</p>
-        <button type="button" onClick={useMyLocation} className="text-xs font-semibold text-terracotta hover:underline">
+        <p className="text-espresso text-sm font-semibold">📍 Pin your exact location</p>
+        <button type="button" onClick={useMyLocation} className="text-terracotta text-xs font-semibold hover:underline">
           Use my location
         </button>
       </div>
-      <div ref={mapEl} className="mt-2 h-52 w-full overflow-hidden rounded-xl border border-oat bg-oat/40" />
-      {status === "loading" && <p className="mt-1 text-xs text-charcoal/50">Loading map…</p>}
+      <div ref={mapEl} className="border-oat bg-oat/40 mt-2 h-52 w-full overflow-hidden rounded-xl border" />
+      {status === "loading" && <p className="text-charcoal/50 mt-1 text-xs">Loading map…</p>}
       {lat != null && lng != null && (
-        <p className="mt-1 text-xs text-charcoal/50">
+        <p className="text-charcoal/50 mt-1 text-xs">
           Pinned at {lat.toFixed(5)}, {lng.toFixed(5)} — drag the marker to fine-tune.
         </p>
       )}

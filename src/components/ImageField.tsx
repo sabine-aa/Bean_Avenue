@@ -17,8 +17,14 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Couldn't read the image.")); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Couldn't read the image."));
+    };
     img.src = url;
   });
 }
@@ -34,16 +40,21 @@ async function downscaleToDataUrl(file: File, maxDim = 1000, quality = 0.82): Pr
   let source: CanvasImageSource;
   try {
     const bmp = await createImageBitmap(file);
-    width = bmp.width; height = bmp.height; source = bmp;
+    width = bmp.width;
+    height = bmp.height;
+    source = bmp;
   } catch {
     const img = await loadImage(file);
-    width = img.naturalWidth; height = img.naturalHeight; source = img;
+    width = img.naturalWidth;
+    height = img.naturalHeight;
+    source = img;
   }
   const scale = Math.min(1, maxDim / Math.max(width, height));
   const w = Math.max(1, Math.round(width * scale));
   const h = Math.max(1, Math.round(height * scale));
   const canvas = document.createElement("canvas");
-  canvas.width = w; canvas.height = h;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return readDataUrl(file); // no canvas → send original
   ctx.fillStyle = "#ffffff";
@@ -94,7 +105,7 @@ export function ImageField({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed border-oat bg-oat/30 text-xs font-semibold text-charcoal/50 transition hover:border-espresso disabled:opacity-60"
+          className="border-oat bg-oat/30 text-charcoal/50 hover:border-espresso relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-dashed text-xs font-semibold transition disabled:opacity-60"
         >
           {value ? <Img src={value} alt="" className="h-full w-full" /> : busy ? "…" : "Upload"}
         </button>
@@ -104,13 +115,13 @@ export function ImageField({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               placeholder={placeholder}
-              className="min-w-0 flex-1 rounded-xl border border-oat px-3 py-2 text-sm"
+              className="border-oat min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm"
             />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="btn-3d shrink-0 rounded-xl bg-espresso px-4 py-2 text-sm font-semibold text-cream disabled:opacity-60"
+              className="btn-3d bg-espresso text-cream shrink-0 rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-60"
             >
               {busy ? "Uploading…" : "Upload"}
             </button>
@@ -118,14 +129,14 @@ export function ImageField({
               <button
                 type="button"
                 onClick={() => onChange("")}
-                className="shrink-0 rounded-xl border border-oat px-3 py-2 text-sm font-semibold text-charcoal/60 hover:border-terracotta hover:text-terracotta-dark"
+                className="border-oat text-charcoal/60 hover:border-terracotta hover:text-terracotta-dark shrink-0 rounded-xl border px-3 py-2 text-sm font-semibold"
               >
                 Clear
               </button>
             )}
           </div>
-          <p className="mt-1 text-xs text-charcoal/45">JPG, PNG, WEBP or GIF · up to 8 MB. Or paste a link.</p>
-          {error && <p className="mt-0.5 text-xs font-medium text-terracotta-dark">{error}</p>}
+          <p className="text-charcoal/45 mt-1 text-xs">JPG, PNG, WEBP or GIF · up to 8 MB. Or paste a link.</p>
+          {error && <p className="text-terracotta-dark mt-0.5 text-xs font-medium">{error}</p>}
         </div>
       </div>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => handleFile(e.target.files?.[0])} />

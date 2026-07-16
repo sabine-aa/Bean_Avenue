@@ -19,10 +19,7 @@ deliveryRouter.get("/config", async (_req, res) => {
 // POST /api/delivery/quote  { area, lat?, lng?, subtotal } — check availability + fee
 deliveryRouter.post("/quote", async (req, res) => {
   const subtotal = round2(Number(req.body.subtotal) || 0);
-  const quote = await quoteDelivery(
-    { area: req.body.area, lat: Number(req.body.lat), lng: Number(req.body.lng) },
-    subtotal
-  );
+  const quote = await quoteDelivery({ area: req.body.area, lat: Number(req.body.lat), lng: Number(req.body.lng) }, subtotal);
   res.json(quote);
 });
 
@@ -39,10 +36,14 @@ function cleanZone(body: Record<string, unknown>) {
     return v === "" || v == null || !Number.isFinite(n) ? null : n;
   };
   return {
-    name: String(body.name ?? "").trim().slice(0, 120),
+    name: String(body.name ?? "")
+      .trim()
+      .slice(0, 120),
     fee: Math.max(0, round2(Number(body.fee) || 0)),
     minOrder: Math.max(0, round2(Number(body.minOrder) || 0)),
-    estimatedTime: String(body.estimatedTime ?? "").trim().slice(0, 60),
+    estimatedTime: String(body.estimatedTime ?? "")
+      .trim()
+      .slice(0, 60),
     maxDistanceKm: numOrNull(body.maxDistanceKm),
     centerLat: numOrNull(body.centerLat),
     centerLng: numOrNull(body.centerLng),

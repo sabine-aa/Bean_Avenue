@@ -20,7 +20,9 @@ export const posRouter = Router();
 // Which register/device is making the request (multi-terminal). Each terminal
 // runs its own independent shift + cash drawer.
 const terminalOf = (req: { headers: Record<string, unknown> }) =>
-  String(req.headers["x-pos-terminal"] || "").trim().slice(0, 40) || "Register 1";
+  String(req.headers["x-pos-terminal"] || "")
+    .trim()
+    .slice(0, 40) || "Register 1";
 
 // The open shift for a given register, or null.
 const openShift = (terminal: string) => prisma.shift.findFirst({ where: { status: "OPEN", terminal }, orderBy: { openedAt: "desc" } });
@@ -109,7 +111,15 @@ posRouter.post("/shift/open", async (req, res) => {
   const shift = await prisma.shift.create({
     data: { staffId: req.staffId!, staffName: req.staffName ?? "Staff", terminal, openingFloat, status: "OPEN" },
   });
-  await audit(actorCtx(req), { section: "Register", action: "shift_opened", description: `Opened ${terminal} with $${openingFloat.toFixed(2)} float`, entity: "Shift", entityId: shift.id, entityName: terminal, newValue: { openingFloat } });
+  await audit(actorCtx(req), {
+    section: "Register",
+    action: "shift_opened",
+    description: `Opened ${terminal} with $${openingFloat.toFixed(2)} float`,
+    entity: "Shift",
+    entityId: shift.id,
+    entityName: terminal,
+    newValue: { openingFloat },
+  });
   res.status(201).json(await withTotals(shift));
 });
 
@@ -128,15 +138,22 @@ posRouter.post("/shift/close", async (req, res) => {
       countedCash,
       expectedCash: t.expectedCash,
       difference,
-      note: String(req.body?.note ?? "").trim().slice(0, 300) || null,
+      note:
+        String(req.body?.note ?? "")
+          .trim()
+          .slice(0, 300) || null,
     },
   });
   const diffWord = Math.abs(difference) < 0.005 ? "balanced" : difference < 0 ? `short $${Math.abs(difference).toFixed(2)}` : `over $${difference.toFixed(2)}`;
   await audit(actorCtx(req), {
-    section: "Register", action: "shift_closed",
+    section: "Register",
+    action: "shift_closed",
     description: `Closed ${shift.terminal}. Expected $${t.expectedCash.toFixed(2)}, counted $${countedCash.toFixed(2)} — ${diffWord}`,
-    entity: "Shift", entityId: shift.id, entityName: shift.terminal,
-    oldValue: { expected: t.expectedCash }, newValue: { counted: countedCash, difference },
+    entity: "Shift",
+    entityId: shift.id,
+    entityName: shift.terminal,
+    oldValue: { expected: t.expectedCash },
+    newValue: { counted: countedCash, difference },
   });
   res.json({ ...(await withTotals(closed)), difference });
 });
@@ -148,13 +165,23 @@ posRouter.post("/cash", async (req, res) => {
   const type = String(req.body?.type ?? "").toUpperCase() === "PAYOUT" ? "PAYOUT" : "PAYIN";
   const amount = round2(Math.max(0, Number(req.body?.amount) || 0));
   if (amount <= 0) return res.status(400).json({ error: "Enter an amount." });
-  const reason = String(req.body?.reason ?? "").trim().slice(0, 200);
+  const reason = String(req.body?.reason ?? "")
+    .trim()
+    .slice(0, 200);
   await prisma.cashMovement.create({ data: { shiftId: shift.id, type, amount, reason, staffName: req.staffName ?? "Staff" } });
   await prisma.shift.update({
     where: { id: shift.id },
     data: type === "PAYIN" ? { cashPayIns: { increment: amount } } : { cashPayOuts: { increment: amount } },
   });
-  await audit(actorCtx(req), { section: "Register", action: type === "PAYIN" ? "cash_in" : "cash_out", description: `${type === "PAYIN" ? "Cash in" : "Cash out"} $${amount.toFixed(2)} on ${shift.terminal}${reason ? ` (${reason})` : ""}`, entity: "Shift", entityId: shift.id, entityName: shift.terminal, newValue: { type, amount, reason } });
+  await audit(actorCtx(req), {
+    section: "Register",
+    action: type === "PAYIN" ? "cash_in" : "cash_out",
+    description: `${type === "PAYIN" ? "Cash in" : "Cash out"} $${amount.toFixed(2)} on ${shift.terminal}${reason ? ` (${reason})` : ""}`,
+    entity: "Shift",
+    entityId: shift.id,
+    entityName: shift.terminal,
+    newValue: { type, amount, reason },
+  });
   res.json(await withTotals((await openShift(terminalOf(req)))!));
 });
 
@@ -164,7 +191,22 @@ posRouter.post("/sale", async (req, res) => {
   const shift = await openShift(terminal);
   if (!shift) return res.status(400).json({ error: "Open a shift before selling." });
 
-  const body = req.body as { items: IncomingItem[]; paymentMethod?: string; discount?: number; customerPhone?: string; customerName?: string; orderType?: string; tableNumber?: string; clientRef?: string; cardApprovalCode?: string; cardLast4?: string; cardBrand?: string; staffDiscountId?: number; staffTabPin?: string; shopItems?: { shopProductId: number; quantity: number }[] };
+  const body = req.body as {
+    items: IncomingItem[];
+    paymentMethod?: string;
+    discount?: number;
+    customerPhone?: string;
+    customerName?: string;
+    orderType?: string;
+    tableNumber?: string;
+    clientRef?: string;
+    cardApprovalCode?: string;
+    cardLast4?: string;
+    cardBrand?: string;
+    staffDiscountId?: number;
+    staffTabPin?: string;
+    shopItems?: { shopProductId: number; quantity: number }[];
+  };
   const shopItemsRaw = Array.isArray(body.shopItems) ? body.shopItems : [];
   if (!body.items?.length && !shopItemsRaw.length) return res.status(400).json({ error: "No items in the sale." });
 
@@ -187,7 +229,12 @@ posRouter.post("/sale", async (req, res) => {
     if (existing) return res.status(200).json(outOrder(existing));
   }
   const orderType = String(body.orderType ?? "TAKEAWAY").toUpperCase() === "DINE_IN" ? "DINE_IN" : "TAKEAWAY";
-  const tableNumber = orderType === "DINE_IN" ? String(body.tableNumber ?? "").trim().slice(0, 20) || null : null;
+  const tableNumber =
+    orderType === "DINE_IN"
+      ? String(body.tableNumber ?? "")
+          .trim()
+          .slice(0, 20) || null
+      : null;
 
   // Block overselling any stock-tracked item before we take payment.
   const stockError = await validateStock((body.items ?? []).map((i) => ({ menuItemId: i.menuItemId, quantity: Number(i.quantity) || 1 })));
@@ -201,7 +248,16 @@ posRouter.post("/sale", async (req, res) => {
 
   // Retail (shop) products: simple physical goods sold as-is. Validate stock,
   // build order-item lines (no recipe/options), and deduct after the sale saves.
-  const shopBuilt: { menuItemId: null; name: string; unitPrice: number; quantity: number; selectedOptions: string; addons: string; specialInstructions: null; lineTotal: number }[] = [];
+  const shopBuilt: {
+    menuItemId: null;
+    name: string;
+    unitPrice: number;
+    quantity: number;
+    selectedOptions: string;
+    addons: string;
+    specialInstructions: null;
+    lineTotal: number;
+  }[] = [];
   const shopConsume: { shopProductId: number; quantity: number }[] = [];
   for (const s of shopItemsRaw) {
     const qty = Math.max(1, Math.round(Number(s.quantity) || 1));
@@ -209,7 +265,16 @@ posRouter.post("/sale", async (req, res) => {
     if (!p || p.isHidden || !p.availablePos) return res.status(400).json({ error: "A retail product in the sale is no longer available." });
     if (p.quantity < qty) return res.status(409).json({ error: `Only ${p.quantity} of ${p.name} left in stock.` });
     const lineTotal = round2(p.price * qty);
-    shopBuilt.push({ menuItemId: null, name: p.name, unitPrice: p.price, quantity: qty, selectedOptions: "[]", addons: "[]", specialInstructions: null, lineTotal });
+    shopBuilt.push({
+      menuItemId: null,
+      name: p.name,
+      unitPrice: p.price,
+      quantity: qty,
+      selectedOptions: "[]",
+      addons: "[]",
+      specialInstructions: null,
+      lineTotal,
+    });
     shopConsume.push({ shopProductId: p.id, quantity: qty });
   }
 
@@ -222,7 +287,11 @@ posRouter.post("/sale", async (req, res) => {
   const staffDiscId = Number(body.staffDiscountId) || 0;
   if (staffDiscId && pos.staffDiscount > 0) {
     const sp = await prisma.staffUser.findUnique({ where: { id: staffDiscId } });
-    if (sp) { staffPurchaseId = sp.id; staffPurchaseName = sp.name; staffPurchaseUser = sp; }
+    if (sp) {
+      staffPurchaseId = sp.id;
+      staffPurchaseName = sp.name;
+      staffPurchaseUser = sp;
+    }
   }
   // "Charge to salary" is only valid on a staff purchase — it goes on that staff
   // member's tab and is deducted from their salary later. The staff member must
@@ -245,7 +314,10 @@ posRouter.post("/sale", async (req, res) => {
 
   // Card sales go through the configured terminal provider (standalone bank
   // machine today) which normalises the approval code / card reference.
-  const card = method === "CARD" ? await (await terminalProvider()).capture(total, { approvalCode: body.cardApprovalCode, last4: body.cardLast4, brand: body.cardBrand }) : null;
+  const card =
+    method === "CARD"
+      ? await (await terminalProvider()).capture(total, { approvalCode: body.cardApprovalCode, last4: body.cardLast4, brand: body.cardBrand })
+      : null;
 
   let customer = null;
   const phone = String(body.customerPhone ?? "").trim();
@@ -307,11 +379,38 @@ posRouter.post("/sale", async (req, res) => {
   // Audit the accountability-sensitive parts of a sale: discounts + staff tabs.
   const actor = actorCtx(req);
   if (isTab) {
-    await audit(actor, { section: "POS", action: "charge_to_salary", description: `${staffPurchaseName} charged $${total.toFixed(2)} to their salary tab on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { staff: staffPurchaseName, amount: total, discount } });
+    await audit(actor, {
+      section: "POS",
+      action: "charge_to_salary",
+      description: `${staffPurchaseName} charged $${total.toFixed(2)} to their salary tab on ${order.number}`,
+      entity: "Order",
+      entityId: order.id,
+      entityName: order.number,
+      orderNumber: order.number,
+      newValue: { staff: staffPurchaseName, amount: total, discount },
+    });
   } else if (staffPurchaseId) {
-    await audit(actor, { section: "POS", action: "staff_discount", description: `Staff discount (${pos.staffDiscount}%, −$${discount.toFixed(2)}) for ${staffPurchaseName} on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { staff: staffPurchaseName, discount } });
+    await audit(actor, {
+      section: "POS",
+      action: "staff_discount",
+      description: `Staff discount (${pos.staffDiscount}%, −$${discount.toFixed(2)}) for ${staffPurchaseName} on ${order.number}`,
+      entity: "Order",
+      entityId: order.id,
+      entityName: order.number,
+      orderNumber: order.number,
+      newValue: { staff: staffPurchaseName, discount },
+    });
   } else if (discount > 0) {
-    await audit(actor, { section: "POS", action: "discount_applied", description: `Discount −$${discount.toFixed(2)} on ${order.number}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { discount } });
+    await audit(actor, {
+      section: "POS",
+      action: "discount_applied",
+      description: `Discount −$${discount.toFixed(2)} on ${order.number}`,
+      entity: "Order",
+      entityId: order.id,
+      entityName: order.number,
+      orderNumber: order.number,
+      newValue: { discount },
+    });
   }
 
   res.status(201).json(outOrder(order));
@@ -351,7 +450,9 @@ posRouter.post("/booking", async (req, res) => {
   if (peopleCount < room.capacityMin || peopleCount > room.capacityMax)
     return res.status(400).json({ error: `${room.name} fits ${room.capacityMin}–${room.capacityMax} people.` });
 
-  const [y, m, d] = String(b.date ?? "").split("-").map(Number);
+  const [y, m, d] = String(b.date ?? "")
+    .split("-")
+    .map(Number);
   const startHour = Number(b.startHour);
   const durationHours = Math.max(1, Number(b.durationHours) || 1);
   if (!y || !m || !d || Number.isNaN(startHour)) return res.status(400).json({ error: "Choose a date and start time." });
@@ -371,16 +472,32 @@ posRouter.post("/booking", async (req, res) => {
 
   const booking = await prisma.booking.create({
     data: {
-      number: genNumber("BK"), roomId: room.id, customerId: customer?.id, customerName, phone: phone || "-",
-      startTime: start, endTime: end, durationHours, peopleCount, notes: String(b.notes ?? "").trim() || null,
-      total, status: "CONFIRMED", beansEarned, bookedBy: req.staffName ?? "Staff",
+      number: genNumber("BK"),
+      roomId: room.id,
+      customerId: customer?.id,
+      customerName,
+      phone: phone || "-",
+      startTime: start,
+      endTime: end,
+      durationHours,
+      peopleCount,
+      notes: String(b.notes ?? "").trim() || null,
+      total,
+      status: "CONFIRMED",
+      beansEarned,
+      bookedBy: req.staffName ?? "Staff",
     },
     include: { room: true },
   });
 
   if (customer) {
     await earnBeans(customer.id, beansEarned, "Booking", booking.number);
-    await notify(customer.id, { type: "BOOKING", title: "Booking confirmed", message: `Your ${room.name} booking ${booking.number} is confirmed.`, link: `/booking-success/${booking.number}` });
+    await notify(customer.id, {
+      type: "BOOKING",
+      title: "Booking confirmed",
+      message: `Your ${room.name} booking ${booking.number} is confirmed.`,
+      link: `/booking-success/${booking.number}`,
+    });
   }
 
   res.status(201).json(outBooking(booking));

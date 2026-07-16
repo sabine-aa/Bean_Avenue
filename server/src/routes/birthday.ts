@@ -2,13 +2,7 @@ import { Router } from "express";
 import { requireAdmin } from "../auth";
 import { prisma } from "../db";
 import { actorCtx, audit } from "../lib/activity";
-import {
-  activeWindow,
-  effectiveStatus,
-  genBirthdayCode,
-  getBirthdaySettings,
-  saveBirthdaySettings,
-} from "../lib/birthday";
+import { activeWindow, effectiveStatus, genBirthdayCode, getBirthdaySettings, saveBirthdaySettings } from "../lib/birthday";
 import { notify } from "../lib/notify";
 
 export const birthdayRouter = Router();
@@ -59,8 +53,24 @@ birthdayRouter.patch("/vouchers/:id", async (req, res) => {
   const beforeV = await prisma.birthdayVoucher.findUnique({ where: { id } });
   const voucher = await prisma.birthdayVoucher.update({ where: { id }, data });
   if (beforeV && beforeV.status !== voucher.status) {
-    const act = status === "USED" ? "birthday_reward_used" : status === "CANCELLED" ? "birthday_reward_cancelled" : status === "AVAILABLE" ? "birthday_reward_reverted" : "birthday_reward_updated";
-    await audit(actorCtx(req), { section: "Loyalty", action: act, description: `Birthday ${voucher.rewardName} (${voucher.code}) for ${voucher.customerName}: ${beforeV.status} → ${voucher.status}`, entity: "BirthdayVoucher", entityId: id, entityName: voucher.code, oldValue: { status: beforeV.status }, newValue: { status: voucher.status } });
+    const act =
+      status === "USED"
+        ? "birthday_reward_used"
+        : status === "CANCELLED"
+          ? "birthday_reward_cancelled"
+          : status === "AVAILABLE"
+            ? "birthday_reward_reverted"
+            : "birthday_reward_updated";
+    await audit(actorCtx(req), {
+      section: "Loyalty",
+      action: act,
+      description: `Birthday ${voucher.rewardName} (${voucher.code}) for ${voucher.customerName}: ${beforeV.status} → ${voucher.status}`,
+      entity: "BirthdayVoucher",
+      entityId: id,
+      entityName: voucher.code,
+      oldValue: { status: beforeV.status },
+      newValue: { status: voucher.status },
+    });
   }
   if (status === "USED") {
     await notify(voucher.customerId, {
@@ -130,9 +140,7 @@ birthdayRouter.post("/issue", async (req, res) => {
   // Use the active window if there is one; otherwise anchor to this year's birthday.
   const win = activeWindow(customer.birthday, s, now);
   const year = win ? win.year : now.getFullYear();
-  const expiresAt = win
-    ? win.end
-    : new Date(now.getTime() + (s.daysAfter + 1) * 86_400_000);
+  const expiresAt = win ? win.end : new Date(now.getTime() + (s.daysAfter + 1) * 86_400_000);
 
   const existing = await prisma.birthdayVoucher.findUnique({
     where: { customerId_year: { customerId, year } },
@@ -158,6 +166,14 @@ birthdayRouter.post("/issue", async (req, res) => {
     message: `Your ${s.rewardName} voucher is ready — show it at the counter to claim your free cupcake.`,
     link: "/account?tab=rewards",
   });
-  await audit(actorCtx(req), { section: "Loyalty", action: "birthday_reward_issued", description: `Issued ${voucher.rewardName} birthday voucher (${voucher.code}) to ${voucher.customerName}`, entity: "BirthdayVoucher", entityId: voucher.id, entityName: voucher.code, newValue: { year, customer: voucher.customerName } });
+  await audit(actorCtx(req), {
+    section: "Loyalty",
+    action: "birthday_reward_issued",
+    description: `Issued ${voucher.rewardName} birthday voucher (${voucher.code}) to ${voucher.customerName}`,
+    entity: "BirthdayVoucher",
+    entityId: voucher.id,
+    entityName: voucher.code,
+    newValue: { year, customer: voucher.customerName },
+  });
   res.status(201).json(withEffective(voucher));
 });

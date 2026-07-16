@@ -111,15 +111,7 @@ export type Fulfillment = "PICKUP" | "DELIVERY";
 
 export type PaymentMethod = "ONLINE" | "CASH_ON_DELIVERY" | "CASH_AT_PICKUP" | "CASH" | "CARD" | "WHISH" | "SALARY";
 
-export type PaymentStatus =
-  | "PENDING"
-  | "PAID"
-  | "FAILED"
-  | "CANCELLED"
-  | "REFUNDED"
-  | "PARTIALLY_REFUNDED"
-  | "CASH_DUE"
-  | "CASH_COLLECTED";
+export type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED" | "PARTIALLY_REFUNDED" | "CASH_DUE" | "CASH_COLLECTED";
 
 export type OrderStatus =
   | "AWAITING_PAYMENT"
@@ -295,13 +287,7 @@ export interface Room {
   bufferMinutes: number;
 }
 
-export type BookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "IN_USE"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "NO_SHOW";
+export type BookingStatus = "PENDING" | "CONFIRMED" | "IN_USE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 
 export interface Booking {
   id: number;

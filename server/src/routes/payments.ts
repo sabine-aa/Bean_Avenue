@@ -219,7 +219,7 @@ paymentsRouter.post("/whish/confirm", optionalCustomer, async (req, res) => {
 // POST /api/payments/whish/callback — server webhook the REAL Whish calls. We
 // don't trust the body: we re-check the collection status with Whish, then settle.
 paymentsRouter.post("/whish/callback", async (req, res) => {
-  const externalId = String((req.body?.externalId ?? (req.query as Record<string, string>).externalId) ?? "");
+  const externalId = String(req.body?.externalId ?? (req.query as Record<string, string>).externalId ?? "");
   if (!externalId) return res.status(400).json({ error: "Missing externalId." });
   const order = await prisma.order.findUnique({ where: { number: externalId } });
   if (!order) return res.status(404).json({ error: "Order not found." });
@@ -355,7 +355,13 @@ paymentsRouter.post("/:id/refund", requireAdmin, async (req, res) => {
         link: `/order-success/${order.number}`,
       });
     }
-    await logActivity(actor, "REFUND", `Refunded $${requested.toFixed(2)} on ${payment.transactionId} (order ${order?.number ?? "?"})`, "payment", payment.transactionId);
+    await logActivity(
+      actor,
+      "REFUND",
+      `Refunded $${requested.toFixed(2)} on ${payment.transactionId} (order ${order?.number ?? "?"})`,
+      "payment",
+      payment.transactionId,
+    );
   }
   const updated = await prisma.payment.findUnique({ where: { id } });
   res.json(updated);

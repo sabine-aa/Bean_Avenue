@@ -33,7 +33,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setAdminName(null);
       },
     }),
-    [isAuthed, adminName]
+    [isAuthed, adminName],
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

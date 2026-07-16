@@ -48,7 +48,10 @@ export async function flushQueue(): Promise<number> {
     for (const item of getQueue()) {
       try {
         await posApi.post("/api/pos/sale", item.payload); // server dedupes by clientRef
-        write(QUEUE_KEY, getQueue().filter((x) => x.clientRef !== item.clientRef));
+        write(
+          QUEUE_KEY,
+          getQueue().filter((x) => x.clientRef !== item.clientRef),
+        );
       } catch {
         break; // network still down (or a blocking error) — retry later
       }

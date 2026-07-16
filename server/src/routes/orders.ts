@@ -24,8 +24,14 @@ export interface IncomingItem {
   specialInstructions?: string;
 }
 
-interface OptionChoice { label: string; priceDelta: number }
-interface OptionGroup { name: string; choices: OptionChoice[] }
+interface OptionChoice {
+  label: string;
+  priceDelta: number;
+}
+interface OptionGroup {
+  name: string;
+  choices: OptionChoice[];
+}
 
 interface BuiltLine {
   menuItemId: number;
@@ -40,7 +46,7 @@ interface BuiltLine {
 
 /** Resolve cart lines against the live menu (never trust client prices). */
 export async function buildLines(
-  items: IncomingItem[]
+  items: IncomingItem[],
 ): Promise<{ built: BuiltLine[]; meta: { category: string; unitPrice: number }[]; addonsTotal: number } | { error: string }> {
   const built: BuiltLine[] = [];
   const meta: { category: string; unitPrice: number }[] = [];
@@ -67,9 +73,7 @@ export async function buildLines(
     const lineAddonTotal = resolvedAddons.reduce((s, a) => s + a.price * a.quantity, 0);
     const quantity = Number(line.quantity) || 1;
     const unitPrice = round2(menuItem.price + selected.reduce((s, o) => s + o.priceDelta, 0) + lineAddonTotal);
-    const specialInstructions = line.specialInstructions
-      ? String(line.specialInstructions).trim().slice(0, 300) || null
-      : null;
+    const specialInstructions = line.specialInstructions ? String(line.specialInstructions).trim().slice(0, 300) || null : null;
 
     addonsTotal += lineAddonTotal * quantity;
     built.push({
@@ -96,7 +100,7 @@ async function loyaltyDiscountFor(
   code: string | undefined,
   customerId: number | undefined,
   meta: { category: string; unitPrice: number }[],
-  subtotal: number
+  subtotal: number,
 ): Promise<number> {
   if (!code || !customerId) return 0;
   const redemption = await prisma.redemption.findUnique({ where: { code: code.trim() }, include: { reward: true } });
@@ -127,9 +131,18 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
     paymentMethod?: string;
     items: IncomingItem[];
     delivery?: {
-      name?: string; phone?: string; label?: string; addressLine?: string;
-      building?: string; floor?: string; apartment?: string; area?: string;
-      landmark?: string; instructions?: string; lat?: number; lng?: number;
+      name?: string;
+      phone?: string;
+      label?: string;
+      addressLine?: string;
+      building?: string;
+      floor?: string;
+      apartment?: string;
+      area?: string;
+      landmark?: string;
+      instructions?: string;
+      lat?: number;
+      lng?: number;
     };
   };
 
@@ -179,16 +192,41 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
       zoneId: quote.zone!.id,
       zoneName: quote.zone!.name,
       estimatedDelivery: quote.zone!.estimatedTime,
-      deliveryName: String(d.name ?? customerName).trim().slice(0, 120),
-      deliveryPhone: String(d.phone ?? phone).trim().slice(0, 30),
+      deliveryName: String(d.name ?? customerName)
+        .trim()
+        .slice(0, 120),
+      deliveryPhone: String(d.phone ?? phone)
+        .trim()
+        .slice(0, 30),
       addressLabel: d.label ? String(d.label).slice(0, 20) : null,
-      addressLine: String(d.addressLine ?? "").trim().slice(0, 200) || null,
-      building: String(d.building ?? "").trim().slice(0, 120) || null,
-      floor: String(d.floor ?? "").trim().slice(0, 60) || null,
-      apartment: String(d.apartment ?? "").trim().slice(0, 60) || null,
-      area: String(d.area ?? "").trim().slice(0, 120) || null,
-      landmark: String(d.landmark ?? "").trim().slice(0, 200) || null,
-      deliveryInstructions: String(d.instructions ?? "").trim().slice(0, 400) || null,
+      addressLine:
+        String(d.addressLine ?? "")
+          .trim()
+          .slice(0, 200) || null,
+      building:
+        String(d.building ?? "")
+          .trim()
+          .slice(0, 120) || null,
+      floor:
+        String(d.floor ?? "")
+          .trim()
+          .slice(0, 60) || null,
+      apartment:
+        String(d.apartment ?? "")
+          .trim()
+          .slice(0, 60) || null,
+      area:
+        String(d.area ?? "")
+          .trim()
+          .slice(0, 120) || null,
+      landmark:
+        String(d.landmark ?? "")
+          .trim()
+          .slice(0, 200) || null,
+      deliveryInstructions:
+        String(d.instructions ?? "")
+          .trim()
+          .slice(0, 400) || null,
       lat: Number.isFinite(Number(d.lat)) ? Number(d.lat) : null,
       lng: Number.isFinite(Number(d.lng)) ? Number(d.lng) : null,
     };
@@ -211,9 +249,7 @@ ordersRouter.post("/", optionalCustomer, async (req, res) => {
   const beansEarned = Math.floor(Math.max(0, subtotal - discount - loyaltyDiscount));
 
   // Prefer the logged-in (verified) customer; fall back to phone for guests.
-  let customer = req.customerId
-    ? await prisma.customer.findUnique({ where: { id: req.customerId } })
-    : null;
+  let customer = req.customerId ? await prisma.customer.findUnique({ where: { id: req.customerId } }) : null;
   if (!customer && phone) customer = await getOrCreateCustomer(phone, customerName);
 
   // Both ONLINE (card) and WHISH need the customer to pay before we confirm.
@@ -306,7 +342,10 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
     });
   }
 
-  const reason = String(req.body.reason ?? "Cancelled by customer").trim().slice(0, 200) || "Cancelled by customer";
+  const reason =
+    String(req.body.reason ?? "Cancelled by customer")
+      .trim()
+      .slice(0, 200) || "Cancelled by customer";
 
   // Refund a paid online order automatically.
   let refunded = false;
@@ -332,15 +371,22 @@ ordersRouter.post("/:number/cancel", requireCustomer, async (req, res) => {
   await reverseForOrder(order.id);
   await audit(
     { actorId: null, actorName: order.customerName || "Customer", actorRole: "Customer", source: "Website" },
-    { section: "Orders", action: "order_cancelled", description: `${order.number} cancelled by customer${refunded ? " (refunded)" : ""} — ${reason}`, entity: "Order", entityId: order.id, entityName: order.number, orderNumber: order.number, newValue: { reason, refunded } }
+    {
+      section: "Orders",
+      action: "order_cancelled",
+      description: `${order.number} cancelled by customer${refunded ? " (refunded)" : ""} — ${reason}`,
+      entity: "Order",
+      entityId: order.id,
+      entityName: order.number,
+      orderNumber: order.number,
+      newValue: { reason, refunded },
+    },
   );
 
   await notify(order.customerId, {
     type: "ORDER",
     title: "Order cancelled",
-    message: refunded
-      ? `Order ${order.number} was cancelled and your payment has been refunded.`
-      : `Order ${order.number} was cancelled.`,
+    message: refunded ? `Order ${order.number} was cancelled and your payment has been refunded.` : `Order ${order.number} was cancelled.`,
     link: `/order-success/${order.number}`,
   });
 
@@ -357,12 +403,7 @@ ordersRouter.get("/", requireAdmin, async (req, res) => {
   if (status) where.status = status;
   if (fulfillment) where.fulfillment = fulfillment;
   if (search) {
-    where.OR = [
-      { customerName: { contains: search } },
-      { phone: { contains: search } },
-      { number: { contains: search } },
-      { area: { contains: search } },
-    ];
+    where.OR = [{ customerName: { contains: search } }, { phone: { contains: search } }, { number: { contains: search } }, { area: { contains: search } }];
   }
   const orders = await prisma.order.findMany({
     where,
@@ -382,7 +423,10 @@ ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
 // PATCH /api/orders/:id/assign  (admin) — assign a delivery to a staff member/driver
 ordersRouter.patch("/:id/assign", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  const driverName = String(req.body.driverName ?? "").trim().slice(0, 120) || null;
+  const driverName =
+    String(req.body.driverName ?? "")
+      .trim()
+      .slice(0, 120) || null;
   const order = await prisma.order.update({ where: { id }, data: { driverName }, include: { items: true } });
   const actor = actorFrom(req);
   await logActivity(actor, "ASSIGN_DRIVER", `Order ${order.number} assigned to ${driverName ?? "—"}`, "order", order.number);

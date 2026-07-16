@@ -12,9 +12,7 @@ interface BusyWindow {
 function todayStr(offsetDays = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate()
-  ).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function BookRoom() {
@@ -67,9 +65,7 @@ export function BookRoom() {
       const start = new Date(y, m - 1, d, h);
       const end = new Date(y, m - 1, d, h + duration);
       const inPast = start.getTime() <= now.getTime();
-      const conflicts = busy.some(
-        (w) => start < new Date(w.end) && end > new Date(w.start)
-      );
+      const conflicts = busy.some((w) => start < new Date(w.end) && end > new Date(w.start));
       result.push({ hour: h, available: !inPast && !conflicts });
     }
     return result;
@@ -121,42 +117,29 @@ export function BookRoom() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="font-display text-4xl font-bold text-espresso">Book a Room</h1>
-      <p className="mt-2 text-charcoal/70">Three quick steps and the room's all yours.</p>
+      <h1 className="font-display text-espresso text-4xl font-bold">Book a Room</h1>
+      <p className="text-charcoal/70 mt-2">Three quick steps and the room's all yours.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 grid gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
           {/* Step 1 — Choose your space */}
           <section>
-            <h2 className="font-display text-xl font-bold text-espresso">1 · Choose your space</h2>
+            <h2 className="font-display text-espresso text-xl font-bold">1 · Choose your space</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {rooms.map((r) => (
                 <label
                   key={r.id}
                   className={`cursor-pointer rounded-2xl border-2 bg-white p-5 transition ${
-                    roomId === r.id
-                      ? "border-terracotta shadow-md"
-                      : "border-transparent shadow-sm hover:border-oat"
+                    roomId === r.id ? "border-terracotta shadow-md" : "hover:border-oat border-transparent shadow-sm"
                   } ${!r.isAvailable ? "opacity-50" : ""}`}
                 >
-                  <input
-                    type="radio"
-                    name="room"
-                    className="sr-only"
-                    disabled={!r.isAvailable}
-                    checked={roomId === r.id}
-                    onChange={() => setRoomId(r.id)}
-                  />
-                  <p className="font-display text-lg font-bold text-espresso">{r.name}</p>
-                  <p className="text-sm text-charcoal/60">
+                  <input type="radio" name="room" className="sr-only" disabled={!r.isAvailable} checked={roomId === r.id} onChange={() => setRoomId(r.id)} />
+                  <p className="font-display text-espresso text-lg font-bold">{r.name}</p>
+                  <p className="text-charcoal/60 text-sm">
                     {r.capacityMin}–{r.capacityMax} people
                   </p>
-                  <p className="mt-2 font-semibold text-terracotta">
-                    {money(r.pricePerHour)}/hour
-                  </p>
-                  {!r.isAvailable && (
-                    <p className="mt-1 text-xs text-terracotta-dark">Temporarily unavailable</p>
-                  )}
+                  <p className="text-terracotta mt-2 font-semibold">{money(r.pricePerHour)}/hour</p>
+                  {!r.isAvailable && <p className="text-terracotta-dark mt-1 text-xs">Temporarily unavailable</p>}
                 </label>
               ))}
             </div>
@@ -164,10 +147,10 @@ export function BookRoom() {
 
           {/* Step 2 — Date & time */}
           <section className={room ? "" : "pointer-events-none opacity-40"}>
-            <h2 className="font-display text-xl font-bold text-espresso">2 · Pick date & time</h2>
+            <h2 className="font-display text-espresso text-xl font-bold">2 · Pick date & time</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="date">
+                <label className="text-espresso block text-sm font-semibold" htmlFor="date">
                   Date
                 </label>
                 <input
@@ -177,11 +160,11 @@ export function BookRoom() {
                   max={todayStr(60)}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
                 />
               </div>
               <div>
-                <span className="block text-sm font-semibold text-espresso">Duration</span>
+                <span className="text-espresso block text-sm font-semibold">Duration</span>
                 <div className="mt-1 flex gap-2">
                   {[1, 2, 3].map((h) => (
                     <button
@@ -189,9 +172,7 @@ export function BookRoom() {
                       type="button"
                       onClick={() => setDuration(h)}
                       className={`flex-1 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
-                        duration === h
-                          ? "border-espresso bg-espresso text-cream"
-                          : "border-oat bg-white hover:border-espresso"
+                        duration === h ? "border-espresso bg-espresso text-cream" : "border-oat hover:border-espresso bg-white"
                       }`}
                     >
                       {h} hour{h > 1 ? "s" : ""}
@@ -202,7 +183,7 @@ export function BookRoom() {
             </div>
 
             <div className="mt-4">
-              <span className="block text-sm font-semibold text-espresso">Start time</span>
+              <span className="text-espresso block text-sm font-semibold">Start time</span>
               {slots.length > 0 ? (
                 <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
                   {slots.map((s) => (
@@ -215,8 +196,8 @@ export function BookRoom() {
                         startHour === s.hour
                           ? "border-terracotta bg-terracotta text-cream"
                           : s.available
-                            ? "border-oat bg-white hover:border-terracotta"
-                            : "cursor-not-allowed border-oat bg-oat/50 text-charcoal/30 line-through"
+                            ? "border-oat hover:border-terracotta bg-white"
+                            : "border-oat bg-oat/50 text-charcoal/30 cursor-not-allowed line-through"
                       }`}
                     >
                       {formatHour(s.hour)}
@@ -224,34 +205,30 @@ export function BookRoom() {
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-sm text-charcoal/60">Pick a room and date first.</p>
+                <p className="text-charcoal/60 mt-2 text-sm">Pick a room and date first.</p>
               )}
-              {room && busy.length > 0 && (
-                <p className="mt-2 text-xs text-charcoal/50">
-                  Crossed-out times are already booked — everything else is yours.
-                </p>
-              )}
+              {room && busy.length > 0 && <p className="text-charcoal/50 mt-2 text-xs">Crossed-out times are already booked — everything else is yours.</p>}
             </div>
           </section>
 
           {/* Step 3 — Details */}
           <section className={room && startHour !== null ? "" : "pointer-events-none opacity-40"}>
-            <h2 className="font-display text-xl font-bold text-espresso">3 · Your details</h2>
+            <h2 className="font-display text-espresso text-xl font-bold">3 · Your details</h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="bname">
+                <label className="text-espresso block text-sm font-semibold" htmlFor="bname">
                   Name
                 </label>
                 <input
                   id="bname"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
                   autoComplete="name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="bphone">
+                <label className="text-espresso block text-sm font-semibold" htmlFor="bphone">
                   Phone
                 </label>
                 <input
@@ -259,12 +236,12 @@ export function BookRoom() {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
                   autoComplete="tel"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="people">
+                <label className="text-espresso block text-sm font-semibold" htmlFor="people">
                   Number of people
                 </label>
                 <input
@@ -274,23 +251,21 @@ export function BookRoom() {
                   max={20}
                   value={people}
                   onChange={(e) => setPeople(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
                   aria-invalid={Boolean(capacityError)}
                 />
-                {capacityError && (
-                  <p className="mt-1 text-sm text-terracotta-dark">{capacityError}</p>
-                )}
+                {capacityError && <p className="text-terracotta-dark mt-1 text-sm">{capacityError}</p>}
               </div>
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="notes">
-                  Notes <span className="font-normal text-charcoal/50">(optional)</span>
+                <label className="text-espresso block text-sm font-semibold" htmlFor="notes">
+                  Notes <span className="text-charcoal/50 font-normal">(optional)</span>
                 </label>
                 <input
                   id="notes"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder='e.g. "need the TV for a presentation"'
-                  className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5"
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
                 />
               </div>
             </div>
@@ -299,16 +274,16 @@ export function BookRoom() {
 
         {/* Live price box */}
         <aside>
-          <div className="sticky top-24 rounded-2xl bg-espresso p-6 text-cream shadow-lg">
+          <div className="bg-espresso text-cream sticky top-24 rounded-2xl p-6 shadow-lg">
             <h2 className="font-display text-lg font-bold">Your booking</h2>
             {room ? (
               <>
-                <p className="mt-3 text-sm text-oat">
+                <p className="text-oat mt-3 text-sm">
                   {room.name} · {money(room.pricePerHour)}/hour × {duration} hour
                   {duration > 1 ? "s" : ""}
                 </p>
                 {startHour !== null && (
-                  <p className="mt-1 text-sm text-oat">
+                  <p className="text-oat mt-1 text-sm">
                     {new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
                       weekday: "short",
                       month: "short",
@@ -317,21 +292,19 @@ export function BookRoom() {
                     · {formatHour(startHour)} – {formatHour(startHour + duration)}
                   </p>
                 )}
-                <p className="mt-4 font-display text-3xl font-bold text-cream">{money(total)}</p>
+                <p className="font-display text-cream mt-4 text-3xl font-bold">{money(total)}</p>
               </>
             ) : (
-              <p className="mt-3 text-sm text-oat">Choose a space to see the price.</p>
+              <p className="text-oat mt-3 text-sm">Choose a space to see the price.</p>
             )}
             <button
               type="submit"
               disabled={!ready || submitting}
-              className="btn-3d mt-6 w-full rounded-full bg-terracotta px-6 py-3 font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-3d bg-terracotta text-cream mt-6 w-full rounded-full px-6 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? "Confirming…" : "Confirm Booking"}
             </button>
-            <p className="mt-3 text-xs text-oat/80">
-              Pay at the café. Free cancellation up to 2 hours before your start time.
-            </p>
+            <p className="text-oat/80 mt-3 text-xs">Pay at the café. Free cancellation up to 2 hours before your start time.</p>
           </div>
         </aside>
       </form>

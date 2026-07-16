@@ -14,9 +14,7 @@ customersRouter.use(requireAdmin);
 customersRouter.get("/", async (req, res) => {
   const search = String(req.query.search ?? "");
   const customers = await prisma.customer.findMany({
-    where: search
-      ? { OR: [{ name: { contains: search } }, { phone: { contains: search } }] }
-      : undefined,
+    where: search ? { OR: [{ name: { contains: search } }, { phone: { contains: search } }] } : undefined,
     orderBy: { lifetimeBeans: "desc" },
     include: { _count: { select: { orders: true, bookings: true } } },
   });
@@ -73,8 +71,11 @@ customersRouter.post("/:id/adjust-beans", async (req, res) => {
     section: "Loyalty",
     action: amount > 0 ? "loyalty_points_added" : "loyalty_points_removed",
     description: `${amount > 0 ? "+" : ""}${amount} beans ${amount > 0 ? "to" : "from"} ${customer.name || customer.phone} — ${note} (balance ${balanceAfter})`,
-    entity: "Customer", entityId: id, entityName: customer.name || customer.phone,
-    oldValue: { beanBalance: customer.beanBalance }, newValue: { beanBalance: balanceAfter, note },
+    entity: "Customer",
+    entityId: id,
+    entityName: customer.name || customer.phone,
+    oldValue: { beanBalance: customer.beanBalance },
+    newValue: { beanBalance: balanceAfter, note },
   });
   await notify(id, {
     type: "POINTS",

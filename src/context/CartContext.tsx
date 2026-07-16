@@ -5,13 +5,7 @@ interface CartContextValue {
   lines: CartLine[];
   count: number;
   subtotal: number;
-  add: (
-    item: MenuItem,
-    quantity: number,
-    selectedOptions: SelectedOption[],
-    addons?: SelectedAddon[],
-    specialInstructions?: string
-  ) => void;
+  add: (item: MenuItem, quantity: number, selectedOptions: SelectedOption[], addons?: SelectedAddon[], specialInstructions?: string) => void;
   updateQuantity: (key: string, quantity: number) => void;
   remove: (key: string) => void;
   clear: () => void;
@@ -67,14 +61,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
           const existing = prev.find((l) => l.key === key);
           if (existing) {
-            return prev.map((l) =>
-              l.key === key ? { ...l, quantity: l.quantity + qty } : l
-            );
+            return prev.map((l) => (l.key === key ? { ...l, quantity: l.quantity + qty } : l));
           }
-          const unitPrice =
-            item.price +
-            selectedOptions.reduce((s, o) => s + o.priceDelta, 0) +
-            addons.reduce((s, a) => s + a.price * a.quantity, 0);
+          const unitPrice = item.price + selectedOptions.reduce((s, o) => s + o.priceDelta, 0) + addons.reduce((s, a) => s + a.price * a.quantity, 0);
           return [
             ...prev,
             {
@@ -93,11 +82,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         });
       },
       updateQuantity: (key, quantity) =>
-        setLines((prev) =>
-          quantity <= 0
-            ? prev.filter((l) => l.key !== key)
-            : prev.map((l) => (l.key === key ? { ...l, quantity } : l))
-        ),
+        setLines((prev) => (quantity <= 0 ? prev.filter((l) => l.key !== key) : prev.map((l) => (l.key === key ? { ...l, quantity } : l)))),
       remove: (key) => setLines((prev) => prev.filter((l) => l.key !== key)),
       clear: () => setLines([]),
       remainingFor: (item) => {

@@ -22,13 +22,17 @@ export function providerConfigured(channel: "PHONE" | "EMAIL"): boolean {
 export function normalizePhone(countryCode: string | undefined, raw: string): string | null {
   let cc = String(countryCode || "+961").replace(/[^\d+]/g, "");
   if (!cc.startsWith("+")) cc = "+" + cc;
-  let digits = String(raw || "").replace(/\D/g, "").replace(/^0+/, ""); // drop local leading zeros
+  let digits = String(raw || "")
+    .replace(/\D/g, "")
+    .replace(/^0+/, ""); // drop local leading zeros
   if (digits.length < 6 || digits.length > 14) return null;
   return cc + digits;
 }
 
 export function normalizeEmail(raw: string): string | null {
-  const email = String(raw || "").trim().toLowerCase();
+  const email = String(raw || "")
+    .trim()
+    .toLowerCase();
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : null;
 }
 

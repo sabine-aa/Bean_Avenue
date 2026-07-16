@@ -35,7 +35,7 @@ export function AdminInventory() {
     if (raw === null) return;
     const amount = Math.round(Number(raw));
     if (!Number.isFinite(amount) || amount < 0) return toast("Enter a whole number.", "error");
-    const reason = type === "WASTE" ? window.prompt("Reason (optional):", "") ?? undefined : undefined;
+    const reason = type === "WASTE" ? (window.prompt("Reason (optional):", "") ?? undefined) : undefined;
     setBusyId(item.id);
     try {
       await api.post(`/api/inventory/${item.id}/adjust`, { type, amount, reason });
@@ -85,7 +85,11 @@ export function AdminInventory() {
   const badge = (i: Item) => {
     const st = stockState(i);
     const cls = st === "out" ? "bg-terracotta/15 text-terracotta-dark" : st === "low" ? "bg-amber-400/25 text-amber-800" : "bg-sage/20 text-sage-dark";
-    return <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${cls}`}>{i.stockQty} {st === "out" ? "· out" : st === "low" ? "· low" : "in stock"}</span>;
+    return (
+      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${cls}`}>
+        {i.stockQty} {st === "out" ? "· out" : st === "low" ? "· low" : "in stock"}
+      </span>
+    );
   };
 
   const btn = "rounded-full border border-oat px-3 py-1.5 text-xs font-semibold text-espresso hover:bg-oat disabled:opacity-40";
@@ -93,42 +97,82 @@ export function AdminInventory() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-bold text-espresso">Inventory</h1>
+        <h1 className="font-display text-espresso text-3xl font-bold">Inventory</h1>
         {summary && (
           <div className="flex gap-2 text-xs">
-            <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">Tracked <b>{summary.tracked}</b></span>
-            <span className="rounded-full bg-amber-400/20 px-3 py-1.5">Low <b>{summary.low}</b></span>
-            <span className="rounded-full bg-terracotta/15 px-3 py-1.5">Out <b>{summary.out}</b></span>
+            <span className="rounded-full bg-white px-3 py-1.5 shadow-sm">
+              Tracked <b>{summary.tracked}</b>
+            </span>
+            <span className="rounded-full bg-amber-400/20 px-3 py-1.5">
+              Low <b>{summary.low}</b>
+            </span>
+            <span className="bg-terracotta/15 rounded-full px-3 py-1.5">
+              Out <b>{summary.out}</b>
+            </span>
           </div>
         )}
       </div>
 
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search items…" className="w-full max-w-sm rounded-xl border border-oat bg-white px-4 py-2.5 text-sm" />
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search items…"
+        className="border-oat w-full max-w-sm rounded-xl border bg-white px-4 py-2.5 text-sm"
+      />
       <div className="flex flex-wrap gap-1.5">
-        <button onClick={() => setQ("")} className={`rounded-full px-3 py-1 text-xs font-semibold ${q === "" ? "bg-espresso text-cream" : "bg-white text-espresso hover:bg-oat"}`}>All</button>
+        <button
+          onClick={() => setQ("")}
+          className={`rounded-full px-3 py-1 text-xs font-semibold ${q === "" ? "bg-espresso text-cream" : "text-espresso hover:bg-oat bg-white"}`}
+        >
+          All
+        </button>
         {categories.map((c) => (
-          <button key={c} onClick={() => setQ(c)} className={`rounded-full px-3 py-1 text-xs font-semibold ${q === c ? "bg-espresso text-cream" : "bg-white text-espresso hover:bg-oat"}`}>{c}</button>
+          <button
+            key={c}
+            onClick={() => setQ(c)}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${q === c ? "bg-espresso text-cream" : "text-espresso hover:bg-oat bg-white"}`}
+          >
+            {c}
+          </button>
         ))}
       </div>
 
       {/* Tracked items */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="font-display text-xl font-bold text-espresso">Tracked stock</h2>
-        <p className="mt-1 text-xs text-charcoal/50">These auto-deduct on every sale and hide themselves from the menu when they hit zero.</p>
+        <h2 className="font-display text-espresso text-xl font-bold">Tracked stock</h2>
+        <p className="text-charcoal/50 mt-1 text-xs">These auto-deduct on every sale and hide themselves from the menu when they hit zero.</p>
         <div className="mt-4 space-y-2">
-          {tracked.length === 0 && <p className="text-sm text-charcoal/50">No tracked items yet. Turn on tracking for a countable product below (pastries, bottled drinks, retail bags…).</p>}
+          {tracked.length === 0 && (
+            <p className="text-charcoal/50 text-sm">
+              No tracked items yet. Turn on tracking for a countable product below (pastries, bottled drinks, retail bags…).
+            </p>
+          )}
           {tracked.map((i) => (
-            <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-oat px-4 py-3">
+            <div key={i.id} className="border-oat flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3">
               <div className="min-w-0">
-                <p className="flex items-center gap-2 font-semibold text-espresso">{i.name} {badge(i)}</p>
-                <p className="text-xs text-charcoal/50">{i.category} · alert at ≤ {i.lowStockAt}</p>
+                <p className="text-espresso flex items-center gap-2 font-semibold">
+                  {i.name} {badge(i)}
+                </p>
+                <p className="text-charcoal/50 text-xs">
+                  {i.category} · alert at ≤ {i.lowStockAt}
+                </p>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <button disabled={busyId === i.id} onClick={() => adjust(i, "RECEIVE")} className={btn}>+ Receive</button>
-                <button disabled={busyId === i.id} onClick={() => adjust(i, "WASTE")} className={btn}>− Waste</button>
-                <button disabled={busyId === i.id} onClick={() => adjust(i, "COUNT")} className={btn}>Set count</button>
-                <button disabled={busyId === i.id} onClick={() => setThreshold(i)} className={btn}>Alert level</button>
-                <button disabled={busyId === i.id} onClick={() => setTracking(i, false)} className={`${btn} text-terracotta-dark`}>Stop tracking</button>
+                <button disabled={busyId === i.id} onClick={() => adjust(i, "RECEIVE")} className={btn}>
+                  + Receive
+                </button>
+                <button disabled={busyId === i.id} onClick={() => adjust(i, "WASTE")} className={btn}>
+                  − Waste
+                </button>
+                <button disabled={busyId === i.id} onClick={() => adjust(i, "COUNT")} className={btn}>
+                  Set count
+                </button>
+                <button disabled={busyId === i.id} onClick={() => setThreshold(i)} className={btn}>
+                  Alert level
+                </button>
+                <button disabled={busyId === i.id} onClick={() => setTracking(i, false)} className={`${btn} text-terracotta-dark`}>
+                  Stop tracking
+                </button>
               </div>
             </div>
           ))}
@@ -137,13 +181,22 @@ export function AdminInventory() {
 
       {/* Untracked items — enable tracking */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="font-display text-xl font-bold text-espresso">Not tracked</h2>
-        <p className="mt-1 text-xs text-charcoal/50">Made-to-order drinks usually don't need counting. For a limited item (cold sandwiches, salads, pastries…) just <b>Set count</b> to how many you have — that turns tracking on and it can't be over-ordered.</p>
+        <h2 className="font-display text-espresso text-xl font-bold">Not tracked</h2>
+        <p className="text-charcoal/50 mt-1 text-xs">
+          Made-to-order drinks usually don't need counting. For a limited item (cold sandwiches, salads, pastries…) just <b>Set count</b> to how many you have —
+          that turns tracking on and it can't be over-ordered.
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {untracked.map((i) => (
-            <div key={i.id} className="flex items-center gap-1 rounded-full border border-oat py-0.5 pl-3 pr-1">
-              <span className="text-xs font-semibold text-espresso">{i.name}</span>
-              <button disabled={busyId === i.id} onClick={() => adjust(i, "COUNT")} className="rounded-full bg-sage/15 px-2.5 py-1 text-xs font-semibold text-sage-dark hover:bg-sage/25 disabled:opacity-40">Set count</button>
+            <div key={i.id} className="border-oat flex items-center gap-1 rounded-full border py-0.5 pr-1 pl-3">
+              <span className="text-espresso text-xs font-semibold">{i.name}</span>
+              <button
+                disabled={busyId === i.id}
+                onClick={() => adjust(i, "COUNT")}
+                className="bg-sage/15 text-sage-dark hover:bg-sage/25 rounded-full px-2.5 py-1 text-xs font-semibold disabled:opacity-40"
+              >
+                Set count
+              </button>
             </div>
           ))}
         </div>
@@ -151,17 +204,22 @@ export function AdminInventory() {
 
       {/* Recent movements */}
       <section className="rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="font-display text-xl font-bold text-espresso">Recent movements</h2>
+        <h2 className="font-display text-espresso text-xl font-bold">Recent movements</h2>
         <div className="mt-3 space-y-1.5">
-          {moves.length === 0 && <p className="text-sm text-charcoal/50">No stock movements yet.</p>}
+          {moves.length === 0 && <p className="text-charcoal/50 text-sm">No stock movements yet.</p>}
           {moves.map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-2 border-b border-oat/60 py-1.5 text-sm last:border-0">
+            <div key={m.id} className="border-oat/60 flex items-center justify-between gap-2 border-b py-1.5 text-sm last:border-0">
               <span className="min-w-0 truncate">
                 <span className={`font-semibold ${m.delta < 0 ? "text-terracotta-dark" : "text-sage-dark"}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>{" "}
                 <span className="text-espresso">{m.name}</span>{" "}
-                <span className="text-charcoal/40">· {TYPE_LABEL[m.type] ?? m.type}{m.reason ? ` (${m.reason})` : ""}</span>
+                <span className="text-charcoal/40">
+                  · {TYPE_LABEL[m.type] ?? m.type}
+                  {m.reason ? ` (${m.reason})` : ""}
+                </span>
               </span>
-              <span className="shrink-0 text-xs text-charcoal/40">→ {m.balance} · {formatDateTime(m.createdAt)}</span>
+              <span className="text-charcoal/40 shrink-0 text-xs">
+                → {m.balance} · {formatDateTime(m.createdAt)}
+              </span>
             </div>
           ))}
         </div>

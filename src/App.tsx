@@ -68,12 +68,20 @@ function ManifestSwitcher() {
     const isPos = pathname.startsWith("/pos");
     const setLink = (rel: string, href: string) => {
       let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
-      if (!el) { el = document.createElement("link"); el.rel = rel; document.head.appendChild(el); }
+      if (!el) {
+        el = document.createElement("link");
+        el.rel = rel;
+        document.head.appendChild(el);
+      }
       el.href = href;
     };
     const setMeta = (name: string, content: string) => {
       let el = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
-      if (!el) { el = document.createElement("meta"); el.name = name; document.head.appendChild(el); }
+      if (!el) {
+        el = document.createElement("meta");
+        el.name = name;
+        document.head.appendChild(el);
+      }
       el.content = content;
     };
     setLink("manifest", isPos ? "/pos.webmanifest" : "/manifest.webmanifest");
@@ -89,70 +97,70 @@ export default function App() {
       <ManifestSwitcher />
       <ScrollToTop />
       <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<Menu />} />
-        <Route path="/menu/:id" element={<ProductDetails />} />
-        <Route path="/shop" element={<Shop />} />
-        <Route path="/shop/:id" element={<ShopProduct />} />
-        <Route path="/doughnuts" element={<Doughnuts />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/order-success/:number" element={<OrderSuccess />} />
-        <Route path="/rooms" element={<Rooms />} />
-        <Route path="/book" element={<BookRoom />} />
-        <Route path="/booking-success/:number" element={<BookingSuccess />} />
-        <Route path="/loyalty" element={<Loyalty />} />
-        <Route path="/events" element={<Events />} />
-        <Route path="/events/:id" element={<EventDetails />} />
-        <Route path="/account" element={<Account />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-      </Route>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<Menu />} />
+          <Route path="/menu/:id" element={<ProductDetails />} />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/shop/:id" element={<ShopProduct />} />
+          <Route path="/doughnuts" element={<Doughnuts />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order-success/:number" element={<OrderSuccess />} />
+          <Route path="/rooms" element={<Rooms />} />
+          <Route path="/book" element={<BookRoom />} />
+          <Route path="/booking-success/:number" element={<BookingSuccess />} />
+          <Route path="/loyalty" element={<Loyalty />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/events/:id" element={<EventDetails />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+        </Route>
 
-      <Route path="/pos" element={<POS />} />
-      <Route path="/kds" element={<KDS />} />
+        <Route path="/pos" element={<POS />} />
+        <Route path="/kds" element={<KDS />} />
 
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="delivery" element={<AdminDelivery />} />
-        <Route path="payments" element={<AdminPayments />} />
-        <Route path="menu" element={<AdminMenuManager />} />
-        <Route path="addons" element={<AdminAddons />} />
-        <Route path="doughnuts" element={<AdminDoughnuts />} />
-        <Route path="hanson-production" element={<AdminHansonProduction />} />
-        <Route path="hanson-reports" element={<AdminHansonReports />} />
-        <Route path="featured" element={<AdminFeatured />} />
-        <Route path="bookings" element={<AdminBookings />} />
-        <Route path="rooms" element={<AdminRooms />} />
-        <Route path="customers" element={<AdminCustomers />} />
-        <Route path="rewards" element={<AdminRewards />} />
-        <Route path="birthday" element={<AdminBirthdayRewards />} />
-        <Route path="loyalty" element={<AdminLoyalty />} />
-        <Route path="events" element={<AdminEvents />} />
-        <Route path="event-suggestions" element={<AdminEventSuggestions />} />
-        <Route path="banners" element={<AdminBanners />} />
-        <Route path="subscribers" element={<AdminSubscribers />} />
-        <Route path="suggestions" element={<AdminSuggestions />} />
-        <Route path="reports" element={<AdminReports />} />
-        <Route path="inventory" element={<AdminInventory />} />
-        <Route path="low-stock" element={<AdminLowStock />} />
-        <Route path="import" element={<AdminImportData />} />
-        <Route path="shifts" element={<AdminShifts />} />
-        <Route path="activity" element={<AdminActivityLog />} />
-        <Route path="stock" element={<AdminStock />} />
-        <Route path="shop-products" element={<AdminShopProducts />} />
-        <Route path="preorders" element={<AdminPreorders />} />
-        <Route path="restock" element={<AdminRestock />} />
-        <Route path="suppliers" element={<AdminSuppliers />} />
-        <Route path="recipes" element={<AdminRecipes />} />
-        <Route path="staff" element={<AdminStaff />} />
-        <Route path="timesheets" element={<AdminTimesheets />} />
-      </Route>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="delivery" element={<AdminDelivery />} />
+          <Route path="payments" element={<AdminPayments />} />
+          <Route path="menu" element={<AdminMenuManager />} />
+          <Route path="addons" element={<AdminAddons />} />
+          <Route path="doughnuts" element={<AdminDoughnuts />} />
+          <Route path="hanson-production" element={<AdminHansonProduction />} />
+          <Route path="hanson-reports" element={<AdminHansonReports />} />
+          <Route path="featured" element={<AdminFeatured />} />
+          <Route path="bookings" element={<AdminBookings />} />
+          <Route path="rooms" element={<AdminRooms />} />
+          <Route path="customers" element={<AdminCustomers />} />
+          <Route path="rewards" element={<AdminRewards />} />
+          <Route path="birthday" element={<AdminBirthdayRewards />} />
+          <Route path="loyalty" element={<AdminLoyalty />} />
+          <Route path="events" element={<AdminEvents />} />
+          <Route path="event-suggestions" element={<AdminEventSuggestions />} />
+          <Route path="banners" element={<AdminBanners />} />
+          <Route path="subscribers" element={<AdminSubscribers />} />
+          <Route path="suggestions" element={<AdminSuggestions />} />
+          <Route path="reports" element={<AdminReports />} />
+          <Route path="inventory" element={<AdminInventory />} />
+          <Route path="low-stock" element={<AdminLowStock />} />
+          <Route path="import" element={<AdminImportData />} />
+          <Route path="shifts" element={<AdminShifts />} />
+          <Route path="activity" element={<AdminActivityLog />} />
+          <Route path="stock" element={<AdminStock />} />
+          <Route path="shop-products" element={<AdminShopProducts />} />
+          <Route path="preorders" element={<AdminPreorders />} />
+          <Route path="restock" element={<AdminRestock />} />
+          <Route path="suppliers" element={<AdminSuppliers />} />
+          <Route path="recipes" element={<AdminRecipes />} />
+          <Route path="staff" element={<AdminStaff />} />
+          <Route path="timesheets" element={<AdminTimesheets />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

@@ -111,9 +111,7 @@ export function AdminMenuManager() {
       photo: item.photo ?? "",
       tags: item.tags,
       hasSizes: !!sizeGroup,
-      sizes: sizeGroup
-        ? sizeGroup.choices.map((c) => ({ label: c.label, price: Math.round((item.price + c.priceDelta) * 100) / 100 }))
-        : [],
+      sizes: sizeGroup ? sizeGroup.choices.map((c) => ({ label: c.label, price: Math.round((item.price + c.priceDelta) * 100) / 100 })) : [],
       extraOptions: item.options.filter((g) => g.name !== "Size"),
       isBestSeller: item.isBestSeller ?? false,
       nutrition: {
@@ -194,7 +192,8 @@ export function AdminMenuManager() {
   }
 
   async function del(item: MenuItem) {
-    if (!window.confirm(`Delete “${item.name}” permanently? This can't be undone.\n\nTip: to just take it off the menu, use Hide instead — that's reversible.`)) return;
+    if (!window.confirm(`Delete “${item.name}” permanently? This can't be undone.\n\nTip: to just take it off the menu, use Hide instead — that's reversible.`))
+      return;
     try {
       await api.delete(`/api/menu/${item.id}`);
       toast(`“${item.name}” deleted.`);
@@ -221,26 +220,21 @@ export function AdminMenuManager() {
   const q = search.trim().toLowerCase();
   const filtering = q !== "" || catFilter !== "All";
   const visible = items.filter(
-    (it) =>
-      (catFilter === "All" || it.category === catFilter) &&
-      (q === "" || it.name.toLowerCase().includes(q) || it.category.toLowerCase().includes(q))
+    (it) => (catFilter === "All" || it.category === catFilter) && (q === "" || it.name.toLowerCase().includes(q) || it.category.toLowerCase().includes(q)),
   );
 
   return (
     <div>
       <div className="flex items-center justify-between gap-2">
-        <h1 className="font-display text-3xl font-bold text-espresso">Menu Manager</h1>
+        <h1 className="font-display text-espresso text-3xl font-bold">Menu Manager</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setShowCats((v) => !v)}
-            className="rounded-full bg-oat px-4 py-2 text-sm font-semibold text-espresso hover:bg-espresso hover:text-cream"
+            className="bg-oat text-espresso hover:bg-espresso hover:text-cream rounded-full px-4 py-2 text-sm font-semibold"
           >
             {showCats ? "Done ordering" : "Category order"}
           </button>
-          <button
-            onClick={() => openEditor(null)}
-            className="rounded-full bg-terracotta px-5 py-2 font-semibold text-cream hover:bg-terracotta-dark"
-          >
+          <button onClick={() => openEditor(null)} className="bg-terracotta text-cream hover:bg-terracotta-dark rounded-full px-5 py-2 font-semibold">
             + New item
           </button>
         </div>
@@ -248,18 +242,37 @@ export function AdminMenuManager() {
 
       {showCats && (
         <div className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="font-display text-lg font-bold text-espresso">Category order</h2>
-          <p className="mt-1 text-sm text-charcoal/60">
-            This is the order customers see on the Menu page. The first category is selected by default.
-          </p>
+          <h2 className="font-display text-espresso text-lg font-bold">Category order</h2>
+          <p className="text-charcoal/60 mt-1 text-sm">This is the order customers see on the Menu page. The first category is selected by default.</p>
           <ol className="mt-3 space-y-1.5">
             {cats.map((c, idx) => (
-              <li key={c} className="flex items-center gap-3 rounded-xl bg-oat/30 px-3 py-2">
-                <span className="w-6 text-center text-xs font-bold text-charcoal/40">{idx + 1}</span>
-                <span className="flex-1 font-semibold text-espresso">{c}</span>
-                <button onClick={() => moveCat(idx, -1)} disabled={idx === 0} aria-label="Move up" className="px-2 text-charcoal/50 hover:text-espresso disabled:opacity-30">▲</button>
-                <button onClick={() => moveCat(idx, 1)} disabled={idx === cats.length - 1} aria-label="Move down" className="px-2 text-charcoal/50 hover:text-espresso disabled:opacity-30">▼</button>
-                <button onClick={() => deleteCategory(c)} aria-label="Delete category" title="Delete category" className="px-2 text-charcoal/40 hover:text-terracotta">✕</button>
+              <li key={c} className="bg-oat/30 flex items-center gap-3 rounded-xl px-3 py-2">
+                <span className="text-charcoal/40 w-6 text-center text-xs font-bold">{idx + 1}</span>
+                <span className="text-espresso flex-1 font-semibold">{c}</span>
+                <button
+                  onClick={() => moveCat(idx, -1)}
+                  disabled={idx === 0}
+                  aria-label="Move up"
+                  className="text-charcoal/50 hover:text-espresso px-2 disabled:opacity-30"
+                >
+                  ▲
+                </button>
+                <button
+                  onClick={() => moveCat(idx, 1)}
+                  disabled={idx === cats.length - 1}
+                  aria-label="Move down"
+                  className="text-charcoal/50 hover:text-espresso px-2 disabled:opacity-30"
+                >
+                  ▼
+                </button>
+                <button
+                  onClick={() => deleteCategory(c)}
+                  aria-label="Delete category"
+                  title="Delete category"
+                  className="text-charcoal/40 hover:text-terracotta px-2"
+                >
+                  ✕
+                </button>
               </li>
             ))}
           </ol>
@@ -274,34 +287,34 @@ export function AdminMenuManager() {
                 }
               }}
               placeholder="New category name"
-              className="flex-1 rounded-xl border border-oat px-3 py-2"
+              className="border-oat flex-1 rounded-xl border px-3 py-2"
             />
             <button
               onClick={() => createCategory(panelCat, false).then((ok) => ok && setPanelCat(""))}
-              className="whitespace-nowrap rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha"
+              className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap"
             >
               + Add category
             </button>
           </div>
-          <p className="mt-2 text-xs text-charcoal/50">A category only shows on the menu once it has at least one item. Deleting works only when the category is empty.</p>
+          <p className="text-charcoal/50 mt-2 text-xs">
+            A category only shows on the menu once it has at least one item. Deleting works only when the category is empty.
+          </p>
         </div>
       )}
 
       {showEditor && (
         <form onSubmit={save} className="mt-5 grid gap-4 rounded-2xl bg-white p-6 shadow-md sm:grid-cols-2">
-          <h2 className="font-display text-xl font-bold text-espresso sm:col-span-2">
-            {creating ? "New menu item" : `Editing: ${editing?.name}`}
-          </h2>
-          <label className="text-sm font-semibold text-espresso">
+          <h2 className="font-display text-espresso text-xl font-bold sm:col-span-2">{creating ? "New menu item" : `Editing: ${editing?.name}`}</h2>
+          <label className="text-espresso text-sm font-semibold">
             Name
             <input
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
             />
           </label>
-          <div className="text-sm font-semibold text-espresso">
+          <div className="text-espresso text-sm font-semibold">
             Category
             {addingCat ? (
               <div className="mt-1 flex gap-2 font-normal">
@@ -316,12 +329,12 @@ export function AdminMenuManager() {
                     }
                   }}
                   placeholder="New category name"
-                  className="flex-1 rounded-xl border border-oat px-3 py-2"
+                  className="border-oat flex-1 rounded-xl border px-3 py-2"
                 />
                 <button
                   type="button"
                   onClick={() => createCategory(newCat, true).then((ok) => ok && (setAddingCat(false), setNewCat("")))}
-                  className="rounded-full bg-espresso px-4 py-2 text-sm font-semibold text-cream hover:bg-mocha"
+                  className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-2 text-sm font-semibold"
                 >
                   Add
                 </button>
@@ -331,7 +344,7 @@ export function AdminMenuManager() {
                     setAddingCat(false);
                     setNewCat("");
                   }}
-                  className="rounded-full px-3 py-2 text-sm font-semibold text-charcoal/60 hover:text-terracotta"
+                  className="text-charcoal/60 hover:text-terracotta rounded-full px-3 py-2 text-sm font-semibold"
                 >
                   Cancel
                 </button>
@@ -342,7 +355,7 @@ export function AdminMenuManager() {
                   required
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="flex-1 rounded-xl border border-oat bg-white px-3 py-2"
+                  className="border-oat flex-1 rounded-xl border bg-white px-3 py-2"
                 >
                   {form.category && !cats.includes(form.category) && <option value={form.category}>{form.category}</option>}
                   {cats.map((c) => (
@@ -357,24 +370,24 @@ export function AdminMenuManager() {
                     setAddingCat(true);
                     setNewCat("");
                   }}
-                  className="whitespace-nowrap rounded-full bg-oat px-4 py-2 text-sm font-semibold text-espresso hover:bg-espresso hover:text-cream"
+                  className="bg-oat text-espresso hover:bg-espresso hover:text-cream rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap"
                 >
                   + New
                 </button>
               </div>
             )}
           </div>
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
             Description
             <textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
+              className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
               rows={2}
             />
           </label>
           {!form.hasSizes && (
-            <label className="text-sm font-semibold text-espresso">
+            <label className="text-espresso text-sm font-semibold">
               Price ($)
               <input
                 required
@@ -383,15 +396,15 @@ export function AdminMenuManager() {
                 min="0"
                 value={form.price}
                 onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                className="mt-1 w-full rounded-xl border border-oat px-3 py-2 font-normal"
+                className="border-oat mt-1 w-full rounded-xl border px-3 py-2 font-normal"
               />
             </label>
           )}
-          <label className="text-sm font-semibold text-espresso sm:col-span-2">
+          <label className="text-espresso text-sm font-semibold sm:col-span-2">
             Photo
             <ImageField value={form.photo} onChange={(photo) => setForm({ ...form, photo })} />
           </label>
-          <div className="text-sm font-semibold text-espresso sm:col-span-2">
+          <div className="text-espresso text-sm font-semibold sm:col-span-2">
             Image display
             {/* Fit mode */}
             <div className="mt-2 flex flex-wrap gap-2 font-normal">
@@ -401,25 +414,21 @@ export function AdminMenuManager() {
                   type="button"
                   onClick={() => setForm({ ...form, imageFit: f })}
                   className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                    form.imageFit === f
-                      ? "border-espresso bg-espresso text-cream"
-                      : "border-oat bg-white text-espresso hover:border-espresso"
+                    form.imageFit === f ? "border-espresso bg-espresso text-cream" : "border-oat text-espresso hover:border-espresso bg-white"
                   }`}
                 >
                   {f === "cover" ? "Fill card (cover)" : "Show whole product (contain)"}
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-xs font-normal text-charcoal/50">
-              <b>Fill</b> crops the photo to fill the card — best for most photos.{" "}
-              <b>Contain</b> shows the entire product on a neutral background — use it only
+            <p className="text-charcoal/50 mt-1 text-xs font-normal">
+              <b>Fill</b> crops the photo to fill the card — best for most photos. <b>Contain</b> shows the entire product on a neutral background — use it only
               when filling would cut off part of the product.
             </p>
-
             {/* Live previews at desktop + mobile card sizes */}
             <div className="mt-3 flex flex-wrap gap-5 font-normal">
               <div>
-                <p className="mb-1 text-xs font-semibold text-charcoal/60">Desktop card</p>
+                <p className="text-charcoal/60 mb-1 text-xs font-semibold">Desktop card</p>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -433,7 +442,7 @@ export function AdminMenuManager() {
                       focalY: Math.max(0, Math.min(100, y)),
                     });
                   }}
-                  className={`relative block w-64 overflow-hidden rounded-xl border border-oat ${
+                  className={`border-oat relative block w-64 overflow-hidden rounded-xl border ${
                     form.imageFit === "cover" ? "cursor-crosshair" : "cursor-default"
                   }`}
                   aria-label="Set focal point"
@@ -443,36 +452,36 @@ export function AdminMenuManager() {
                     alt={form.name || "Product preview"}
                     fit={form.imageFit}
                     position={`${form.focalX}% ${form.focalY}%`}
-                    className="aspect-[4/3] w-full bg-oat/30"
+                    className="bg-oat/30 aspect-[4/3] w-full"
                   />
                   {form.photo && form.imageFit === "cover" && (
                     <span
-                      className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cream bg-espresso/30 ring-2 ring-espresso"
+                      className="border-cream bg-espresso/30 ring-espresso pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 ring-2"
                       style={{ left: `${form.focalX}%`, top: `${form.focalY}%` }}
                     />
                   )}
                 </button>
               </div>
               <div>
-                <p className="mb-1 text-xs font-semibold text-charcoal/60">Mobile card</p>
-                <div className="w-40 overflow-hidden rounded-xl border border-oat">
+                <p className="text-charcoal/60 mb-1 text-xs font-semibold">Mobile card</p>
+                <div className="border-oat w-40 overflow-hidden rounded-xl border">
                   <Img
                     src={form.photo || null}
                     alt={form.name || "Product preview"}
                     fit={form.imageFit}
                     position={`${form.focalX}% ${form.focalY}%`}
-                    className="aspect-[4/3] w-full bg-oat/30"
+                    className="bg-oat/30 aspect-[4/3] w-full"
                   />
                 </div>
               </div>
             </div>
-            <p className="mt-2 text-xs font-normal text-charcoal/50">
+            <p className="text-charcoal/50 mt-2 text-xs font-normal">
               {form.imageFit === "cover"
                 ? "Click the desktop preview to choose which part of the photo stays visible (the focal point ●). Confirm the product looks right on both sizes before saving."
                 : "Contain shows the whole product, so no focal point is needed."}
             </p>
           </div>
-          <fieldset className="text-sm font-semibold text-espresso">
+          <fieldset className="text-espresso text-sm font-semibold">
             Dietary tags
             <div className="mt-1 flex gap-3 font-normal">
               {["Vegetarian", "Vegan", "Gluten-Free"].map((t) => (
@@ -483,9 +492,7 @@ export function AdminMenuManager() {
                     onChange={(e) =>
                       setForm({
                         ...form,
-                        tags: e.target.checked
-                          ? [...form.tags, t]
-                          : form.tags.filter((x) => x !== t),
+                        tags: e.target.checked ? [...form.tags, t] : form.tags.filter((x) => x !== t),
                       })
                     }
                   />
@@ -495,7 +502,7 @@ export function AdminMenuManager() {
             </div>
           </fieldset>
           {/* Sizes editor */}
-          <div className="text-sm font-semibold text-espresso sm:col-span-2">
+          <div className="text-espresso text-sm font-semibold sm:col-span-2">
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -519,9 +526,7 @@ export function AdminMenuManager() {
             </label>
             {form.hasSizes && (
               <div className="mt-2 space-y-2 font-normal">
-                <p className="text-xs text-charcoal/50">
-                  Enter the full price of each size. The first size is the base (what shows as “From $…”).
-                </p>
+                <p className="text-charcoal/50 text-xs">Enter the full price of each size. The first size is the base (what shows as “From $…”).</p>
                 {form.sizes.map((s, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input
@@ -532,7 +537,7 @@ export function AdminMenuManager() {
                         sizes[i] = { ...sizes[i], label: e.target.value };
                         setForm({ ...form, sizes });
                       }}
-                      className="flex-1 rounded-xl border border-oat px-3 py-2"
+                      className="border-oat flex-1 rounded-xl border px-3 py-2"
                     />
                     <span className="text-charcoal/50">$</span>
                     <input
@@ -545,12 +550,12 @@ export function AdminMenuManager() {
                         sizes[i] = { ...sizes[i], price: Number(e.target.value) };
                         setForm({ ...form, sizes });
                       }}
-                      className="w-24 rounded-xl border border-oat px-3 py-2"
+                      className="border-oat w-24 rounded-xl border px-3 py-2"
                     />
                     <button
                       type="button"
                       onClick={() => setForm({ ...form, sizes: form.sizes.filter((_, j) => j !== i) })}
-                      className="rounded-full px-2 text-lg text-charcoal/40 hover:text-terracotta"
+                      className="text-charcoal/40 hover:text-terracotta rounded-full px-2 text-lg"
                       aria-label="Remove size"
                     >
                       ✕
@@ -559,10 +564,8 @@ export function AdminMenuManager() {
                 ))}
                 <button
                   type="button"
-                  onClick={() =>
-                    setForm({ ...form, sizes: [...form.sizes, { label: "", price: form.sizes[form.sizes.length - 1]?.price ?? 0 }] })
-                  }
-                  className="rounded-full bg-oat px-4 py-1.5 text-xs font-semibold text-espresso hover:bg-espresso hover:text-cream"
+                  onClick={() => setForm({ ...form, sizes: [...form.sizes, { label: "", price: form.sizes[form.sizes.length - 1]?.price ?? 0 }] })}
+                  className="bg-oat text-espresso hover:bg-espresso hover:text-cream rounded-full px-4 py-1.5 text-xs font-semibold"
                 >
                   + Add size
                 </button>
@@ -571,21 +574,17 @@ export function AdminMenuManager() {
           </div>
 
           {/* Best seller */}
-          <label className="flex items-center gap-2 text-sm font-semibold text-espresso sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={form.isBestSeller}
-              onChange={(e) => setForm({ ...form, isBestSeller: e.target.checked })}
-            />
-            ★ Best seller (shows a badge on the menu)
+          <label className="text-espresso flex items-center gap-2 text-sm font-semibold sm:col-span-2">
+            <input type="checkbox" checked={form.isBestSeller} onChange={(e) => setForm({ ...form, isBestSeller: e.target.checked })} />★ Best seller (shows a
+            badge on the menu)
           </label>
 
           {/* Nutrition */}
-          <div className="text-sm font-semibold text-espresso sm:col-span-2">
-            Nutrition <span className="font-normal text-charcoal/50">(optional — shown mainly on Protein Drinks)</span>
+          <div className="text-espresso text-sm font-semibold sm:col-span-2">
+            Nutrition <span className="text-charcoal/50 font-normal">(optional — shown mainly on Protein Drinks)</span>
             <div className="mt-2 grid grid-cols-2 gap-2 font-normal sm:grid-cols-5">
               {NUTRIENTS.map(({ key, label, unit }) => (
-                <label key={key} className="text-xs font-semibold text-charcoal/60">
+                <label key={key} className="text-charcoal/60 text-xs font-semibold">
                   {label} ({unit})
                   <input
                     type="number"
@@ -593,17 +592,14 @@ export function AdminMenuManager() {
                     min="0"
                     value={form.nutrition[key]}
                     onChange={(e) => setForm({ ...form, nutrition: { ...form.nutrition, [key]: e.target.value } })}
-                    className="mt-1 w-full rounded-xl border border-oat px-2 py-1.5 font-normal"
+                    className="border-oat mt-1 w-full rounded-xl border px-2 py-1.5 font-normal"
                   />
                 </label>
               ))}
             </div>
           </div>
           <div className="flex gap-2 sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded-full bg-espresso px-6 py-2 font-semibold text-cream hover:bg-mocha"
-            >
+            <button type="submit" className="bg-espresso text-cream hover:bg-mocha rounded-full px-6 py-2 font-semibold">
               Save
             </button>
             <button
@@ -612,7 +608,7 @@ export function AdminMenuManager() {
                 setEditing(null);
                 setCreating(false);
               }}
-              className="rounded-full px-6 py-2 font-semibold text-charcoal/60 hover:text-terracotta"
+              className="text-charcoal/60 hover:text-terracotta rounded-full px-6 py-2 font-semibold"
             >
               Cancel
             </button>
@@ -626,7 +622,7 @@ export function AdminMenuManager() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search the menu by name…"
-          className="w-full rounded-full border border-oat px-4 py-2"
+          className="border-oat w-full rounded-full border px-4 py-2"
         />
         <div className="mt-3 flex flex-wrap gap-2">
           {["All", ...orderedCats].map((c) => (
@@ -641,22 +637,24 @@ export function AdminMenuManager() {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-charcoal/50">
+        <p className="text-charcoal/50 mt-2 text-xs">
           Showing {visible.length} of {items.length}
           {filtering && " · clear the search & pick “All” to reorder items"}
         </p>
       </div>
 
       <div className="mt-4 space-y-2">
-        {visible.length === 0 && (
-          <p className="rounded-2xl bg-white p-6 text-center text-charcoal/50 shadow-sm">No items match your search.</p>
-        )}
+        {visible.length === 0 && <p className="text-charcoal/50 rounded-2xl bg-white p-6 text-center shadow-sm">No items match your search.</p>}
         {visible.map((item, idx) => (
           <div key={item.id} className={`flex items-center gap-4 rounded-2xl bg-white p-3 shadow-sm ${item.isHidden ? "opacity-50" : ""}`}>
             {!filtering && (
               <div className="flex flex-col">
-                <button onClick={() => move(idx, -1)} aria-label="Move up" className="px-1 text-charcoal/40 hover:text-espresso">▲</button>
-                <button onClick={() => move(idx, 1)} aria-label="Move down" className="px-1 text-charcoal/40 hover:text-espresso">▼</button>
+                <button onClick={() => move(idx, -1)} aria-label="Move up" className="text-charcoal/40 hover:text-espresso px-1">
+                  ▲
+                </button>
+                <button onClick={() => move(idx, 1)} aria-label="Move down" className="text-charcoal/40 hover:text-espresso px-1">
+                  ▼
+                </button>
               </div>
             )}
             <Img
@@ -664,17 +662,19 @@ export function AdminMenuManager() {
               alt={item.name}
               fit={item.imageFit === "contain" ? "contain" : "cover"}
               position={`${item.focalX ?? 50}% ${item.focalY ?? 50}%`}
-              className="h-14 w-14 shrink-0 rounded-xl bg-oat/30"
+              className="bg-oat/30 h-14 w-14 shrink-0 rounded-xl"
             />
             <div className="flex-1">
-              <p className="font-semibold text-espresso">
-                {item.isBestSeller && <span className="mr-1 text-terracotta" title="Best seller">★</span>}
+              <p className="text-espresso font-semibold">
+                {item.isBestSeller && (
+                  <span className="text-terracotta mr-1" title="Best seller">
+                    ★
+                  </span>
+                )}
                 {item.name}
-                <span className="ml-2 text-xs font-normal text-charcoal/50">{item.category}</span>
+                <span className="text-charcoal/50 ml-2 text-xs font-normal">{item.category}</span>
               </p>
-              <p className="text-sm text-terracotta">
-                {item.options.length ? `From ${money(item.price)}` : money(item.price)}
-              </p>
+              <p className="text-terracotta text-sm">{item.options.length ? `From ${money(item.price)}` : money(item.price)}</p>
             </div>
             <label className="flex items-center gap-1.5 text-xs font-semibold">
               <input type="checkbox" checked={item.inStock} onChange={() => toggle(item, "inStock")} />
@@ -689,23 +689,17 @@ export function AdminMenuManager() {
             >
               ★
             </button>
-            <button
-              onClick={() => toggle(item, "isHidden")}
-              className="rounded-full bg-oat px-3 py-1 text-xs font-semibold hover:bg-espresso hover:text-cream"
-            >
+            <button onClick={() => toggle(item, "isHidden")} className="bg-oat hover:bg-espresso hover:text-cream rounded-full px-3 py-1 text-xs font-semibold">
               {item.isHidden ? "Show" : "Hide"}
             </button>
-            <button
-              onClick={() => openEditor(item)}
-              className="rounded-full bg-espresso px-4 py-1 text-xs font-semibold text-cream hover:bg-mocha"
-            >
+            <button onClick={() => openEditor(item)} className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-1 text-xs font-semibold">
               Edit
             </button>
             <button
               onClick={() => del(item)}
               aria-label={`Delete ${item.name}`}
               title="Delete product"
-              className="rounded-full px-2 py-1 text-xs font-semibold text-charcoal/40 hover:text-terracotta"
+              className="text-charcoal/40 hover:text-terracotta rounded-full px-2 py-1 text-xs font-semibold"
             >
               🗑
             </button>

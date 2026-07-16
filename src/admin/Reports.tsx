@@ -26,12 +26,9 @@ function dateStr(offsetDays: number) {
 function Bar({ value, max, label }: { value: number; max: number; label: string }) {
   return (
     <div className="flex items-center gap-2 text-xs">
-      <span className="w-10 shrink-0 text-charcoal/60">{label}</span>
-      <div className="h-4 flex-1 overflow-hidden rounded bg-oat/50">
-        <div
-          className="h-full rounded bg-terracotta/70"
-          style={{ width: max > 0 ? `${(value / max) * 100}%` : 0 }}
-        />
+      <span className="text-charcoal/60 w-10 shrink-0">{label}</span>
+      <div className="bg-oat/50 h-4 flex-1 overflow-hidden rounded">
+        <div className="bg-terracotta/70 h-full rounded" style={{ width: max > 0 ? `${(value / max) * 100}%` : 0 }} />
       </div>
       <span className="w-8 text-right font-semibold">{value}</span>
     </div>
@@ -44,7 +41,10 @@ export function AdminReports() {
   const [data, setData] = useState<Summary | null>(null);
 
   useEffect(() => {
-    api.get<Summary>(`/api/reports/summary?from=${from}&to=${to}`).then(setData).catch(() => {});
+    api
+      .get<Summary>(`/api/reports/summary?from=${from}&to=${to}`)
+      .then(setData)
+      .catch(() => {});
   }, [from, to]);
 
   async function exportCsv() {
@@ -67,27 +67,37 @@ export function AdminReports() {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-3xl font-bold text-espresso">Sales Reports</h1>
+        <h1 className="font-display text-espresso text-3xl font-bold">Sales Reports</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-full border border-oat bg-white px-3 py-1.5" aria-label="From date" />
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="border-oat rounded-full border bg-white px-3 py-1.5"
+            aria-label="From date"
+          />
           <span className="text-charcoal/50">→</span>
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-full border border-oat bg-white px-3 py-1.5" aria-label="To date" />
-          <button onClick={exportCsv} className="rounded-full bg-espresso px-4 py-1.5 font-semibold text-cream hover:bg-mocha">
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="border-oat rounded-full border bg-white px-3 py-1.5"
+            aria-label="To date"
+          />
+          <button onClick={exportCsv} className="bg-espresso text-cream hover:bg-mocha rounded-full px-4 py-1.5 font-semibold">
             Export CSV
           </button>
         </div>
       </div>
 
       {!data ? (
-        <p className="mt-8 text-charcoal/60">Crunching the numbers…</p>
+        <p className="text-charcoal/60 mt-8">Crunching the numbers…</p>
       ) : (
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
           {/* Revenue split */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Revenue: Food vs Rooms</h2>
-            <p className="mt-1 font-display text-3xl font-bold text-terracotta">
-              {money(data.revenue.total)}
-            </p>
+            <h2 className="font-display text-espresso text-lg font-bold">Revenue: Food vs Rooms</h2>
+            <p className="font-display text-terracotta mt-1 text-3xl font-bold">{money(data.revenue.total)}</p>
             <div className="mt-4 space-y-3">
               {[
                 ["Food", data.revenue.food, "bg-espresso"],
@@ -95,14 +105,13 @@ export function AdminReports() {
               ].map(([label, value, color]) => (
                 <div key={label as string}>
                   <div className="flex justify-between text-sm">
-                    <span>{label} <span className="text-charcoal/50">({label === "Food" ? data.orderCount + " orders" : data.bookingCount + " bookings"})</span></span>
+                    <span>
+                      {label} <span className="text-charcoal/50">({label === "Food" ? data.orderCount + " orders" : data.bookingCount + " bookings"})</span>
+                    </span>
                     <span className="font-semibold">{money(value as number)}</span>
                   </div>
-                  <div className="mt-1 h-3 overflow-hidden rounded-full bg-oat/50">
-                    <div
-                      className={`h-full rounded-full ${color}`}
-                      style={{ width: `${((value as number) / revenueMax) * 100}%` }}
-                    />
+                  <div className="bg-oat/50 mt-1 h-3 overflow-hidden rounded-full">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${((value as number) / revenueMax) * 100}%` }} />
                   </div>
                 </div>
               ))}
@@ -111,13 +120,13 @@ export function AdminReports() {
 
           {/* Top items */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Top-selling items</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Top-selling items</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {data.topItems.length === 0 && <li className="text-charcoal/60">No sales in range.</li>}
               {data.topItems.map((t, i) => (
                 <li key={t.name} className="flex justify-between">
                   <span>
-                    <span className="mr-2 font-bold text-terracotta">{i + 1}.</span>
+                    <span className="text-terracotta mr-2 font-bold">{i + 1}.</span>
                     {t.name} <span className="text-charcoal/50">×{t.quantity}</span>
                   </span>
                   <span className="font-semibold">{money(t.revenue)}</span>
@@ -128,7 +137,7 @@ export function AdminReports() {
 
           {/* Utilization */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Room utilization</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Room utilization</h2>
             <div className="mt-3 space-y-3">
               {data.utilization.map((u) => (
                 <div key={u.room}>
@@ -138,8 +147,8 @@ export function AdminReports() {
                       {u.hoursBooked}h / {u.hoursAvailable}h · {u.utilization}%
                     </span>
                   </div>
-                  <div className="mt-1 h-3 overflow-hidden rounded-full bg-oat/50">
-                    <div className="h-full rounded-full bg-terracotta" style={{ width: `${Math.min(100, u.utilization)}%` }} />
+                  <div className="bg-oat/50 mt-1 h-3 overflow-hidden rounded-full">
+                    <div className="bg-terracotta h-full rounded-full" style={{ width: `${Math.min(100, u.utilization)}%` }} />
                   </div>
                 </div>
               ))}
@@ -148,7 +157,7 @@ export function AdminReports() {
 
           {/* Customers & beans */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Customers & beans</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Customers & beans</h2>
             <div className="mt-3 grid grid-cols-2 gap-3 text-center">
               {[
                 ["New customers", data.customers.new],
@@ -156,9 +165,9 @@ export function AdminReports() {
                 ["Beans issued", data.beans.issued],
                 ["Beans redeemed", data.beans.redeemed],
               ].map(([label, value]) => (
-                <div key={label as string} className="rounded-xl bg-oat/50 p-4">
-                  <p className="font-display text-2xl font-bold text-espresso">{value}</p>
-                  <p className="text-xs text-charcoal/60">{label}</p>
+                <div key={label as string} className="bg-oat/50 rounded-xl p-4">
+                  <p className="font-display text-espresso text-2xl font-bold">{value}</p>
+                  <p className="text-charcoal/60 text-xs">{label}</p>
                 </div>
               ))}
             </div>
@@ -166,7 +175,7 @@ export function AdminReports() {
 
           {/* Busiest days */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Busiest days</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Busiest days</h2>
             <div className="mt-3 space-y-1.5">
               {data.byDay.map((v, i) => (
                 <Bar key={i} value={v} max={maxDay} label={DAY_NAMES[i]} />
@@ -176,15 +185,12 @@ export function AdminReports() {
 
           {/* Hour heatmap */}
           <section className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Time-of-day heatmap</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Time-of-day heatmap</h2>
             <div className="mt-3 flex h-28 items-end gap-1">
               {data.byHour.map((v, h) => (
                 <div key={h} className="flex flex-1 flex-col items-center gap-1" title={`${h}:00 — ${v} sales`}>
-                  <div
-                    className="w-full rounded-t bg-terracotta/70"
-                    style={{ height: `${(v / maxHour) * 100}%`, minHeight: v > 0 ? 4 : 1 }}
-                  />
-                  {h % 4 === 0 && <span className="text-[9px] text-charcoal/50">{h}</span>}
+                  <div className="bg-terracotta/70 w-full rounded-t" style={{ height: `${(v / maxHour) * 100}%`, minHeight: v > 0 ? 4 : 1 }} />
+                  {h % 4 === 0 && <span className="text-charcoal/50 text-[9px]">{h}</span>}
                 </div>
               ))}
             </div>

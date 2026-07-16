@@ -6,10 +6,7 @@ interface Toast {
   tone: "success" | "error";
 }
 
-const ToastContext = createContext<{ toast: (message: string, tone?: Toast["tone"]) => void } | null>(
-  null
-);
-
+const ToastContext = createContext<{ toast: (message: string, tone?: Toast["tone"]) => void } | null>(null);
 
 let nextId = 1;
 
@@ -29,9 +26,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pop-in rounded-xl px-4 py-3 text-sm font-medium text-cream shadow-lg ${
-              t.tone === "success" ? "bg-espresso" : "bg-terracotta-dark"
-            }`}
+            className={`pop-in text-cream rounded-xl px-4 py-3 text-sm font-medium shadow-lg ${t.tone === "success" ? "bg-espresso" : "bg-terracotta-dark"}`}
           >
             {t.message}
           </div>

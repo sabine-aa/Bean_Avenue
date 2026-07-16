@@ -53,7 +53,10 @@ export function Checkout() {
 
   // Load storefront config (delivery availability, payment methods, tax, etc.).
   useEffect(() => {
-    customerApi.get<StorefrontConfig>("/api/delivery/config").then(setConfig).catch(() => {});
+    customerApi
+      .get<StorefrontConfig>("/api/delivery/config")
+      .then(setConfig)
+      .catch(() => {});
   }, []);
 
   // Prefill contact details from the account once it loads.
@@ -144,10 +147,7 @@ export function Checkout() {
 
   // ---- Order summary estimate (server is authoritative on the final total) ----
   const summary = useMemo(() => {
-    const addonsTotal = lines.reduce(
-      (s, l) => s + l.addons.reduce((a, x) => a + x.price * x.quantity, 0) * l.quantity,
-      0
-    );
+    const addonsTotal = lines.reduce((s, l) => s + l.addons.reduce((a, x) => a + x.price * x.quantity, 0) * l.quantity, 0);
     const itemsSubtotal = subtotal - addonsTotal;
     const rate = PROMOS[promoCode.trim().toUpperCase()] ?? 0;
     const discount = Math.round(subtotal * rate * 100) / 100;
@@ -178,15 +178,14 @@ export function Checkout() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-24 text-center">
         <p className="text-charcoal/70">Your cart's feeling light. Add something tasty.</p>
-        <Link to="/menu" className="mt-4 inline-block font-semibold text-terracotta hover:underline">
+        <Link to="/menu" className="text-terracotta mt-4 inline-block font-semibold hover:underline">
           ← Back to the menu
         </Link>
       </div>
     );
   }
 
-  const deliveryBlocked =
-    fulfillment === "DELIVERY" && (!quote || !quote.available || quote.belowMinimum);
+  const deliveryBlocked = fulfillment === "DELIVERY" && (!quote || !quote.available || quote.belowMinimum);
 
   function validate(): boolean {
     const errs: Partial<Record<keyof AddressFormValue, string>> = {};
@@ -246,7 +245,10 @@ export function Checkout() {
 
       // Optionally save a new address to the account.
       if (fulfillment === "DELIVERY" && saveAddress && account && selectedAddressId === "new") {
-        customerApi.post("/api/addresses", { ...address }).then(() => refresh()).catch(() => {});
+        customerApi
+          .post("/api/addresses", { ...address })
+          .then(() => refresh())
+          .catch(() => {});
       }
 
       if (payment === "ONLINE") {
@@ -277,7 +279,7 @@ export function Checkout() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
-      <h1 className="font-display text-3xl font-bold text-espresso">Checkout</h1>
+      <h1 className="font-display text-espresso text-3xl font-bold">Checkout</h1>
 
       {/* Fulfillment toggle */}
       <div className="mt-5 grid grid-cols-2 gap-3">
@@ -290,15 +292,21 @@ export function Checkout() {
               disabled={disabled}
               onClick={() => setFulfillment(f)}
               className={`rounded-2xl border-2 p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                fulfillment === f ? "border-terracotta bg-terracotta/5" : "border-oat bg-white hover:border-sage"
+                fulfillment === f ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage bg-white"
               }`}
             >
               <span className="text-2xl">{f === "PICKUP" ? "🏪" : "🛵"}</span>
-              <p className="mt-1 font-display font-bold text-espresso">{f === "PICKUP" ? "Pickup" : "Delivery"}</p>
-              <p className="text-xs text-charcoal/60">
+              <p className="font-display text-espresso mt-1 font-bold">{f === "PICKUP" ? "Pickup" : "Delivery"}</p>
+              <p className="text-charcoal/60 text-xs">
                 {f === "PICKUP"
-                  ? config?.pickup.enabled ? "Collect from Bean Avenue" : "Unavailable"
-                  : config?.delivery.available ? "To your address" : config?.delivery.paused ? "Paused — too busy" : "Currently unavailable"}
+                  ? config?.pickup.enabled
+                    ? "Collect from Bean Avenue"
+                    : "Unavailable"
+                  : config?.delivery.available
+                    ? "To your address"
+                    : config?.delivery.paused
+                      ? "Paused — too busy"
+                      : "Currently unavailable"}
               </p>
             </button>
           );
@@ -306,13 +314,16 @@ export function Checkout() {
       </div>
 
       {account ? (
-        <div className="mt-4 rounded-xl bg-sage/15 px-4 py-3 text-sm text-espresso">
-          ☕ Logged in as <span className="font-semibold">{account.name}</span> · you'll earn{" "}
-          <span className="font-semibold">{beansToEarn} beans</span> once this order is {payment === "ONLINE" || payment === "WHISH" ? "paid" : "completed"}.
+        <div className="bg-sage/15 text-espresso mt-4 rounded-xl px-4 py-3 text-sm">
+          ☕ Logged in as <span className="font-semibold">{account.name}</span> · you'll earn <span className="font-semibold">{beansToEarn} beans</span> once
+          this order is {payment === "ONLINE" || payment === "WHISH" ? "paid" : "completed"}.
         </div>
       ) : (
-        <div className="mt-4 rounded-xl bg-oat/60 px-4 py-3 text-sm text-charcoal/80">
-          🫘 <Link to="/loyalty" className="font-semibold text-terracotta hover:underline">Log in or create an account</Link>{" "}
+        <div className="bg-oat/60 text-charcoal/80 mt-4 rounded-xl px-4 py-3 text-sm">
+          🫘{" "}
+          <Link to="/loyalty" className="text-terracotta font-semibold hover:underline">
+            Log in or create an account
+          </Link>{" "}
           to earn beans and save addresses — or order as a guest below.
         </div>
       )}
@@ -323,31 +334,58 @@ export function Checkout() {
           {fulfillment === "PICKUP" && (
             <section className="space-y-3">
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="name">Name</label>
-                <input id="name" required value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5" autoComplete="name" />
+                <label className="text-espresso block text-sm font-semibold" htmlFor="name">
+                  Name
+                </label>
+                <input
+                  id="name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
+                  autoComplete="name"
+                />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="phone">Phone</label>
+                <label className="text-espresso block text-sm font-semibold" htmlFor="phone">
+                  Phone
+                </label>
                 <div className="mt-1">
                   <PhoneInput id="phone" required value={phone} onChange={setPhone} />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-espresso" htmlFor="email">Email <span className="font-normal text-charcoal/50">(optional)</span></label>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5" autoComplete="email" />
+                <label className="text-espresso block text-sm font-semibold" htmlFor="email">
+                  Email <span className="text-charcoal/50 font-normal">(optional)</span>
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
+                  autoComplete="email"
+                />
               </div>
             </section>
           )}
 
           {/* Pickup options */}
           {fulfillment === "PICKUP" && config && (
-            <section className="rounded-2xl border border-oat bg-white p-4">
-              <p className="font-display font-bold text-espresso">🏪 Pickup details</p>
-              <p className="mt-1 text-sm text-charcoal/70">{config.pickup.location}</p>
-              <p className="mt-1 text-xs text-charcoal/50">Typical prep time: {config.pickup.prepTime}</p>
+            <section className="border-oat rounded-2xl border bg-white p-4">
+              <p className="font-display text-espresso font-bold">🏪 Pickup details</p>
+              <p className="text-charcoal/70 mt-1 text-sm">{config.pickup.location}</p>
+              <p className="text-charcoal/50 mt-1 text-xs">Typical prep time: {config.pickup.prepTime}</p>
               <div className="mt-3">
-                <label className="block text-sm font-semibold text-espresso" htmlFor="pickup">When</label>
-                <select id="pickup" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5">
+                <label className="text-espresso block text-sm font-semibold" htmlFor="pickup">
+                  When
+                </label>
+                <select
+                  id="pickup"
+                  value={pickupTime}
+                  onChange={(e) => setPickupTime(e.target.value)}
+                  className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5"
+                >
                   <option value="ASAP">As soon as possible</option>
                   {config.pickup.scheduleEnabled && (
                     <>
@@ -366,7 +404,7 @@ export function Checkout() {
             <section className="space-y-3">
               {savedAddresses.length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold text-espresso">Deliver to</p>
+                  <p className="text-espresso text-sm font-semibold">Deliver to</p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {savedAddresses.map((a) => (
                       <button
@@ -374,11 +412,14 @@ export function Checkout() {
                         type="button"
                         onClick={() => applySavedAddress(a)}
                         className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
-                          selectedAddressId === a.id ? "border-terracotta bg-terracotta/5" : "border-oat bg-white hover:border-sage"
+                          selectedAddressId === a.id ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage bg-white"
                         }`}
                       >
-                        <span className="font-semibold text-espresso">{a.label}</span>
-                        <span className="block text-charcoal/60">{a.area}{a.building ? ` · ${a.building}` : ""}</span>
+                        <span className="text-espresso font-semibold">{a.label}</span>
+                        <span className="text-charcoal/60 block">
+                          {a.area}
+                          {a.building ? ` · ${a.building}` : ""}
+                        </span>
                       </button>
                     ))}
                     <button
@@ -388,7 +429,9 @@ export function Checkout() {
                         setAddress(emptyAddress({ fullName: name, phone }));
                       }}
                       className={`rounded-xl border px-3 py-2 text-xs font-semibold transition ${
-                        selectedAddressId === "new" ? "border-terracotta bg-terracotta/5 text-espresso" : "border-dashed border-oat bg-white text-charcoal/70 hover:border-sage"
+                        selectedAddressId === "new"
+                          ? "border-terracotta bg-terracotta/5 text-espresso"
+                          : "border-oat text-charcoal/70 hover:border-sage border-dashed bg-white"
                       }`}
                     >
                       + New address
@@ -397,23 +440,21 @@ export function Checkout() {
                 </div>
               )}
 
-              <div className="rounded-2xl border border-oat bg-white p-4">
+              <div className="border-oat rounded-2xl border bg-white p-4">
                 <AddressFields value={address} onChange={setAddress} showLabel={selectedAddressId === "new"} errors={errors} />
               </div>
 
               {account && selectedAddressId === "new" && (
-                <label className="flex items-center gap-2 text-sm text-charcoal/70">
-                  <input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} className="h-4 w-4 rounded border-oat" />
+                <label className="text-charcoal/70 flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={saveAddress} onChange={(e) => setSaveAddress(e.target.checked)} className="border-oat h-4 w-4 rounded" />
                   Save this address to my account
                 </label>
               )}
 
               {/* Delivery availability feedback */}
-              {quoting && <p className="text-sm text-charcoal/50">Checking delivery availability…</p>}
+              {quoting && <p className="text-charcoal/50 text-sm">Checking delivery availability…</p>}
               {!quoting && quote && !quote.available && (
-                <div className="rounded-xl bg-terracotta/10 p-3 text-sm font-medium text-terracotta-dark">
-                  🚫 {quote.reason}
-                </div>
+                <div className="bg-terracotta/10 text-terracotta-dark rounded-xl p-3 text-sm font-medium">🚫 {quote.reason}</div>
               )}
               {!quoting && quote?.available && quote.belowMinimum && (
                 <div className="rounded-xl bg-amber-100 p-3 text-sm font-medium text-amber-700">
@@ -421,9 +462,10 @@ export function Checkout() {
                 </div>
               )}
               {!quoting && quote?.available && !quote.belowMinimum && (
-                <div className="rounded-xl bg-sage/15 p-3 text-sm text-sage-dark">
+                <div className="bg-sage/15 text-sage-dark rounded-xl p-3 text-sm">
                   ✅ We deliver to <span className="font-semibold">{quote.zone?.name}</span> · {quote.zone?.estimatedTime}
-                  {" · "}{quote.fee === 0 ? (quote.freeApplied ? "Free delivery!" : "Free") : `${money(quote.fee)} delivery`}
+                  {" · "}
+                  {quote.fee === 0 ? (quote.freeApplied ? "Free delivery!" : "Free") : `${money(quote.fee)} delivery`}
                 </div>
               )}
             </section>
@@ -432,39 +474,58 @@ export function Checkout() {
           {/* Loyalty reward voucher */}
           {account && (account.redemptions ?? []).some((r) => r.status === "ACTIVE") && (
             <section>
-              <label className="block text-sm font-semibold text-espresso" htmlFor="reward">Apply a reward voucher <span className="font-normal text-charcoal/50">(optional)</span></label>
-              <select id="reward" value={redemptionCode} onChange={(e) => setRedemptionCode(e.target.value)} className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5 text-sm">
+              <label className="text-espresso block text-sm font-semibold" htmlFor="reward">
+                Apply a reward voucher <span className="text-charcoal/50 font-normal">(optional)</span>
+              </label>
+              <select
+                id="reward"
+                value={redemptionCode}
+                onChange={(e) => setRedemptionCode(e.target.value)}
+                className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5 text-sm"
+              >
                 <option value="">No reward</option>
-                {(account.redemptions ?? []).filter((r) => r.status === "ACTIVE").map((r) => (
-                  <option key={r.id} value={r.code}>{r.rewardName} ({r.code})</option>
-                ))}
+                {(account.redemptions ?? [])
+                  .filter((r) => r.status === "ACTIVE")
+                  .map((r) => (
+                    <option key={r.id} value={r.code}>
+                      {r.rewardName} ({r.code})
+                    </option>
+                  ))}
               </select>
             </section>
           )}
 
           {/* Promo code */}
           <section>
-            <label className="block text-sm font-semibold text-espresso" htmlFor="promo">Promo code <span className="font-normal text-charcoal/50">(optional)</span></label>
-            <input id="promo" value={promoCode} onChange={(e) => setPromoCode(e.target.value)} placeholder="e.g. WELCOME" className="mt-1 w-full rounded-xl border border-oat bg-white px-4 py-2.5 text-sm" />
+            <label className="text-espresso block text-sm font-semibold" htmlFor="promo">
+              Promo code <span className="text-charcoal/50 font-normal">(optional)</span>
+            </label>
+            <input
+              id="promo"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              placeholder="e.g. WELCOME"
+              className="border-oat mt-1 w-full rounded-xl border bg-white px-4 py-2.5 text-sm"
+            />
           </section>
 
           {/* Payment method */}
           <section>
-            <p className="text-sm font-semibold text-espresso">Payment method</p>
+            <p className="text-espresso text-sm font-semibold">Payment method</p>
             <div className="mt-2 space-y-2">
-              {paymentOptions.length === 0 && <p className="text-sm text-charcoal/50">No payment methods available right now.</p>}
+              {paymentOptions.length === 0 && <p className="text-charcoal/50 text-sm">No payment methods available right now.</p>}
               {paymentOptions.map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setPayment(m)}
                   className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
-                    payment === m ? "border-terracotta bg-terracotta/5" : "border-oat bg-white hover:border-sage"
+                    payment === m ? "border-terracotta bg-terracotta/5" : "border-oat hover:border-sage bg-white"
                   }`}
                 >
                   <span className="text-xl">{PAYMENT_ICON[m]}</span>
-                  <span className="font-semibold text-espresso">{PAYMENT_METHOD_LABEL[m]}</span>
-                  {m === "ONLINE" && <span className="ml-auto rounded-full bg-sage/20 px-2 py-0.5 text-xs font-semibold text-sage-dark">Secure</span>}
+                  <span className="text-espresso font-semibold">{PAYMENT_METHOD_LABEL[m]}</span>
+                  {m === "ONLINE" && <span className="bg-sage/20 text-sage-dark ml-auto rounded-full px-2 py-0.5 text-xs font-semibold">Secure</span>}
                 </button>
               ))}
             </div>
@@ -473,19 +534,23 @@ export function Checkout() {
           <button
             type="submit"
             disabled={submitting || deliveryBlocked || paymentOptions.length === 0}
-            className="btn-3d w-full rounded-full bg-terracotta px-6 py-3.5 text-base font-semibold text-cream disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-3d bg-terracotta text-cream w-full rounded-full px-6 py-3.5 text-base font-semibold disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "Placing your order…" : payment === "ONLINE" || payment === "WHISH" ? `Pay & place order · ${money(summary.total)}` : `Place order · ${money(summary.total)}`}
+            {submitting
+              ? "Placing your order…"
+              : payment === "ONLINE" || payment === "WHISH"
+                ? `Pay & place order · ${money(summary.total)}`
+                : `Place order · ${money(summary.total)}`}
           </button>
           {deliveryBlocked && fulfillment === "DELIVERY" && (
-            <p className="text-center text-xs text-charcoal/50">Enter a deliverable address (or switch to pickup) to continue.</p>
+            <p className="text-charcoal/50 text-center text-xs">Enter a deliverable address (or switch to pickup) to continue.</p>
           )}
         </form>
 
         {/* Order summary */}
         <aside className="md:col-span-2">
           <div className="sticky top-24 rounded-2xl bg-white p-5 shadow-sm">
-            <h2 className="font-display text-lg font-bold text-espresso">Order summary</h2>
+            <h2 className="font-display text-espresso text-lg font-bold">Order summary</h2>
             <ul className="mt-3 space-y-2 text-sm">
               {lines.map((l) => (
                 <li key={l.key} className="flex justify-between gap-2">
@@ -497,21 +562,23 @@ export function Checkout() {
                 </li>
               ))}
             </ul>
-            <div className="mt-4 space-y-1.5 border-t border-oat pt-3 text-sm">
+            <div className="border-oat mt-4 space-y-1.5 border-t pt-3 text-sm">
               <Row label="Items subtotal" value={money(summary.itemsSubtotal)} />
               {summary.addonsTotal > 0 && <Row label="Add-ons" value={money(summary.addonsTotal)} />}
-              {summary.discount > 0 && <Row label={`Discount${promoCode ? ` (${promoCode.toUpperCase()})` : ""}`} value={`−${money(summary.discount)}`} accent />}
+              {summary.discount > 0 && (
+                <Row label={`Discount${promoCode ? ` (${promoCode.toUpperCase()})` : ""}`} value={`−${money(summary.discount)}`} accent />
+              )}
               {redemptionCode && <Row label="Loyalty reward" value="applied at order" muted />}
               {fulfillment === "DELIVERY" && (
                 <Row label="Delivery fee" value={quote?.available ? (summary.deliveryFee === 0 ? "Free" : money(summary.deliveryFee)) : "—"} />
               )}
               {summary.taxRate > 0 && <Row label={`${config?.tax.label ?? "Tax"} (${summary.taxRate}%)`} value={money(summary.tax)} />}
-              <div className="flex justify-between border-t border-oat pt-2 text-base font-bold text-espresso">
+              <div className="border-oat text-espresso flex justify-between border-t pt-2 text-base font-bold">
                 <span>Total</span>
                 <span>{money(summary.total)}</span>
               </div>
               {config && config.delivery.freeThreshold > 0 && fulfillment === "DELIVERY" && subtotal < config.delivery.freeThreshold && (
-                <p className="pt-1 text-xs text-sage-dark">🚚 Add {money(config.delivery.freeThreshold - subtotal)} more for free delivery!</p>
+                <p className="text-sage-dark pt-1 text-xs">🚚 Add {money(config.delivery.freeThreshold - subtotal)} more for free delivery!</p>
               )}
             </div>
           </div>

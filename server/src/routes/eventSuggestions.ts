@@ -7,7 +7,10 @@ export const eventSuggestionsRouter = Router();
 
 const STATUSES = ["NEW", "REVIEWED", "CONSIDERING", "APPROVED", "REJECTED"];
 
-const str = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
+const str = (v: unknown, max: number) =>
+  String(v ?? "")
+    .trim()
+    .slice(0, max);
 
 // POST /api/event-suggestions  (public — no account required)
 eventSuggestionsRouter.post("/", optionalCustomer, async (req, res) => {

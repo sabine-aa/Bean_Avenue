@@ -78,7 +78,7 @@ export async function restoreStock(orderId: number): Promise<void> {
   const sales = await prisma.stockMovement.findMany({ where: { orderId, type: "SALE" } });
   if (!sales.length) return;
   const reversed = new Set(
-    (await prisma.stockMovement.findMany({ where: { orderId, type: "RESTORE" }, select: { menuItemId: true } })).map((m) => m.menuItemId)
+    (await prisma.stockMovement.findMany({ where: { orderId, type: "RESTORE" }, select: { menuItemId: true } })).map((m) => m.menuItemId),
   );
   for (const s of sales) {
     if (reversed.has(s.menuItemId)) continue; // already restored

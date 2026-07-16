@@ -37,18 +37,31 @@ featuredRouter.get("/admin", async (_req, res) => {
   const settings = await getSettings();
   const rows = await prisma.featuredProduct.findMany({ orderBy: { sortOrder: "asc" }, include: { menuItem: true } });
   // Categories + products per category, in menu display order.
-  const items = await prisma.menuItem.findMany({ where: { isHidden: false }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, name: true, category: true, price: true, inStock: true } });
+  const items = await prisma.menuItem.findMany({
+    where: { isHidden: false },
+    orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    select: { id: true, name: true, category: true, price: true, inStock: true },
+  });
   const catOrder: string[] = [];
   const menuByCategory: Record<string, { id: number; name: string; price: number; inStock: boolean }[]> = {};
   for (const it of items) {
-    if (!menuByCategory[it.category]) { menuByCategory[it.category] = []; catOrder.push(it.category); }
+    if (!menuByCategory[it.category]) {
+      menuByCategory[it.category] = [];
+      catOrder.push(it.category);
+    }
     menuByCategory[it.category].push({ id: it.id, name: it.name, price: it.price, inStock: it.inStock });
   }
   res.json({
     settings,
     categories: catOrder,
     menuByCategory,
-    rows: rows.map((f) => ({ category: f.category, menuItemId: f.menuItemId, sortOrder: f.sortOrder, isHidden: f.isHidden, menuItem: outMenuItem(f.menuItem) })),
+    rows: rows.map((f) => ({
+      category: f.category,
+      menuItemId: f.menuItemId,
+      sortOrder: f.sortOrder,
+      isHidden: f.isHidden,
+      menuItem: outMenuItem(f.menuItem),
+    })),
   });
 });
 

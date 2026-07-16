@@ -56,12 +56,7 @@ export async function getOrCreateCustomer(phone: string, name: string) {
  * Credit a customer with beans for an order/booking and log the transaction.
  * Updates the bean balance, lifetime total, and tier.
  */
-export async function earnBeans(
-  customerId: number,
-  amount: number,
-  source: string,
-  refId: string
-) {
+export async function earnBeans(customerId: number, amount: number, source: string, refId: string) {
   if (amount <= 0) return;
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return;
