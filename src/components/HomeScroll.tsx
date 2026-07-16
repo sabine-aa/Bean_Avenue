@@ -56,6 +56,27 @@ export function CompactMenuCard({ item }: { item: MenuItem }) {
   );
 }
 
+// Category showcase tile for the home carousel — shows the breadth of the
+// shop (one tile per category) and sends the customer into /shop to browse.
+export function ShopCategoryCard({ title, image, count, fromPrice }: { title: string; image: string; count: number; fromPrice: number }) {
+  return (
+    <Link
+      to={`/shop?cat=${encodeURIComponent(title)}`}
+      className="card-lift group flex w-44 shrink-0 snap-start flex-col overflow-hidden rounded-2xl bg-white shadow-sm sm:w-48"
+    >
+      <div className="relative">
+        <Img src={image} alt={title} fit="contain" className="aspect-square w-full bg-[#efe7dc]" />
+        <span className="absolute right-2 top-2 rounded-full bg-espresso/90 px-2 py-0.5 text-[10px] font-bold text-cream">{count} {count === 1 ? "item" : "items"}</span>
+      </div>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="line-clamp-2 text-sm font-semibold leading-tight text-espresso transition group-hover:text-terracotta">{title}</p>
+        <p className="mb-2 mt-0.5 text-xs text-charcoal/50">from {money(fromPrice)}</p>
+        <span className="mt-auto flex w-full items-center justify-center rounded-full bg-oat py-1.5 text-xs font-bold text-espresso transition group-hover:bg-espresso group-hover:text-cream">Shop →</span>
+      </div>
+    </Link>
+  );
+}
+
 const SHOP_CART_KEY = "beanavenue.shopCart";
 type ShopCartLine = { productId: number; name: string; price: number; image: string; quantity: number };
 function addToShopCart(p: HomeShopProduct) {

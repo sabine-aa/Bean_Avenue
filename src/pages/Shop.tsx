@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Img } from "../components/Img";
 import { PhoneInput } from "../components/PhoneInput";
 import { useToast } from "../context/ToastContext";
@@ -45,6 +45,15 @@ export function Shop() {
       .then((r) => { setProducts(r.products); setCats(r.categories); })
       .catch(() => {});
   }, []);
+
+  // Deep link from the home page tiles: /shop?cat=<category name>
+  const [params] = useSearchParams();
+  useEffect(() => {
+    const cat = params.get("cat");
+    if (!cat || cats.length === 0 || !cats.some((c) => c.name === cat)) return;
+    setGroup(MACHINE_CATS.includes(cat) ? "machines" : "coffee");
+    setActive(cat);
+  }, [params, cats]);
   useEffect(() => { localStorage.setItem(CART_KEY, JSON.stringify(cart)); }, [cart]);
 
   const machineSet = useMemo(() => new Set(MACHINE_CATS), []);

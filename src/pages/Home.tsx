@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { HomeBanner } from "../components/HomeBanner";
-import { CompactMenuCard, CompactShopCard, ScrollRow, type HomeShopProduct } from "../components/HomeScroll";
+import { CompactMenuCard, ScrollRow, ShopCategoryCard, type HomeShopProduct } from "../components/HomeScroll";
 import { HOURS, isOpenNow, MAPS_EMBED, WHATSAPP_URL } from "../components/Layout";
 import { Img } from "../components/Img";
 import { OffersSignup } from "../components/OffersSignup";
@@ -42,14 +42,25 @@ export function Home() {
     api.get<{ products: HomeShopProduct[]; categories: { id: number; name: string }[] }>("/api/shop").then(setShop).catch(() => {});
   }, []);
 
-  // One shop product per category (prefer a featured one), in category order.
-  const shopHighlights = useMemo(() => {
-    const byCat = new Map<string, HomeShopProduct & { featured?: boolean }>();
-    for (const p of shop.products as (HomeShopProduct & { featured?: boolean })[]) {
+  // One tile per shop category (photo from a featured product when possible),
+  // with item count + lowest price — customers see the whole range at a glance
+  // and click through into /shop to browse the category.
+  const shopCategoryTiles = useMemo(() => {
+    type P = HomeShopProduct & { featured?: boolean };
+    const byCat = new Map<string, { rep: P; count: number; from: number }>();
+    for (const p of shop.products as P[]) {
       const cur = byCat.get(p.category);
-      if (!cur || (p.featured && !cur.featured)) byCat.set(p.category, p);
+      if (!cur) byCat.set(p.category, { rep: p, count: 1, from: p.price });
+      else {
+        cur.count += 1;
+        cur.from = Math.min(cur.from, p.price);
+        if (p.featured && !cur.rep.featured) cur.rep = p;
+      }
     }
-    return shop.categories.map((c) => byCat.get(c.name)).filter(Boolean) as HomeShopProduct[];
+    return shop.categories.flatMap((c) => {
+      const e = byCat.get(c.name);
+      return e ? [{ name: c.name, image: e.rep.images[0] ?? "", count: e.count, from: e.from }] : [];
+    });
   }, [shop]);
 
   const studyRoom = rooms.find((r) => r.type === "STUDY");
@@ -265,8 +276,8 @@ export function Home() {
         </div>
       </section>
 
-      {/* Shop — compact horizontal carousel (one product per shop category) */}
-      {shopHighlights.length > 0 && (
+      {/* Shop — one tile per category; browsing happens inside /shop */}
+      {shopCategoryTiles.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 py-10">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
@@ -276,7 +287,7 @@ export function Home() {
             <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
           </div>
           <ScrollRow>
-            {shopHighlights.map((p) => <CompactShopCard key={p.id} product={p} />)}
+            {shopCategoryTiles.map((t) => <ShopCategoryCard key={t.name} title={t.name} image={t.image} count={t.count} fromPrice={t.from} />)}
           </ScrollRow>
         </section>
       )}
