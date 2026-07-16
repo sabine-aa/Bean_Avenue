@@ -26,6 +26,7 @@ export function Shop() {
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [cats, setCats] = useState<ShopCategory[]>([]);
   const [active, setActive] = useState(ALL_COFFEE);
+  const [group, setGroup] = useState<"coffee" | "machines">("coffee");
   const [detail, setDetail] = useState<ShopProduct | null>(null);
   const [cart, setCart] = useState<CartLine[]>(loadCart);
   const [showCart, setShowCart] = useState(false);
@@ -114,21 +115,37 @@ export function Shop() {
         <p className="mt-2 text-charcoal/60">Take illy home — capsules, beans, ground coffee & more. Order online for pickup.</p>
       </div>
 
-      {/* Category nav (illy-style) — Coffee on top, Machines & Makers below */}
+      {/* Category nav — pick a department (Coffee / Machines), then filter with chips */}
       <div className="sticky top-16 z-20 -mx-4 mt-6 border-b border-oat bg-cream/95 px-4 py-3 backdrop-blur">
-        <div className="flex gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {[ALL_COFFEE, ...coffeeCats.map((c) => c.name)].map((t) => (
-            <button key={t} onClick={() => setActive(t)} className={`text-sm font-semibold transition ${active === t ? "text-espresso underline decoration-terracotta decoration-2 underline-offset-8" : "text-charcoal/55 hover:text-espresso"}`}>{t}</button>
-          ))}
-        </div>
         {machineCats.length > 0 && (
-          <div className="mt-2 flex items-center gap-5 overflow-x-auto whitespace-nowrap border-t border-oat/60 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-charcoal/35">Machines &amp; Makers</span>
-            {[ALL_MACHINES, ...machineCats.map((c) => c.name)].map((t) => (
-              <button key={t} onClick={() => setActive(t)} className={`text-sm font-semibold transition ${active === t ? "text-espresso underline decoration-terracotta decoration-2 underline-offset-8" : "text-charcoal/55 hover:text-espresso"}`}>{t === ALL_MACHINES ? "All Machines" : t}</button>
-            ))}
+          <div className="flex justify-center">
+            <div className="inline-flex rounded-full bg-oat/60 p-1">
+              {([["coffee", "Coffee"], ["machines", "Machines & Makers"]] as const).map(([g, label]) => (
+                <button
+                  key={g}
+                  onClick={() => { setGroup(g); setActive(g === "coffee" ? ALL_COFFEE : ALL_MACHINES); }}
+                  className={`rounded-full px-5 py-2 text-sm font-bold transition ${group === g ? "bg-espresso text-cream shadow" : "text-charcoal/55 hover:text-espresso"}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
+          {(group === "machines" && machineCats.length > 0
+            ? [ALL_MACHINES, ...machineCats.map((c) => c.name)]
+            : [ALL_COFFEE, ...coffeeCats.map((c) => c.name)]
+          ).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActive(t)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${active === t ? "border-espresso bg-espresso text-cream" : "border-oat bg-white text-charcoal/60 hover:border-espresso/40 hover:text-espresso"}`}
+            >
+              {t === ALL_MACHINES ? "All Machines" : t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Grid */}
