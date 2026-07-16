@@ -7,6 +7,7 @@ import { Img } from "../components/Img";
 import { OffersSignup } from "../components/OffersSignup";
 import { useCustomerAuth } from "../context/CustomerAuthContext";
 import { api } from "../lib/api";
+import { MACHINE_CATS } from "./Shop";
 import type { MenuItem, Room } from "../types";
 
 interface FeaturedSection {
@@ -43,24 +44,33 @@ export function Home() {
   }, []);
 
   // One tile per shop category (photo from a featured product when possible),
-  // with item count + lowest price — customers see the whole range at a glance
-  // and click through into /shop to browse the category.
+  // with the lowest price — customers see the whole range at a glance and
+  // click through into /shop to browse the category.
   const shopCategoryTiles = useMemo(() => {
     type P = HomeShopProduct & { featured?: boolean };
-    const byCat = new Map<string, { rep: P; count: number; from: number }>();
+    const byCat = new Map<string, { rep: P; from: number }>();
     for (const p of shop.products as P[]) {
       const cur = byCat.get(p.category);
-      if (!cur) byCat.set(p.category, { rep: p, count: 1, from: p.price });
+      if (!cur) byCat.set(p.category, { rep: p, from: p.price });
       else {
-        cur.count += 1;
         cur.from = Math.min(cur.from, p.price);
         if (p.featured && !cur.rep.featured) cur.rep = p;
       }
     }
-    return shop.categories.flatMap((c) => {
+    const tiles = shop.categories.flatMap((c) => {
       const e = byCat.get(c.name);
-      return e ? [{ name: c.name, image: e.rep.images[0] ?? "", count: e.count, from: e.from }] : [];
+      return e ? [{ name: c.name, image: e.rep.images[0] ?? "", from: e.from }] : [];
     });
+    // Alternate coffee / machine tiles so the row shows the full range up front.
+    const machineSet = new Set(MACHINE_CATS);
+    const coffee = tiles.filter((t) => !machineSet.has(t.name));
+    const machines = tiles.filter((t) => machineSet.has(t.name));
+    const mixed: typeof tiles = [];
+    for (let i = 0; i < Math.max(coffee.length, machines.length); i++) {
+      if (coffee[i]) mixed.push(coffee[i]);
+      if (machines[i]) mixed.push(machines[i]);
+    }
+    return mixed;
   }, [shop]);
 
   const studyRoom = rooms.find((r) => r.type === "STUDY");
@@ -287,7 +297,7 @@ export function Home() {
             <Link to="/shop" className="btn-3d shrink-0 rounded-full bg-terracotta px-4 py-2 text-sm font-semibold text-cream hover:bg-terracotta-dark">Full Shop →</Link>
           </div>
           <ScrollRow>
-            {shopCategoryTiles.map((t) => <ShopCategoryCard key={t.name} title={t.name} image={t.image} count={t.count} fromPrice={t.from} />)}
+            {shopCategoryTiles.map((t) => <ShopCategoryCard key={t.name} title={t.name} image={t.image} fromPrice={t.from} />)}
           </ScrollRow>
         </section>
       )}

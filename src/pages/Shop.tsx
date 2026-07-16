@@ -14,7 +14,7 @@ type ShopProduct = {
 type ShopCategory = { id: number; name: string };
 type CartLine = { productId: number; name: string; price: number; image: string; quantity: number };
 
-const MACHINE_CATS = ["Iperespresso Capsule Machines", "illy Easy Compatible Capsule Machines", "ESE Pod Machines", "Milk Frothers", "Coffee Makers"];
+export const MACHINE_CATS = ["Iperespresso Capsule Machines", "illy Easy Compatible Capsule Machines", "ESE Pod Machines", "Milk Frothers", "Coffee Makers"];
 const ALL_COFFEE = "All Coffee";
 const ALL_MACHINES = "All Machines & Makers";
 const CART_KEY = "beanavenue.shopCart";

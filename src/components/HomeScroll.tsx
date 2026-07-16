@@ -58,7 +58,7 @@ export function CompactMenuCard({ item }: { item: MenuItem }) {
 
 // Category showcase tile for the home carousel — shows the breadth of the
 // shop (one tile per category) and sends the customer into /shop to browse.
-export function ShopCategoryCard({ title, image, count, fromPrice }: { title: string; image: string; count: number; fromPrice: number }) {
+export function ShopCategoryCard({ title, image, fromPrice }: { title: string; image: string; fromPrice: number }) {
   return (
     <Link
       to={`/shop?cat=${encodeURIComponent(title)}`}
@@ -66,7 +66,6 @@ export function ShopCategoryCard({ title, image, count, fromPrice }: { title: st
     >
       <div className="relative">
         <Img src={image} alt={title} fit="contain" className="aspect-square w-full bg-[#efe7dc]" />
-        <span className="absolute right-2 top-2 rounded-full bg-espresso/90 px-2 py-0.5 text-[10px] font-bold text-cream">{count} {count === 1 ? "item" : "items"}</span>
       </div>
       <div className="flex flex-1 flex-col p-3">
         <p className="line-clamp-2 text-sm font-semibold leading-tight text-espresso transition group-hover:text-terracotta">{title}</p>
